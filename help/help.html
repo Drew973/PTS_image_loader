@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+
+<html>
+<head>  
+ <link rel="stylesheet" type="text/css" href="styles.css"/>
+</head>  
+
+<title>PTS Image Loader</title>
+
+
+
+<body>
+    <h3 id="home">Image loader</h3>
+
+
+<p>Tool for loading and unloading geotif images into qgis.</p>
+<p>Details of images to load are stored in the 'file_details' table.</p>
+<p>Loads images in selected run where start_id<=image_id<=end_id</p>
+<p>Images will be loaded into 'image_loader' group. </p>
+<p>Loading images will remove anything in the 'image_loader' group. </p>
+
+
+
+<h3 id="home">File_details table</h3>
+	<p>Colums:</p>
+	<ul>
+	<li>run</li>
+	<li>image_id:integer</li>
+	<li>file_path:path to file. Will be converted to relative path from csv folder when saving as csv.</li>
+	<li>name:name for layer.</li>
+	<li>groups:list describing group to add layer to. JSON format. Eg "["image_loader", "MFV2_01", "ImageInt"]" adds image to "ImageInt" subgroup of "MFV2_01" subgroup of "image_loader" group </li>
+	</ul>
+
+
+<h3 id="home">Loading csv</h3>
+<p>The csv needs a header and columns named run,image_id,file_path,name,groups. These can be in any order and there can be extra columns. </p>
+<p>file_path can be absolute or relative to the folder containing the csv. </p>
+
+
+
+<h3 id="home">Saving csv</h3>
+<p>file_path will be converted to relative path from the folder containing the csv.</p>
+<p>This allows a folder containing the csv and images to be moved without invalidating the file paths.</p>
+
+
+
+<h3 id="home">Generating details from folder</h3>
+	<p> This tool will add a row to the file_details table for every .tif file in folder and subfolders.</p>
+	<p>Details are generated as:</p>
+	<ul>
+		<li>name:Filename without extention.</li>	
+		<li>groups: "image_loader" + subfolders from folder to file.</li>
+		<li>run:Folder name 2 levels up from file.</li>
+		<li>image_id:Last 6 digits of filename without extention.</li>
+    </ul>
+</body>
+
+
+</html>
