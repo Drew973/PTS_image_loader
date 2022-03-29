@@ -6,6 +6,8 @@ Created on Fri Mar 25 11:22:52 2022
 """
 
 import os
+import re
+
 
 from image_loader.group_functions import listToGroupString
 from image_loader import constants
@@ -26,22 +28,34 @@ def generateGroups(file,folder,root=constants.rootGroup):
     return listToGroupString(g)
 
 
+#assuming filenames are in form of run_type_imageId
+
 #name for layer
 #filename without extention
 def generateLayerName(filePath):
     return os.path.splitext(os.path.basename(filePath))[0]
 
 
-#folder name 2 levels up from file
+#(start)(run)_(not_)_(digits)(end)
 def generateRun(filePath):
-    return os.path.split(os.path.dirname(os.path.dirname(filePath)))[-1]        
+    name = os.path.splitext(os.path.basename(filePath))[0]
+    m = re.search('^.*(?=_[^_]+_\d+$)', name)
+    if m:
+        return m.group(0)
+    else:
+        return ''
 
 
-#last 6 digits of filename without extention
+
+#digits at end of filename without extention
 def generateImageId(filePath):
     name = os.path.splitext(os.path.basename(filePath))[0]
-    return int(name[-6:])
-    
+    m = re.search('\d+$', name)
+    if m:
+        return m.group(0)
+    else:
+        return '-1'
+
 
 #[{filePath,layerName,groups}] for each tif in folder.
 def generateDetails(folder,createOverview=True):

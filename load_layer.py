@@ -8,7 +8,7 @@ from image_loader import group_functions
 
 
 #groups: groups.groups object
-def loadLayer(filePath,layerName,groups,createOverview=False,hide=False):
+def loadLayer(filePath,layerName,groups,createOverview=False,hide=False,expand=False):
     crs = QgsCoordinateReferenceSystem('EPSG:27700')
     layer = QgsRasterLayer(filePath, layerName)
     layer.setCrs(crs)
@@ -23,9 +23,11 @@ def loadLayer(filePath,layerName,groups,createOverview=False,hide=False):
     group.addLayer(layer)
         
     QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
-    if hide:
-        group.findLayer(layer).setItemVisibilityChecked(False)        
-        
+    
+    
+    node = group.findLayer(layer)
+    node.setItemVisibilityChecked(hide)                
+    node.setExpanded(expand)
         
     return layer
     

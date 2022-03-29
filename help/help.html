@@ -26,7 +26,7 @@
 	<ul>
 	<li>run</li>
 	<li>image_id:integer</li>
-	<li>file_path:path to file. Will be converted to relative path from csv folder when saving as csv.</li>
+	<li>file_path:path to file.</li>
 	<li>name:name for layer.</li>
 	<li>groups:list describing group to add layer to. JSON format. Eg "["image_loader", "MFV2_01", "ImageInt"]" adds image to "ImageInt" subgroup of "MFV2_01" subgroup of "image_loader" group </li>
 	</ul>
@@ -34,7 +34,7 @@
 
 <h3 id="home">Loading csv</h3>
 <p>The csv needs a header and columns named run,image_id,file_path,name,groups. These can be in any order and there can be extra columns. </p>
-<p>file_path can be absolute or relative to the folder containing the csv. </p>
+<p>file_path in the csv can be absolute or relative to the folder containing the csv. </p>
 
 
 
@@ -46,12 +46,13 @@
 
 <h3 id="home">Generating details from folder</h3>
 	<p> This tool will add a row to the file_details table for every .tif file in folder and subfolders.</p>
+	<p>Assumes file names (without extention) in form of (run)_(image_type)_(image_id)</p>
 	<p>Details are generated as:</p>
 	<ul>
-		<li>name:Filename without extention.</li>	
+		<li>name:File name .</li>	
 		<li>groups: "image_loader" + subfolders from folder to file.</li>
-		<li>run:Folder name 2 levels up from file.</li>
-		<li>image_id:Last 6 digits of filename without extention.</li>
+		<li>run:Start of filename</li>
+		<li>image_id:Last numerical digits of filename</li>
     </ul>
 </body>
 
