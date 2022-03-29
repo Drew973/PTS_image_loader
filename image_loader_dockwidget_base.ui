@@ -50,6 +50,9 @@
        </item>
        <item row="3" column="0" colspan="2">
         <widget class="QPushButton" name="loadButton">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load images in selected run where start_id&amp;lt;=image_id&amp;lt;=end_id. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Load Images</string>
          </property>

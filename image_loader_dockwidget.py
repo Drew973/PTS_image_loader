@@ -50,6 +50,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         self.model = image_model.imageModel()
         self.fileDetailsView.setModel(self.model)
+        self.fileDetailsView.setColumnHidden(self.model.fieldIndex('pk'),True)
+        #self.fileDetailsView.resizeColumnsToContents()
+
         self.loadButton.clicked.connect(self.load)
         
         #top menu
@@ -85,9 +88,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
     def load(self):      
         group_functions.removeChild(constants.rootGroup)#remove group.
-       # run = self.runBox.currentData()
-        
-        self.model.loadImages(run=self.runBox.currentData(),startId=self.startBox.value(),endId=self.endBox.value())
+        self.model.loadImages(run=self.currentRun(),startId=self.startBox.value(),endId=self.endBox.value())
+
+
+    def currentRun(self):
+        return self.runBox.itemText(self.runBox.currentIndex())
         
         
     def loadCsv(self):

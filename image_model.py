@@ -37,7 +37,7 @@ class imageLoaderQueryError(Exception):
     def __init__(self,q):
         message = 'query "%s" failed with "%s"'%(q.lastQuery(),q.lastError().databaseText())
         super().__init__(message)
-
+        
 
 
 
@@ -57,7 +57,7 @@ class imageModel(QSqlTableModel):
         super().__init__(parent,db)
         
         self.setTable('image_details')
-        
+        self.setEditStrategy(QSqlTableModel.OnFieldChange)
     
     
     def createTable(self):
@@ -91,8 +91,8 @@ class imageModel(QSqlTableModel):
     
     
     #load images where run=run and startId<=imageId and imageId<=end_id
-    def loadImages(self,run=None,startId=None,endId=None,hide=True):
-#        print('loadImages({run}{startId}{endId})'.format(run=run,startId=startId,endId=endId))
+    def loadImages(self,run=None,startId=None,endId=None,hide=False):
+        print('loadImages({run}{startId}{endId})'.format(run=run,startId=startId,endId=endId))
         query = 'select file_path,name,groups from image_details'
         
         conditions = []
@@ -134,7 +134,7 @@ class imageModel(QSqlTableModel):
             name = q.value('name')
             g = group_functions.groupStringToList(q.value('groups'))
             
-            load_layer.loadLayer(filePath,name,g,hide)
+            load_layer.loadLayer(filePath,name,g,False,hide)
     
     
 #load csv. converts all paths to absolute
@@ -235,7 +235,7 @@ class imageModel(QSqlTableModel):
     #get list of runs
     def runs(self):
         
-        q = self.preparedQuery('select distinct run from image_details')
+        q = self.preparedQuery('select distinct run from image_details order by run')
         q.exec()
         
         while q.next():
