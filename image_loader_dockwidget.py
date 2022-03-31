@@ -60,8 +60,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         ######################load
         loadMenu = topMenu.addMenu("File_details")
+        
         loadCsvAct = loadMenu.addAction('Load file details csv...')
         loadCsvAct.triggered.connect(self.loadCsv)
+        
+        loadTxtAct = loadMenu.addAction('Load file details txt...')
+        loadTxtAct.triggered.connect(self.loadTxt)
         
         loadCsvAct = loadMenu.addAction('Find from folder...')
         loadCsvAct.triggered.connect(self.detailsFromFolder)
@@ -102,6 +106,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.model.loadCsv(f)
         self.infoChange()
 
+    
+    def loadTxt(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = '*.txt;;*')[0]
+        if f:
+            self.model.clearTable()
+            self.model.loadTxt(f)
+        self.infoChange()        
+        
     
     def saveToCsv(self):
         f = QFileDialog.getSaveFileName(caption = 'Save details to csv',filter = '*.csv;;*')[0]

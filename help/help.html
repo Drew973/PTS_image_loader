@@ -16,7 +16,6 @@
 <p>Tool for loading and unloading geotif images into qgis.</p>
 <p>Details of images to load are stored in the 'file_details' table.</p>
 <p>Loads images in selected run where start_id<=image_id<=end_id</p>
-<p>Images will be loaded into 'image_loader' group. </p>
 <p>Loading images will remove anything in the 'image_loader' group. </p>
 
 
@@ -37,23 +36,41 @@
 <p>file_path in the csv can be absolute or relative to the folder containing the csv. </p>
 
 
+<h3 id="home">Loading txt</h3>
+<p>The tool can load a csv like txt file. It needs a header and a column named FilePath. </p>
+<p>FilePath can be absolute or relative to the folder containing the txt. </p>
+<p>The following columns will be used if present,otherwise details will be generated from FilePath: </p>
+<ul>
+<li>RunID:run</li>
+<li>ImageId</li>
+<li>FileName:used as layer_name</li>
+<li>ImageType:this and run is used to generate groups</li>
+
+
+</ul>
+
+
+<h3 id="home">Generating details from folder</h3>
+	<p> This tool will generate a row (from file path) for every .tif file in folder and subfolders.</p>
+
+
+<h3 id="home">Generating details from file path</h3>
+	<p>Where file names (without extention) in form of (run)_(image_type)_(image_id)</p>
+	<p>Details can be generated as:</p>
+	<ul>
+		<li>name:File name .</li>	
+		<li>groups: "image_loader",image_type,run.</li>
+		<li>run:Start of filename</li>
+		<li>image_id:Last numerical digits of filename</li>
+    </ul>
+
+
 
 <h3 id="home">Saving csv</h3>
 <p>file_path will be converted to relative path from the folder containing the csv.</p>
 <p>This allows a folder containing the csv and images to be moved without invalidating the file paths.</p>
 
 
-
-<h3 id="home">Generating details from folder</h3>
-	<p> This tool will add a row to the file_details table for every .tif file in folder and subfolders.</p>
-	<p>Assumes file names (without extention) in form of (run)_(image_type)_(image_id)</p>
-	<p>Details are generated as:</p>
-	<ul>
-		<li>name:File name .</li>	
-		<li>groups: "image_loader" + subfolders from folder to file.</li>
-		<li>run:Start of filename</li>
-		<li>image_id:Last numerical digits of filename</li>
-    </ul>
 </body>
 
 

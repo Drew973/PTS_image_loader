@@ -15,7 +15,7 @@ from image_loader import constants
 
 #list of strings representing group hierarchy.
 #same as folder hierarchy
-def generateGroups(file,folder,root=constants.rootGroup):
+def generateGroupsFromFolder(file,folder,root=constants.rootGroup):
     folder = os.path.dirname(folder)
     file = os.path.dirname(file)
     
@@ -28,7 +28,25 @@ def generateGroups(file,folder,root=constants.rootGroup):
     return listToGroupString(g)
 
 
+
+def generateGroups2(run,imagetype,root=constants.rootGroup):
+    r = [root]
+    r.append(imagetype)
+    r.append(run)    
+    return listToGroupString(r)
+
+
+def generateGroups(fileName,root=constants.rootGroup):
+    r = [root]
+    r.append(generateType(fileName))
+    r.append(generateRun(fileName))
+    return listToGroupString(r)
+
+
 #assuming filenames are in form of run_type_imageId
+#(start)(run)_(image_type)_(image_id)(end)
+
+#run_type_image_id
 
 #name for layer
 #filename without extention
@@ -71,6 +89,14 @@ def getFiles(folder,exts=None):
                 yield os.path.join(root,f)
                 
                 
+#(start)(run)_(type)_(digits)(end)
+def generateType(filePath):
+    name = os.path.splitext(os.path.basename(filePath))[0]
+    m = re.search('(?<=_)[^_]+(?=_\d+$)', name)#_(non _)_(digits)(end)
+    if m:
+        return m.group(0)
+    else:
+        return ''
                  
 
 def imageDetailsfromPath(filePath,folder,createOverview=True):
@@ -78,9 +104,9 @@ def imageDetailsfromPath(filePath,folder,createOverview=True):
     return {'run':generateRun(filePath),
             'image_id':generateImageId(filePath),
             'file_path':filePath,
-            'groups':generateGroups(filePath,folder),
+            'groups':generateGroups(generateRun(filePath),generateType(filePath)),
             'name':generateLayerName(filePath)
-            }                
+            }
 
 
 

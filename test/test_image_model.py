@@ -39,14 +39,23 @@ def testLoadImages(m):
     QgsProject.instance().clear()
     m.loadImages(hide=True)
     
+    
+def testLoadTxt():  
+    f = os.path.join(testFolder,r'inputs/TXY_Y Raster Image Load File.txt')
+    m = image_model.imageModel()
+    m.loadTxt(f)
+    return m
+    
   
 if __name__ == '__main__' or __name__=='__console__':
     from PyQt5.QtWidgets import QTableView
     from qgis.core import QgsProject
-   # v = QTableView()
+    v = QTableView()
     testFromFolder()
     m = testLoadCsv()
     testWriteCsv(m)
+    m = testLoadTxt()
+    v.setModel(m)
     testLoadImages(m)
-    
-    
+    v.show()
+    #m.loadImages()

@@ -92,7 +92,6 @@ class imageModel(QSqlTableModel):
     
     #load images where run=run and startId<=imageId and imageId<=end_id
     def loadImages(self,run=None,startId=None,endId=None,hide=False):
-        print('loadImages({run}{startId}{endId})'.format(run=run,startId=startId,endId=endId))
         query = 'select file_path,name,groups from image_details'
         
         conditions = []
@@ -150,42 +149,48 @@ class imageModel(QSqlTableModel):
                 else:
                     filePath = r['file_path']
                 
-                self.addRow(r['run'],r['image_id'],filePath,r['name'],r['groups'])
+                self.addRow(filePath=filePath,run=r['run'],imageId=r['image_id'],name=r['name'],groups=r['groups'])
 
 
-    #not working- no rows inserted or error raised. performance probably not important here...
-    def addDataBatch(self,data):
+#csv like txt ImageType,FileName,RunID,FilePath
+#FilePath required. optional ImageType,FileName,RunID
+
+    def loadTxt(self,file):
         
-        self.database().transaction()
-        
-        runs,image_ids,file_paths,groups = zip(*[(r['run'], r['image_id'],r['file_path'],r['groups']) for r in data])
+        #lookup value from dict, returning None if not present
+        def find(d,k):
+            if k in d:
+                return d[k]
+            
+        with open(file,'r',encoding='utf-8-sig') as f:
+            
+            reader = csv.DictReader(f)
+                        
+            for r in reader:
+                run = find(r,'RunID')
+                self.addRow(filePath=r['FilePath'],
+                            run = run,
+                            imageId = find(r,'ImageID'),
+                            name = find(r,'FileName'),
+                            groups = generate_details.generateGroups2(run,find(r,'ImageType'))
+                            )
 
-        q = QSqlQuery(self.database())
-        print(q.prepare("insert into image_details values (:run,:image_id,:file_path,:group);"))
-
-        q.bindValue(':run',runs)
-        q.bindValue(':image_id',image_ids)
-        q.bindValue(':file_path',file_paths)
-        q.bindValue(':group',groups)
-
-        print('bound values:',q.boundValues())
-
-        if not q.execBatch():
-            raise imageLoaderQueryError(q)
-
-        print(q.executedQuery())
-        
-        self.database().commit()
-        self.select()
-
-
-    def addData(self,data):
-        for r in data:
-            self.addRow(r['run'],r['image_id'],r['file_path'],r['name'],r['groups'])
-    
     
     #groups:string
-    def addRow(self,run,imageId,filePath,name,groups):
+    def addRow(self,filePath,run=None,imageId=None,name=None,groups=None):
+                
+        if run is None:
+            run = generate_details.generateRun(filePath)
+            
+        if imageId is None:
+            imageId = generate_details.generateImageId(filePath)
+        
+        if name is None:
+            name = generate_details.generateLayerName(filePath)
+        
+        if groups is None:
+            groups = generate_details.generateGroups2(run,generate_details.generateType(filePath))
+        
         q = QSqlQuery(self.database())
         if not q.prepare("insert into image_details(run,image_id,file_path,name,groups) values (:run,:image_id,:file_path,:name,:groups);"):
             raise imageLoaderQueryError(q)
@@ -205,8 +210,9 @@ class imageModel(QSqlTableModel):
 
     #generate from folder structure
     def fromFolder(self,folder):
-        self.addData(generate_details.generateDetails(folder))
-    
+#        self.addData(generate_details.generateDetails(folder))
+        for f in generate_details.getFiles(folder,'.tif'):
+            self.addRow(f)
     
     def header(self):
         return [self.headerData(i,Qt.Horizontal) for i in range(0,self.columnCount())]
