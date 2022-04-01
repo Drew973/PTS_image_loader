@@ -162,13 +162,22 @@ class imageModel(QSqlTableModel):
             if k in d:
                 return d[k]
             
+        folder = os.path.dirname(file)    
+            
         with open(file,'r',encoding='utf-8-sig') as f:
             
             reader = csv.DictReader(f)
                         
             for r in reader:
                 run = find(r,'RunID')
-                self.addRow(filePath=r['FilePath'],
+                
+                
+                filePath = r['FilePath']
+                if not os.path.isabs(r['FilePath']):
+                    filePath = os.path.join(folder,filePath)
+               
+                
+                self.addRow(filePath=filePath,
                             run = run,
                             imageId = find(r,'ImageID'),
                             name = find(r,'FileName'),
