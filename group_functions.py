@@ -1,49 +1,41 @@
-from qgis.core import QgsProject
+from qgis.core import QgsProject,QgsLayerTreeGroup
 import json
 
-#QgsLayerTreeNode
-#returns QgsLayerTreeNode named name or None
-#does not search recursively
-def findChild(node,name):
-    
-    for c in node.children():
-        if c.name()==name:
+
+
+'''
+returns new or existing QgsLayerTreeGroup with name child and parent
+#child:str
+#parent:QgsLayerTreeGroup or QgsLayerTree
+'''
+def findOrMake(child,parent=QgsProject.instance().layerTreeRoot()):
+    for c in parent.children():
+        if c.name() == child and isinstance(c,QgsLayerTreeGroup):
             return c
-   # print('findChild')
-   # g = node.findGroups()
-   # print(g)
     
-    #if g:
-    #    return g[0]
-
-
-def findGroup(name,parent=QgsProject.instance().layerTreeRoot()):
-    for g in parent.findGroups(recursive=False):
-        if g.name()==name:
-            return g   
+    return parent.addGroup(child)
     
 
 
-#list of strings from root.
-#returns group, makes if doesn't exist
+#finds or makes group from list of ancestors.
+#groups: list of strings
 def getGroup(groups):
-    lastGroup = QgsProject.instance().layerTreeRoot()
-    for g in groups:
-        existingGroup = findGroup(g,lastGroup) 
-        if existingGroup is None:
-            lastGroup = lastGroup.addGroup(g)
-        else:
-            lastGroup = existingGroup
-   
-    return lastGroup
+    parent = QgsProject.instance().layerTreeRoot()
+    for name in groups:
+        parent = findOrMake(name,parent)
+    return parent
 
 
-#remove direct child nodes named name
-def removeChild(name,node=QgsProject.instance().layerTreeRoot()):
-    for g in node.findGroups(recursive=False):
-        if g.name()==name:
-            node.removeChildNode(g)
 
+#remove direct child group from parent
+def removeChild(child,parent=QgsProject.instance().layerTreeRoot()):
+        for c in parent.children():
+            if c.name() == child and isinstance(c,QgsLayerTreeGroup):
+                parent.removeChildNode(c)
+                
+                
+                
+    
 
 #string representing groups to list.
 #csv and database contain string.
@@ -54,11 +46,22 @@ def groupStringToList(text):
         print('Could not read groups from {t}. Reverting to empty list.'.format(t=text))
         return []
 
+
+
 def listToGroupString(groups):
     return json.dumps(groups)
 
 
+
+def test1():
+    print(findOrMake('image_loader3'))
+    groups=['a','b','c']
+    print(getGroup(groups))
+
+
+
 if __name__ == '__console__':
-    root = QgsProject.instance().layerTreeRoot()
-    groups = ['a','b','c','d']
-    getGroup(groups)
+    test1()
+    
+    
+    

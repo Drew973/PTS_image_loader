@@ -22,7 +22,7 @@ import os
 #import sqlite3
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery,QSqlTableModel
 
-from image_loader import generate_details,load_layer,group_functions
+from image_loader import generate_details,load_layer,group_functions,constants
 
 
 dbFile = ":memory:"
@@ -125,15 +125,17 @@ class imageModel(QSqlTableModel):
             
         if not endId is None:
             q.bindValue(':end_id',endId)        
-        
+ 
+
         q.exec()
+        group_functions.removeChild(constants.rootGroup)#remove group.
         
         while q.next():
             filePath = q.value('file_path')
             name = q.value('name')
             g = group_functions.groupStringToList(q.value('groups'))
             
-            load_layer.loadLayer(filePath,name,g,False,hide)
+            load_layer.loadLayer(filePath=filePath,layerName=name,groups=g,createOverview=False,hide=hide)
     
     
 #load csv. converts all paths to absolute
@@ -268,8 +270,18 @@ class imageModel(QSqlTableModel):
     
     
     #get max image id
-    def maxId(self):
-        q = self.preparedQuery('select max(image_id) as m from image_details')
+    def maxId(self,run=None):
+        
+        
+        if not run is None:
+            q = QSqlQuery(self.database())
+            if not q.prepare('select max(image_id) as m from image_details where run =:run'):
+                raise imageLoaderQueryError(q)
+            q.bindValue(':run',run)
+            
+
+        else:
+            q = self.preparedQuery('select max(image_id) as m from image_details')
 
         q.exec()
         
@@ -282,10 +294,20 @@ class imageModel(QSqlTableModel):
         
         
     
-    #get min image id
-    def minId(self):
+    #get max image id
+    def minId(self,run=None):
         
-        q = self.preparedQuery('select min(image_id) as m from image_details')
+        
+        if not run is None:
+            q = QSqlQuery(self.database())
+            if not q.prepare('select min(image_id) as m from image_details where run =:run'):
+                raise imageLoaderQueryError(q)
+            q.bindValue(':run',run)
+            
+
+        else:
+            q = self.preparedQuery('select min(image_id) as m from image_details')
+
         q.exec()
         
         while q.next():

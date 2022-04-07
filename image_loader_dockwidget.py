@@ -31,7 +31,6 @@ from qgis.PyQt.QtCore import pyqtSignal,QUrl
 from PyQt5 import QtGui
 
 from . import image_model
-from image_loader import group_functions,constants
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -78,6 +77,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         openHelpAct = helpMenu.addAction('Open help (in your default web browser)')
         openHelpAct.triggered.connect(self.openHelp)        
         
+        self.runBox.currentIndexChanged.connect(self.runChange)
         
         self.mainWidget.layout().setMenuBar(topMenu)
         self.infoChange()
@@ -91,7 +91,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
     def load(self):      
-        group_functions.removeChild(constants.rootGroup)#remove group.
         self.model.loadImages(run=self.currentRun(),startId=self.startBox.value(),endId=self.endBox.value())
 
 
@@ -132,15 +131,25 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def infoChange(self):
         self.runBox.clear()
         self.runBox.addItems(self.model.runs())
+        self.runChange()
+
+      
 
 
-        s = self.model.minId()
-        e = self.model.maxId()
+    def runChange(self):
+        run = self.runBox.currentText()
+        
+        s = self.model.minId(run)
+        e = self.model.maxId(run)
         
         self.endBox.setMinimum(s)
         self.endBox.setMaximum(e)
+        self.endBox.setValue(e)
+        
         self.startBox.setMinimum(s)
         self.startBox.setMaximum(e)
+        self.startBox.setValue(s)
+
 
 
     def closeEvent(self, event):
