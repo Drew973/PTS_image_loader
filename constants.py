@@ -1,0 +1,1 @@
+rootGroup = 'image_loader'
