@@ -60,8 +60,11 @@ class runsModel(QSqlTableModel):
         
     def flags(self,index):
         if index.column()==self.fieldIndex('show'):
-          #  return (super().flags(index)|Qt.ItemIsUserCheckable) & ~Qt.ItemIsEditable
-            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable 
+            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
+        #prevent editing run column.
+        if index.column()==self.fieldIndex('run'):
+            return super().flags(index) & ~Qt.ItemIsEditable
+        
         return super().flags(index)
 
 

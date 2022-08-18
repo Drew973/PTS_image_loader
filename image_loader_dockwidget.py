@@ -40,14 +40,9 @@ from image_loader import exceptions,regex_file_dialog
 from image_loader.functions.load_cracking import loadCracking
 
 import logging
-import image_loader
-
 
 from image_loader.functions.load_frame_data import loadFrameData
 
-
-logFile = os.path.join(os.path.dirname(image_loader.__file__),'log.txt')
-logging.basicConfig(filename=logFile,filemode='w',encoding='utf-8', level=logging.DEBUG, force=True)
 logger = logging.getLogger(__name__)
 
 
