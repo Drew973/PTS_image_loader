@@ -7,11 +7,11 @@ Created on Tue Mar 29 09:14:33 2022
 import os
 import cProfile, pstats
 
-from image_loader.image_model import image_model
-from image_loader import runs_model
+from image_loader.models.image_model import image_model
+#from image_loader.models import runs_model
 
 from image_loader import exceptions
-from PyQt5.QtSql import QSqlDatabase
+from image_loader.test.get_db import getDb
 
 
 
@@ -23,16 +23,14 @@ else:
 
 
 
-def testFromFolder(db):
+def testFromFolder(m):
     folder = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01'
-    m = image_model.imageModel(db)
     m.fromFolder(folder)
-    return m
 
 
-def profileFromFolder(db):
+def profileFromFolder(m):
     with cProfile.Profile() as profiler:
-        m = testFromFolder(db)
+        testFromFolder(m)
         
     f = os.path.join(testFolder,'convert_folder_profile.txt')
    
@@ -65,25 +63,21 @@ def testLoadTxt(db):
     return m
     
 
+def testInit(db=getDb()):
+    image_model.createTable(db)
+    return image_model.imageModel(db)
+
   
 if __name__ == '__main__' or __name__=='__console__':
     from PyQt5.QtWidgets import QTableView
     from qgis.core import QgsProject
     
-    dbFile = ":memory:"
-        
-    db = QSqlDatabase.addDatabase('QSPATIALITE')   #QSqlDatabase
-    db.setDatabaseName(dbFile)
-    if not db.open():
-        raise exceptions.imageLoaderError('could not create database')
-        
-    image_model.createTable(db)
-    
-    m = profileFromFolder(db)
+    m = testInit()
+    profileFromFolder(m)
     v = QTableView()
-    m = testLoadCsv(db)
+   # m = testLoadCsv(db)
     testWriteCsv(m)
-    m = testLoadTxt(db)
+   # m = testLoadTxt(db)
     
     v.setModel(m)
     v.show()

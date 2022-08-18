@@ -6,7 +6,7 @@ Created on Tue Mar 29 09:14:33 2022
 """
 import os
 
-from image_loader.image_model import image_model,details
+from image_loader.models.image_model import image_model,details
 
 from image_loader import exceptions
 from PyQt5.QtSql import QSqlDatabase
@@ -26,6 +26,7 @@ def testAddData(db):
     file2 = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt\MFV2_01_ImageInt_000004.tif'
    
     data = [details.imageDetails(file),details.imageDetails(file2)]
+    print(data)
     m.addData(data)
     print(m.rowCount())
     return m
@@ -35,16 +36,18 @@ if __name__ == '__main__' or __name__=='__console__':
     
     dbFile = ":memory:"
         
-    db = QSqlDatabase.addDatabase('QSPATIALITE')   #QSqlDatabase
+   # db = QSqlDatabase.addDatabase('QSPATIALITE')   #QSqlDatabase
+    db = QSqlDatabase.addDatabase('QSQLITE')   #QSqlDatabase   
+    
     db.setDatabaseName(dbFile)
     if not db.open():
         raise exceptions.imageLoaderError('could not create database')
         
     image_model.createTable(db)
     
-    v = QTableView()
+    #v = QTableView()
     m = testAddData(db)
-    v.setModel(m)
+   # v.setModel(m)
     
-    v.show()
+   # v.show()
     #m.loadImages()

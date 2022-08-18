@@ -6,11 +6,11 @@ Created on Tue Mar 29 09:14:33 2022
 """
 import os
 
-from image_loader.image_model import image_model
-from image_loader import runs_model
+from image_loader.models.image_model import image_model
+from image_loader.models import runs_model
+from image_loader.test.get_db import getDb
 
 from image_loader import exceptions
-from PyQt5.QtSql import QSqlDatabase
 
 
 if __name__ == '__console__':
@@ -20,25 +20,29 @@ if __name__ == '__console__':
 else:
     testFolder = os.path.dirname(__file__)
 
+
+def testInit(db = getDb()):
+
+    image_model.createTable(db)
+    runs_model.createTable(db)
+    runs_model.createTriggers(db)
+    rm = runs_model.runsModel(db)
+    #rm.updateTable()
+   # rm.selectAll()
+    return rm
+    
+#imageModel
+def testLoadFolder(im):
+    f = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images'
+    m.fromFolder(f)
+  
   
 if __name__ == '__main__' or __name__=='__console__':
     from PyQt5.QtWidgets import QTableView
     from qgis.core import QgsProject
     
-    dbFile = ":memory:"
-        
-    db = QSqlDatabase.addDatabase('QSPATIALITE')   #QSqlDatabase
-    db.setDatabaseName(dbFile)
-    if not db.open():
-        raise exceptions.imageLoaderError('could not create database')
-        
-        
-    image_model.createTable(db)
-    runs_model.createTable(db)
-    
-    rm = runs_model.runsModel(db)
-    #rm.updateTable()
-    rm.selectAll()
+    rm = testInit()
+ 
     v = QTableView()
     v.setModel(rm)
     v.show()

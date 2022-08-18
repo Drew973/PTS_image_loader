@@ -24,27 +24,35 @@
 
 import os
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
+from PyQt5.QtSql import QSqlDatabase
+from PyQt5 import QtGui
+
 
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
-from PyQt5.QtWidgets import QProgressDialog
-    
-from PyQt5 import QtGui
+#from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
 
-from image_loader.image_model import image_model,group_functions
-from image_loader import runs_model
 
-from image_loader import exceptions,checkbox_delegate,regex_file_dialog
+from image_loader.models.image_model import image_model,group_functions
+from image_loader.models import runs_model
+from image_loader import exceptions,regex_file_dialog
+from image_loader.functions.load_cracking import loadCracking
 
-from PyQt5.QtSql import QSqlDatabase
+import logging
+import image_loader
 
+
+from image_loader.functions.load_frame_data import loadFrameData
+
+
+logFile = os.path.join(os.path.dirname(image_loader.__file__),'log.txt')
+logging.basicConfig(filename=logFile,filemode='w',encoding='utf-8', level=logging.DEBUG, force=True)
+logger = logging.getLogger(__name__)
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
-
-
 
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
@@ -53,8 +61,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def __init__(self, parent=None):
         """Constructor."""
+        
+        logger.debug('__init__')
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
+        
+     #   self.layerBox.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+      #  self.fieldBox.setFilters(QgsFieldProxyModel.Int)
+
         
         dbFile = ":memory:"
         
@@ -73,7 +87,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         runs_model.createTable(db)
         self.runsView.setModel(runs_model.runsModel(parent=self,db=db))
-        self.runsView.setItemDelegateForColumn(self.runsView.model().fieldIndex('show'),checkbox_delegate.checkBoxDelegate())
         
         self.fileDetailsView.model().dbChanged.connect(self.infoChange)
         #self.fileDetailsView.resizeColumnsToContents()
@@ -81,32 +94,68 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.loadButton.clicked.connect(self.load)
         
-        #top menu
-        topMenu = QMenuBar(self.mainWidget)       
+        self.initTopMenu()
+        
+       # self.layerBox.layerChanged.connect(self.layerChange)
+     #   self.layerChange(self.getLayer())
 
+       # self.fieldBox.fieldChanged.connect(self.fieldChange)
+       # self.fieldChange(self.getField())
+        
+        
+
+  #  def layerChange(self,layer):
+   #      logger.debug('layerChange(%s)',layer)
+   #      self.fieldBox.setLayer(layer)
+   #      self.runsView.setLayer(layer)
+
+
+
+  #  def fieldChange(self,field):
+  #       logger.debug('fieldChange(%s)',field)
+  #       self.runsView.setField(field)
+
+
+    def imageModel(self):
+        return self.fileDetailsView.model()
+
+
+
+    def initTopMenu(self):
+        topMenu = QMenuBar(self.mainWidget)       
         ######################load
         loadMenu = topMenu.addMenu("File_details")
         
         loadCsvAct = loadMenu.addAction('Load file details from csv/txt...')
         loadCsvAct.triggered.connect(self.loadCsv)
-        
-      #  loadRilAct = loadMenu.addAction('Load details from raster image load file...')
-      #  loadRilAct.triggered.connect(self.loadRil)
-        
+                
         fromFolderAct = loadMenu.addAction('Find from folder...')
         fromFolderAct.triggered.connect(self.detailsFromFolder)
 
         saveCsvAct = loadMenu.addAction('Save to csv...')
         saveCsvAct.triggered.connect(self.saveToCsv)
         
+        layersMenu = topMenu.addMenu("Load layers")
+        loadFramesAct = layersMenu.addAction('Load Spatial Frame Data...')
+        loadFramesAct.triggered.connect(self.loadFrames)
+        
+        
+        loadCracksAct = layersMenu.addAction('Load Cracking Data...')
+        loadCracksAct.triggered.connect(self.loadCracks)        
         
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help (in your default web browser)')
-        openHelpAct.triggered.connect(self.openHelp)
-        
-        
+        openHelpAct.triggered.connect(self.openHelp)        
         self.mainWidget.layout().setMenuBar(topMenu)
-      
+
+
+
+   # def getLayer(self):
+     #   return self.layerBox.currentLayer()
+    
+
+   # def getField(self):
+    #    return self.fieldBox.currentField()
 
 
     def infoChange(self):
@@ -142,18 +191,37 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         progress.deleteLater()
 
 
-    def loadCsv(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = 'csv (*.csv);;txt (*.txt)')
-        print(f)
+
+    def loadFrames(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load Spatial Frame Data',filter = 'txt (*.txt)')
         if f:
             if f[0]:
-                self.fileDetailsView.model().clearTable()
-                self.fileDetailsView.model().loadCsv(f[0])
+                loadFrameData(f[0])
+        
+
+
+    def loadCracks(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load Crack data Data',filter = 'txt (*.txt)')
+        if f:
+            if f[0]:
+                loadCracking(f[0])
+                
+
+
+    def loadCsv(self):
+        logger.debug('loadCsv')
+        f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = 'csv (*.csv);;txt (*.txt)')
+        if f:
+            if f[0]:
+                self.imageModel().clearTable()
+                self.imageModel().loadCsv(f[0])
+
+
 
     #unused
     #load 'raster image load' txt file
     def loadRil(self):
-        
+        logging.debug('loadRil')
         
     #    d = QFileDialog(self)
      #   d.setNameFilters(['txt (*raster image load*.txt)'])
@@ -171,22 +239,22 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         #f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = '*.txt;;*')[0]
         if f:
             if f[0]:
-                self.fileDetailsView.model().clearTable()
-                self.fileDetailsView.model().loadCsv(f[0])
+                self.imageModel().clearTable()
+                self.imageModel().loadCsv(f[0])
         
 
     
     def saveToCsv(self):
         f = QFileDialog.getSaveFileName(caption = 'Save details to csv',filter = 'csv (*.csv);;txt (*.txt)')[0]
         if f:
-            self.fileDetailsView.model().saveAsCsv(f)
+            self.imageModel().saveAsCsv(f)
 
 
     def detailsFromFolder(self):
+        logging.debug('detailsFromFolder')
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
-            self.fileDetailsView.model().clearTable()
-            self.fileDetailsView.model().fromFolder(f)
+            self.imageModel().fromFolder(f)
 
 
     def closeEvent(self, event):

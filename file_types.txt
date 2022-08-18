@@ -1,0 +1,38 @@
+
+
+
+Spatial Frame Data:
+	fileName;sectionID;fromStation_m;toStation_m;wkt
+
+
+
+Raster Image Load File:
+	ImageType,FileName,FilePath
+
+
+Parsed Crack Data:
+	fileName,sectionID,crackID,crackLength,weightedDepth,weightedWidth,nodeID,xValue,yValue,crackWidth,crackDepth
+	x and y like 3423,2595. crs?
+
+
+Spatial Crack data:
+	fileName;sectionID;crackID;length;depth;width;wkt
+
+
+
+
+
+Spatial Crack Data.txt:
+fileName;sectionID;crackID;length;depth;width;wkt
+
+
+
+xml:
+	everything?
+	
+	cracklist:
+		Crack:
+			node:
+				x,y,width,depth
+			
+		x,y,w,d in mm

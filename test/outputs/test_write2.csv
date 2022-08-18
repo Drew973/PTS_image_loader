@@ -1,0 +1,2 @@
+filePath,runId,imageId,name,groups
+..\inputs\MFV2_01_ImageInt_000005.tif,MFV2_01,5,MFV2_01_5,"[""image_loader"", ""ImageInt"", ""MFV2_01""]"

@@ -1,0 +1,35 @@
+
+
+frames containing bounds of raster images are contained in file with name like '%Spatial Frame Data%' in name
+want automated way to load these and apply formatting.
+
+
+want to make table of 
+	RunID
+	FromFrame: first frame of run. spinbox with option to select from layer with frames
+	toFrame: last frame of run. . spinbox with option to select from layer with frames
+	
+	run start
+	run end
+	
+
+add 
+	run start
+	run end 
+	columns to runs table
+	
+	
+make model undoable.
+	
+	
+add file name to display as tool is partly for editing raster image load files
+
+want automated way to load cracking data (text file,same folder as frames and txt) and apply conditional formatting
+
+
+cracking info in.
+load spatial Crack Data.txt
+
+
+want to create new raster image load files from this or edit existing.
+something to scroll through frames in order would be useful

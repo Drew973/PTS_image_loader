@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>826</width>
-    <height>473</height>
+    <width>851</width>
+    <height>688</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,13 +29,50 @@
         </widget>
        </item>
        <item>
-        <widget class="QTableView" name="runsView"/>
-       </item>
-       <item>
-        <widget class="QTableView" name="fileDetailsView">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;File details&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <widget class="QToolBox" name="toolBox">
+         <property name="currentIndex">
+          <number>0</number>
          </property>
+         <widget class="QWidget" name="page">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>807</width>
+            <height>521</height>
+           </rect>
+          </property>
+          <attribute name="label">
+           <string>Runs</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="runsView" name="runsView"/>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>807</width>
+            <height>486</height>
+           </rect>
+          </property>
+          <attribute name="label">
+           <string>File Details</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QTableView" name="fileDetailsView">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;File details&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
       </layout>
@@ -44,6 +81,13 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>runsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.widgets.runs_view</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
