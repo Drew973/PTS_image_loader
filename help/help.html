@@ -14,28 +14,20 @@
 
 
 <p>Tool for loading and unloading geotif images into qgis.</p>
-<p>Details of images to load are stored in the 'file_details' table.</p>
-<p>Loads images in selected run where start_id<=image_id<=end_id</p>
+<p>Details of images to load are stored in the 'image_details' table.</p>
+<p>The runs table is for selecting which of these images to load.</p>
 <p>Loading images will remove anything in the 'image_loader' group. </p>
 
 
-
-<h3 id="home">File_details table</h3>
-	<p>Colums:</p>
-	<ul>
-	<li>run</li>
-	<li>image_id:integer</li>
-	<li>file_path:path to file.</li>
-	<li>name:name for layer.</li>
-	<li>groups:list describing group to add layer to. JSON format. Eg "["image_loader", "MFV2_01", "ImageInt"]" adds image to "ImageInt" subgroup of "MFV2_01" subgroup of "image_loader" group </li>
-	</ul>
+<h3 id="home">Generating image details from folder</h3>
+    <p>"Image_details","Find from folder..." will add a row to the image details table for every .tif file in folder and subfolders.</p>
 
 
-<h3 id="home">Loading csv/txt</h3>
-<p>The tool can load details from a csv or txt file.</p>
+<h3 id="home">Loading image details from csv/txt</h3>
+<p>The tool can load image details from a csv or txt file.</p>
 <p>The file needs a header. The tool will ignore case and '_' charactors in field names .</p>
 
-<p>A column named filepath is required. This should contain the filepath of the raster image. This can be absolute or relative to the folder containing the csv/txt. </p>
+<p>A column named filepath is required. This should contain the filepath of the raster image. This can be absolute or relative to the csv/txt. </p>
 
 <p>The following columns will be used if present,otherwise details will be generated from filePath: </p>
 <ul>
@@ -47,25 +39,11 @@
 </ul>
 
 
-<h3 id="home">Generating details from folder</h3>
-	<p> This tool will generate a row (from file path) for every .tif file in folder and subfolders.</p>
 
-
-<h3 id="home">Generating details from file path</h3>
-	<p>File names (without extention) are assumed to be in form of (run)_(image_type)_(image_id).</p>
-	<p>Details can be generated as:</p>
-	<ul>
-		<li>name:(run)_(imageId).</li>	
-		<li>groups: "image_loader",image_type,run.</li>
-		<li>run:Start of filename</li>
-		<li>image_id:Last numerical digits of filename</li>
-    </ul>
-
-
-
-<h3 id="home">Saving csv</h3>
+<h3 id="home">Saving image details</h3>
+<p>Image details can be saved as a csv or txt through "Image details","Save as csv"</p>
 <p>Filepaths will be saved as a relative path (from the folder containing the csv).</p>
-<p>This allows a folder containing the csv and images to be moved without invalidating the file paths.</p>
+<p>Relative paths allow a folder containing the csv and images to be moved without invalidating the file paths.</p>
 
 
 </body>

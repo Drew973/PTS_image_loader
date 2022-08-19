@@ -170,3 +170,8 @@ def find(d,k):
 if __name__=='__console__':
     file = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt\MFV2_01_ImageInt_000003.tif'
     data = [imageDetails(file)]
+    
+    
+    f = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\numeric_run_names\100_6_ImageInt_000180.tif'
+    d = imageDetails(f)
+    print(d.run)

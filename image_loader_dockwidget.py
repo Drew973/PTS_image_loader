@@ -35,13 +35,17 @@ from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
 
 
 from image_loader.models.image_model import image_model,group_functions
-from image_loader.models import runs_model
+from image_loader.models import runs_model,natural_sort
 from image_loader import exceptions,regex_file_dialog
 from image_loader.functions.load_cracking import loadCracking
 
 import logging
 
 from image_loader.functions.load_frame_data import loadFrameData
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +85,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
         runs_model.createTable(db)
-        self.runsView.setModel(runs_model.runsModel(parent=self,db=db))
+        proxy = natural_sort.naturalSortFilterProxyModel(self)
+        proxy.setSourceModel(runs_model.runsModel(parent=self,db=db))
+        self.runsView.setModel(proxy)
         
-        self.fileDetailsView.model().dbChanged.connect(self.infoChange)
+        self.imageModel().dbChanged.connect(self.infoChange)
         #self.fileDetailsView.resizeColumnsToContents()
 
 
@@ -115,13 +121,16 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         return self.fileDetailsView.model()
 
 
+    def runsModel(self):
+        return self.runsView.runsModel()
+
 
     def initTopMenu(self):
         topMenu = QMenuBar(self.mainWidget)       
         ######################load
-        loadMenu = topMenu.addMenu("File_details")
+        loadMenu = topMenu.addMenu("Image_details")
         
-        loadCsvAct = loadMenu.addAction('Load file details from csv/txt...')
+        loadCsvAct = loadMenu.addAction('Load image details from csv/txt...')
         loadCsvAct.triggered.connect(self.loadCsv)
                 
         fromFolderAct = loadMenu.addAction('Find from folder...')
@@ -154,7 +163,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def infoChange(self):
-        self.runsView.model().updateTable()
+        self.runsModel().updateTable()
 
 
 
@@ -171,7 +180,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def load(self):
         group_functions.removeChild('image_loader')#remove group.
         
-        details = [d for d in self.fileDetailsView.model().details()]
+        details = [d for d in self.imageModel().details()]
 
         progress = QProgressDialog("Loading images...","Cancel", 0, len(details),self)
         progress.setWindowModality(Qt.WindowModal)

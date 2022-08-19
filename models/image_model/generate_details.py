@@ -47,7 +47,6 @@ def generateGroups(fileName,root=rootGroup):
 #assuming filenames are in form of run_type_imageId
 #(start)(run)_(image_type)_(image_id)(end)
 
-#run_type_image_id
 
 #name for layer
 #filename without extention
@@ -58,14 +57,40 @@ def generateLayerName(filePath):
 
 
 #(start)(run)_(not_)_(digits)(end)
-def generateRun(filePath):
+
+
+'''
+#run containing _
+#start of string followed by
+
+#assume type and id do not contain _ charactor
+def generateRun_old(filePath):
     name = os.path.splitext(os.path.basename(filePath))[0]
-    m = re.search('^.*(?=_[^_]+_\d+$)', name)
+    m = re.search('\A.*(?=_[^_]+_\d+$)', name)
     if m:
         return m.group(0)
     else:
         return ''
+#findall()
+'''
 
+#assume type and id do not contain _ charactor
+def generateRun(filePath):
+    name = os.path.splitext(os.path.basename(filePath))[0]
+    
+    r = re.findall('\A.*(?=_[^_]+_\d+$)',name)
+    
+    if r:
+        return r[-1]
+    else:
+        return ''
+#findall()
+
+
+
+
+f = '100_6_ImageInt_000180.tif'
+print(generateRun(f))
 
 
 #digits at end of filename without extention

@@ -89,32 +89,6 @@ class imageModel(QSqlTableModel):
 
         self.addData(details.fromCsv(file))
     
-    
-    
-    #groups:string
-    #only intended to be called through addData.
-    def _addRow(self,filePath,run=None,imageId=None,name=None,groups=None,wkb=None):
-        logger.debug('addRow')
-
-        if isinstance(groups,list):
-            groups = json.dumps(groups)
-        
-        
-        q = QSqlQuery(self.database())
-        if not q.prepare("insert into image_details(run,image_id,file_path,name,groups,geom) values (:run,:image_id,:file_path,:name,:groups,ST_GeomFromWKB(:geom));"):
-            raise exceptions.imageLoaderQueryError(q)
-            
-        q.bindValue(':run',run)
-        q.bindValue(':image_id',int(imageId))
-        q.bindValue(':file_path',filePath)
-        q.bindValue(':name',name)
-        q.bindValue(':groups',groups)
-        q.bindValue(':geom',wkb)
-
-        if not q.exec():
-            print(run,imageId,filePath,name,groups)
-            raise exceptions.imageLoaderQueryError(q)
-
         
             
     def addData(self,data):
@@ -127,16 +101,11 @@ class imageModel(QSqlTableModel):
                 return groups
         
         if data:
-        
-            #for d in data:
-            #    self._addRow(d['filePath'],d['run'],d['imageId'],d['name'],d['groups'],d['extents'])
             q = QSqlQuery(self.database())
             if not q.prepare("insert into image_details(run,image_id,file_path,name,groups) values (:run,:id,:file_path,:name,:groups);"):#ST_GeomFromWKB(:geom)
                 raise exceptions.imageLoaderQueryError(q)
-    
    
             data = [d for d in data]#make generator into list. end up going through it multiple times otherwise
-    
     
             q.bindValue(':run',[d['run'] for d in data])
             q.bindValue(':id',[QVariant(d['imageId']) for d in data])
@@ -145,9 +114,7 @@ class imageModel(QSqlTableModel):
             q.bindValue(':groups', [groupsToText(d['groups']) for d in data])
          #   q.bindValue(':geom',[d['extents'] for d in data])
            
-            #print('query.isValid:',q.isValid())
             logger.debug(q.boundValues())# crash if different lengths
-            #print(q.boundValues())# crash if different lengths
     
             #check lengths equal. crash if not.
             vals = q.boundValues()

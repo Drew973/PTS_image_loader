@@ -14,6 +14,10 @@ model containing info about which images to load.
     insert into runs...
     simpler than triggers
 
+#if all runs are numeric then sort numerically,
+otherwise sort alphabetically
+
+
 """
 
 import logging
@@ -23,6 +27,13 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtSql import QSqlQuery,QSqlTableModel
 from PyQt5.QtCore import Qt
 
+
+
+def toFloat(v):
+    try:
+        return float(v)
+    except:
+        return 
 
 
 class runsModel(QSqlTableModel):
@@ -36,8 +47,8 @@ class runsModel(QSqlTableModel):
         self.select()
        
         
-    
-    def data(self,index,role):
+    #converting run to float bad idea because eg float(100_6) = 1006.0.
+    def data(self,index,role=Qt.DisplayRole):
         #SQlite has weird/no types.
         if (role == Qt.DisplayRole or role == Qt.EditRole) and index.column() == self.fieldIndex('show'):
             return bool(super().data(index,role))    
@@ -52,7 +63,7 @@ class runsModel(QSqlTableModel):
             return int(super().data(index,role))
  
         if role == Qt.DisplayRole and index.column() == self.fieldIndex('end_id'):
-            return int(super().data(index,role))
+            return int(super().data(index,Qt.DisplayRole))
     
         return super().data(index,role)
 

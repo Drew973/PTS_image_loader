@@ -11,6 +11,8 @@ from image_loader.delegates import attribute_spin_box_delegate,checkbox#checkbox
 import logging
 logger = logging.getLogger(__name__)
 
+from PyQt5.QtCore import QSortFilterProxyModel,Qt
+
 
 
 class runsView(QTableView):
@@ -46,12 +48,24 @@ class runsView(QTableView):
 
     
 
+    #model might be proxy model.
+    def runsModel(self):
+        if isinstance(self.model(),QSortFilterProxyModel):
+            return self.model().sourceModel()
+        else:
+            return self.model()
+        
+
+
     def setModel(self,model):
         logging.debug('setModel')
         super().setModel(model)
-        
-        #if delegates are not class attributes crashes on model.select(). garbage collection?
 
-        self.setItemDelegateForColumn(model.fieldIndex('show'),self.checkBoxDelegate)
-        self.setItemDelegateForColumn(model.fieldIndex('start_id'),self.minDelegate)
-        self.setItemDelegateForColumn(model.fieldIndex('end_id'),self.maxDelegate)
+        #if delegates are not class attributes crashes on model.select(). garbage collection?
+        self.setItemDelegateForColumn(self.runsModel().fieldIndex('show'),self.checkBoxDelegate)
+        self.setItemDelegateForColumn(self.runsModel().fieldIndex('start_id'),self.minDelegate)
+        self.setItemDelegateForColumn(self.runsModel().fieldIndex('end_id'),self.maxDelegate)
+        self.setSortingEnabled(True)
+        self.sortByColumn(self.runsModel().fieldIndex('run'),Qt.AscendingOrder)
+        
+        
