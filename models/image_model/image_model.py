@@ -31,6 +31,7 @@ from image_loader.models.image_model import details
 
 import logging
 logger = logging.getLogger(__name__)
+from image_loader.functions.setup_database import runQuery
 
 
 
@@ -67,21 +68,6 @@ class imageModel(QSqlTableModel):
         self.select()
         self.dbChanged.emit()
         
-        
-
-    def details(self):
-        q = '''select file_path,name,groups from runs inner join image_details 
-        on show=True and start_id<=image_id and image_id<=end_id and runs.run=image_details.run'''
-        
-        query = runQuery(q,self.database())
-       
-        while query.next():
-            yield details.imageDetails(filePath = query.value('file_path'),
-                                       run = query.value('run'),
-                                       imageId = query.value('image_id'),
-                                       name = query.value('image_id'),
-                                       groups = query.value('groups'))
-
 
 
     def loadCsv(self,file):
@@ -136,6 +122,39 @@ class imageModel(QSqlTableModel):
         self.clearTable()
         self.addData(details.fromFolder(folder))
                    
+        
+    #list of image_details corresponding to from selected features of layer
+    def detailsFromSelectedFeatures(self,layer,fileNameField,idField):
+        
+        r = []
+        q = QSqlQuery(self.database())
+        
+        #e = re.compile('MFV\S*\s ')# MFV, non space,space
+
+        
+        if not q.prepare('select file_path,name,groups from image_details where run=:run and image_id=:imageId'):
+            raise exceptions.imageLoaderQueryError(q)
+            
+        
+        for f in layer.selectedFeatures():
+            #v = e.search(f[fileNameField])
+            #if v:
+            run = f['run'] 
+            if run:                
+                q.bindValue(':run',run)
+                q.bindValue(':imageId',f[idField])
+                q.exec()
+                
+                while q.next():
+                    d = details.imageDetails(filePath = q.value('file_path'),
+                              run = q.value('run'),
+                              imageId = q.value('image_id'),
+                              name = q.value('image_id'),
+                              groups = json.loads(q.value('groups')))
+                    
+                    r.append(d)
+        return r
+    
     
   
     #write csv, converting file_paths to relative
@@ -168,49 +187,3 @@ class imageModel(QSqlTableModel):
         self.dbChanged.emit()
         return r
         
-    
-    #checks query text and returns QSqlQuery
-def preparedQuery(text,db):
-    query = QSqlQuery(db)
-    if not query.prepare(text):
-        print(text)
-        raise exceptions.imageLoaderQueryError(query)
-    return query
-
-
-
-#attempts to run query .Raise imageLoaderQueryError on failure.
-def runQuery(text,db):
-    q = preparedQuery(text,db)
-    if not q.exec():
-        raise exceptions.imageLoaderQueryError(q)
-    return q
-    
-
-
-def createTable(db):
-       q = '''
-            CREATE TABLE if not exists image_details (
-                pk integer primary key,
-                run varchar NOT NULL,
-                image_id int NOT NULL,
-                file_path VARCHAR NOT NULL,
-                name varchar,
-                groups varchar
-            )
-            '''
-       runQuery(q,db)
-       
-       #adding strict means proper type checking instead of dynamic types.
-       #needs > version 3.37.0 (2021-11-27) for this
-       
-      #  "SELECT load_extension('mod_spatialite')",
- #"SELECT InitSpatialMetadata(1)",
- 
-     #  runQuery("SELECT load_extension('mod_spatialite')",db)
-    #   runQuery("SELECT InitSpatialMetadata(1)",db)
-
- #      runQuery("SELECT AddGeometryColumn('image_details', 'geom', 27700, 'POLYGON')",db)
-       
-       
-       

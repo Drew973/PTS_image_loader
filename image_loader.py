@@ -240,6 +240,6 @@ class imageLoader:
             
             #create logger
             logFile = os.path.join(os.path.dirname(__file__),'log.txt')
-            logging.basicConfig(filename=logFile,filemode='w',encoding='utf-8', level=logging.CRITICAL)
+            logging.basicConfig(filename=logFile,filemode='w',encoding='utf-8', level=logging.DEBUG)
             
             self.dockwidget.show()

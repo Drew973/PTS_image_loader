@@ -5,8 +5,8 @@ import csv
 
 from qgis.core import QgsProject
 from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem
+import json
 
-#ORM would be better for this. sqlachemy not included with qgis.
 
 class imageDetails:
     
@@ -15,28 +15,28 @@ class imageDetails:
         self.filePath = filePath
         
         if run is None:
-            self.run = generate_details.generateRun(filePath)
-        else:
-            self.run = run
+            run = generate_details.generateRun(filePath)
+        self.run = str(run)
            
         if imageId is None:
-            self.imageId = generate_details.generateImageId(filePath)
-        else:
-            self.imageId = imageId
+            imageId = generate_details.generateImageId(filePath)
+        self.imageId = int(imageId)
             
         if name is None:
-            self.name = generate_details.generateLayerName(filePath)
-        else:
-            self.name = name
+            name = generate_details.generateLayerName(filePath)
+        self.name = str(name)
             
+        #list
         if groups is None:
             groups = generate_details.generateGroups2(self.run,generate_details.generateType(filePath))
-        
-        if isinstance(groups,str):
-            self.groups = stringToList(groups)
             
-        if isinstance(groups,list):
-            self.groups =groups
+        if isinstance(groups,str):
+            groups = json.loads(groups)
+            
+        self.groups = list(groups)
+   
+            
+   
     
     
     
@@ -57,8 +57,8 @@ class imageDetails:
             return self.groups
         
         if key =='extents':
-            return None
-            #return self.boundingBoxWkb()#slow due to osgeo._gdal.Dataset_GetGeoTransform being slow
+            #return None
+            return self.boundingBox().ExportToWkt()
 
         raise KeyError('imageDetails has no item {0}'.format(key))
 
@@ -67,18 +67,8 @@ class imageDetails:
     def __eq__(self,other):
         return self.filePath==other.filePath and self.layerName==other.self.layerName and self.groups==other.groups and self.run==other.run and self.imageId==other.imageId
     
+ 
     
-    
-    #self<other
-    #order by run,imageId
-    def __lt__(self,other):
-        if self.run<other.run:
-            return True
-    
-        if self.imageId<other.imageId:
-            return True
-
-
     def __repr__(self):
         d = {'filePath':self.filePath,'run':self.run,'imageId':self.imageId,'name':self.name,'groups':self.groups}
         return '<imageDetails:{}>'.format(d)
@@ -106,10 +96,9 @@ class imageDetails:
 
 
 
-    def boundingBoxWkb(self):
-        b = self.boundingBox()
-        if not b is None:
-            return b.ExportToWkb()
+
+    def toOgrFeature(self,fields):
+        pass
 
 
 
@@ -126,16 +115,10 @@ def fromFolder(folder):
         yield imageDetails(f)
 
 
-import json
-
-#csv and database contain string.
-def stringToList(text):
-    try:
-        return json.loads(text)
-    except:
-        print('Could not read list from {t}. Reverting to empty list.'.format(t=text))
-        return []
-    
+ #lookup value from dict, returning None if not present
+def find(d,k):
+    if k in d:
+        return d[k]
 
 #column named filepath. optional columns:imageId,name,groups
 #names are case insensitive.
@@ -159,12 +142,10 @@ def fromCsv(file):
 #def fromDict(d):
    # return imageDetails(filePath=d['filePath'],run=find(d,'run'),imageId=find(d,'imageId'),name=find(d,'name'),groups=find(d,'groups'))
 
+        
 
-
- #lookup value from dict, returning None if not present
-def find(d,k):
-    if k in d:
-        return d[k]
+        
+        
         
         
 if __name__=='__console__':

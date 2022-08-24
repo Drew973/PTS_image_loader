@@ -15,9 +15,12 @@ add
 	columns to runs table
 	
 add file name to display as tool is partly for editing raster image load files
-want automated way to load cracking data (text file,same folder as frames and txt) and apply conditional formatting
 
-cracking info in.
+
+use spinBox delegate with min and max for start and end id columns
+
+
+cracking data(text file,same folder as frames and txt)
 load spatial Crack Data.txt
 
 
@@ -29,3 +32,21 @@ something to scroll through frames in order would be useful
 select from frame Layer.
     add dialog to set layer and anything else required.
     add 'load selected frames' button
+    
+    
+each image has frame.
+Can get these from txt file or directly from geotif 
+test getting this from geotif. more direct and foolproof
+
+
+save as geopackage.
+
+
+
+single table simpler. details: info_to_load,load bool, frame geometry(polygon)
+some ui to filter.
+
+
+
+
+    

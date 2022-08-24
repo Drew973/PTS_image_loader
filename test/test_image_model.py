@@ -68,6 +68,11 @@ def testInit(db=getDb()):
     return image_model.imageModel(db)
 
   
+def testDetailsFromSelectedFeatures(m):
+    layer = QgsProject.instance().mapLayersByName('MFV2_15 Spatial Frame Data')[0]
+    print(m.detailsFromSelectedFeatures(layer,'fileName','fileName'))
+    
+  
 if __name__ == '__main__' or __name__=='__console__':
     from PyQt5.QtWidgets import QTableView
     from qgis.core import QgsProject
@@ -76,8 +81,10 @@ if __name__ == '__main__' or __name__=='__console__':
     profileFromFolder(m)
     v = QTableView()
    # m = testLoadCsv(db)
-    testWriteCsv(m)
+    #testWriteCsv(m)
    # m = testLoadTxt(db)
+   
+    testDetailsFromSelectedFeatures(m)
     
     v.setModel(m)
     v.show()

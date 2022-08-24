@@ -6,7 +6,7 @@ Created on Wed Jun  8 10:32:34 2022
 """
 
 from PyQt5.QtWidgets import QTableView
-from image_loader.delegates import attribute_spin_box_delegate,checkbox#checkbox_delegate
+from image_loader.delegates import checkbox,id_delegate#checkbox_delegate,attribute_spin_box_delegate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,31 +22,10 @@ class runsView(QTableView):
         super().__init__(parent)
 
         self.checkBoxDelegate = checkbox.checkBoxDelegate(parent=self)
+        self.minDelegate = id_delegate.idBoxDelegate(parent=self)
+        self.maxDelegate = id_delegate.idBoxDelegate(parent=self)
 
-        self.maxDelegate = attribute_spin_box_delegate.attributeSpinBoxDelegate()
-        self.maxDelegate.setUseMaxSelected(True)
-        
-        self.minDelegate = attribute_spin_box_delegate.attributeSpinBoxDelegate()
-
-      #  self.setField(None)
-       # self.setLayer(None)
-    
-    
-    
-    def setLayer(self,layer):
-        logger.debug('setLayer(%s)',layer)
-        self._layer = layer         
-        self.maxDelegate.setLayer(layer)
-        self.minDelegate.setLayer(layer)
-
-    
-         
-    def setField(self,field):
-        logger.debug('setField(%s)',field)
-        self.minDelegate.setField(field)
-        self.maxDelegate.setField(field)
-
-    
+     
 
     #model might be proxy model.
     def runsModel(self):

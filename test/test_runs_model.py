@@ -9,7 +9,7 @@ import os
 from image_loader.models.image_model import image_model
 from image_loader.models import runs_model
 from image_loader.test.get_db import getDb
-
+from image_loader.functions.setup_database import setupDb 
 from image_loader import exceptions
 
 
@@ -22,10 +22,7 @@ else:
 
 
 def testInit(db = getDb()):
-
-    image_model.createTable(db)
-    runs_model.createTable(db)
-    runs_model.createTriggers(db)
+    setupDb(db)
     rm = runs_model.runsModel(db)
     #rm.updateTable()
    # rm.selectAll()
@@ -36,13 +33,11 @@ def testLoadFolder(im):
     f = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images'
     m.fromFolder(f)
   
-  
+ 
 if __name__ == '__main__' or __name__=='__console__':
     from PyQt5.QtWidgets import QTableView
     from qgis.core import QgsProject
-    
     rm = testInit()
- 
     v = QTableView()
     v.setModel(rm)
     v.show()

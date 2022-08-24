@@ -28,23 +28,20 @@ from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
 from PyQt5.QtSql import QSqlDatabase
 from PyQt5 import QtGui
 
+import logging
 
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
 #from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
 
-
 from image_loader.models.image_model import image_model,group_functions
 from image_loader.models import runs_model,natural_sort
 from image_loader import exceptions,regex_file_dialog
-from image_loader.functions.load_cracking import loadCracking
-
-import logging
 
 from image_loader.functions.load_frame_data import loadFrameData
-
-
-
+from image_loader.functions import setup_database
+from image_loader.functions.load_cracking import loadCracking
+from image_loader.widgets import set_layers_dialog
 
 
 logger = logging.getLogger(__name__)
@@ -76,7 +73,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if not db.open():
             raise exceptions.imageLoaderError('could not create database')
         
-        image_model.createTable(db)
+        #image_model.createTable(db)
+        
+        setup_database.setupDb(db)
+        
         self.fileDetailsView.setModel(image_model.imageModel(parent=self,db=db))
         
         
@@ -84,7 +84,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.fileDetailsView.setColumnHidden(self.fileDetailsView.model().fieldIndex('geom'),True)
 
         
-        runs_model.createTable(db)
+       # runs_model.createTable(db)
         proxy = natural_sort.naturalSortFilterProxyModel(self)
         proxy.setSourceModel(runs_model.runsModel(parent=self,db=db))
         self.runsView.setModel(proxy)
@@ -94,6 +94,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
         self.loadButton.clicked.connect(self.load)
+        
+        
+        self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         
         self.initTopMenu()
         
@@ -143,7 +146,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct = layersMenu.addAction('Load Spatial Frame Data...')
         loadFramesAct.triggered.connect(self.loadFrames)
         
+ 
+        setupMenu = topMenu.addMenu("Setup")
+        setLayers = setupMenu.addAction('Set layers and fields...')
+        setLayers.triggered.connect(self.layersDialog.exec_)
         
+ 
         loadCracksAct = layersMenu.addAction('Load Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
         
@@ -154,6 +162,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
 
+    def framesLayer(self):
+        return self.layersDialog.framesLayer()
+
+    def idField(self):
+        return self.layersDialog.idField()
+
    # def getLayer(self):
      #   return self.layerBox.currentLayer()
     
@@ -163,8 +177,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def infoChange(self):
-        self.runsModel().updateTable()
-
+   #     self.runsModel().updateTable()
+        if isinstance(self.runsModel(),runs_model.runsModel):
+            self.runsModel().select()
 
 
 #opens help/index.html in default browser
@@ -174,26 +189,23 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QtGui.QDesktopServices.openUrl(QUrl(helpPath))
 
         
-
     #load images.
-    #QgsTask is very buggy. QProgressDialog much simpler.
     def load(self):
-        group_functions.removeChild('image_loader')#remove group.
-        
-        details = [d for d in self.imageModel().details()]
+        self.loadDetails(self.runsModel().getDetails())
 
+
+    #load iterable of details and maybe display cancellable progress bar.
+   #QgsTask is very buggy. QProgressDialog much simpler.
+    def loadDetails(self,details):
+        group_functions.removeChild('image_loader')#remove group
         progress = QProgressDialog("Loading images...","Cancel", 0, len(details),self)
         progress.setWindowModality(Qt.WindowModal)
-        
         for i,d in enumerate(details):
             d.load()
             progress.setValue(i+1)
-            
             if progress.wasCanceled():
                 break
-            
         progress.deleteLater()
-
 
 
     def loadFrames(self):

@@ -44,6 +44,13 @@ def generateGroups(fileName,root=rootGroup):
     return listToGroupString(r)
 
 
+def generateGroupsList(fileName,root=rootGroup):
+    r = [root]
+    r.append(generateType(fileName))
+    r.append(generateRun(fileName))
+    return r
+
+
 #assuming filenames are in form of run_type_imageId
 #(start)(run)_(image_type)_(image_id)(end)
 
