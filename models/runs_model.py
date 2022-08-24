@@ -141,7 +141,12 @@ class runsModel(QSqlTableModel):
     def idField(self):
         if self.parent() is not None:
             return self.parent().idField()
-
+        
+        
+    def runField(self):
+        if self.parent() is not None:
+            return self.parent().runField()
+    
     
     def clearTable(self):
         runQuery('delete from runs',self.database())
@@ -172,11 +177,10 @@ class runsModel(QSqlTableModel):
     def idFromFeatures(self,index):
         layer = self.framesLayer()
         field = self.idField()
+        runField = self.runField()
         run = index.sibling(index.row(),self.fieldIndex('run')).data()
-        print(run)
-        if layer is not None and field is not None:
-            ids = [int(f[field]) for f in layer.selectedFeatures() if f['run']==run]
-            print(ids)
+        if layer is not None and field is not None and runField is not None:
+            ids = [int(f[field]) for f in layer.selectedFeatures() if f[runField]==run]
             if ids:
                 if index.column()==self.fieldIndex('start_id'):
                     return min(ids)

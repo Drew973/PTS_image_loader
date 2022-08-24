@@ -7,8 +7,9 @@ Created on Fri Aug 19 10:05:27 2022
 
 from PyQt5.QtWidgets import QDialog,QFormLayout
 from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
-from qgis.gui import QgsMapLayerComboBox,QgsFieldComboBox
+from qgis.gui import QgsMapLayerComboBox
 
+from image_loader.widgets.field_box import fieldBox
 
 
 class setLayersDialog(QDialog):
@@ -20,22 +21,29 @@ class setLayersDialog(QDialog):
         self.layerWidget.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.layout().addRow('Layer with frames',self.layerWidget)
         
-        self.idBox = QgsFieldComboBox(self)
+        self.idBox = fieldBox(parent = self.layerWidget,default = 'sectionID')
         self.idBox.setFilters(QgsFieldProxyModel.Int|QgsFieldProxyModel.String)
-        self.layerWidget.layerChanged.connect(self.layerSet)
-        self.idBox.setLayer(self.layerWidget.currentLayer())
         self.layout().addRow('Field with id',self.idBox)
       
-    def layerSet(self,layer):
-        self.idBox.setLayer(layer)
+        self.runBox = fieldBox(parent = self.layerWidget,default = 'run')
+        self.runBox.setFilters(QgsFieldProxyModel.String)
+        self.layout().addRow('Field with run',self.runBox)
         
+        
+
     def framesLayer(self):
         return self.layerWidget.currentLayer()
     
-    def idField(self):
-        return self.idBox.currentField ()
-        
     
+    def idField(self):
+        return self.idBox.currentField()
+
+        
+    def runField(self):
+        return self.runBox.currentField()
+
+    
+
 def test():
     d = setLayersDialog()
     d.show()

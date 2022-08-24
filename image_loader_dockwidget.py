@@ -167,17 +167,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def idField(self):
         return self.layersDialog.idField()
-
-   # def getLayer(self):
-     #   return self.layerBox.currentLayer()
+  
+    def runField(self):
+        return self.layersDialog.runField()
     
 
-   # def getField(self):
-    #    return self.fieldBox.currentField()
-
-
     def infoChange(self):
-   #     self.runsModel().updateTable()
         if isinstance(self.runsModel(),runs_model.runsModel):
             self.runsModel().select()
 

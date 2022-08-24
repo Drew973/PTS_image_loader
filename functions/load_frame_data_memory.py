@@ -48,6 +48,6 @@ def loadFrameLayer(file):
             
 
 
-frames = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\Spatial Data\Text Files\MFV2_01 Spatial Frame Data.txt'    
+frames = r'C:\Users\drew.bennett\Documents\image_loader\mfv_images\LEEMING DREW\Spatial Data\Text Files\MFV2_01 Spatial Frame Data.txt'    
     
 loadFrameLayer(frames)

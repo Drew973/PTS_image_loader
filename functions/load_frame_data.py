@@ -3,11 +3,9 @@ from qgis.utils import iface
 from qgis.core import QgsField
 import logging
 from PyQt5.QtCore import QVariant
-
-
+import re
 
 logger = logging.getLogger(__name__)
-
 
 '''
     treats all fields as strings.
@@ -26,14 +24,30 @@ def loadFrameData(file):
     #add virtual field with run.
     #regexp_substr("FileName",'MFV\\S*\\s')
     field = QgsField('run', QVariant.String)
-    e = "regexp_substr(\"FileName\",'MFV\\\S*\\\s')"
+    #e = "regexp_substr(\"FileName\",'MFV\\\S*\\\s')"
+    e = "'{run}'".format(run=runName(file))
     layer.addExpressionField(e, field)
+ 
     return layer
     
+
+def runName(fileName):
+    name = os.path.basename(fileName)
+    pattern = re.compile('.+(?=Spatial Frame Data.txt)')
+    m = re.search(pattern, name)
+    if m:
+        return m.group(0).strip()
+    else:
+        return ''
+        
+        
+#f = r'C:\Users\drew.bennett\Documents\image_loader\mfv_images\LEEMING DREW\Spatial Data\Text Files\MFV2_01 Spatial Frame Data.txt'
+#print(runName(f))
+
     
     
 def testLoadFrameData():
-    file = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\Spatial Data\Text Files\MFV2_01 Spatial Frame Data.txt'
+    file = r'C:\Users\drew.bennett\Documents\image_loader\mfv_images\LEEMING DREW\Spatial Data\Text Files\MFV2_01 Spatial Frame Data.txt'
     #better to add file to plugin test folder.    
     loadFrameData(file)
     

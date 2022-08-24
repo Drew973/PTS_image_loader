@@ -35,18 +35,27 @@ class imageIdBox(QSpinBox):
 
 
     def setFromFeatures(self):
-        print('setFromFeatures')
         if self.index() is not None:
             self.index().model().setFromFeatures(self.index())
             i = self.index().model().idFromFeatures(self.index())
-            print(i)
             if isinstance(i,int):
                 self.setValue(i)
             
-            
-
+    
+    def setToMax(self):
+        self.setValue(self.maximum())
+        
+        
+    def setToMin(self):
+        self.setValue(self.minimum())
+        
+        
     def contextMenuEvent(self, event):
         menu = self.lineEdit().createStandardContextMenu()
-        act = menu.addAction('From selected features')
-        act.triggered.connect(self.setFromFeatures)
+        toMaxAct = menu.addAction('Set to maximum')
+        toMaxAct.triggered.connect(self.setToMax)
+        toMinAct = menu.addAction('Set to mimumum')
+        toMinAct.triggered.connect(self.setToMin)
+        fromFeaturesAct = menu.addAction('From selected features')
+        fromFeaturesAct.triggered.connect(self.setFromFeatures)
         menu.exec_(event.globalPos())
