@@ -1,6 +1,8 @@
 
 import sqlite3
-from image_loader.models.image_model.details import imageDetails
+from PyQt5.QtSql import QSqlDatabase
+
+from image_loader.models.details.image_details import imageDetails
 
 
 def dbToCon(db):
@@ -29,7 +31,7 @@ def loadDetails(details,useExtents=True):
         if e is not None:
             raise e
 
-
+import os
     
 def test():
     testFolder = r'C:\Users\drew.bennett\Documents\image_loader\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt'

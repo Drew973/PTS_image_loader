@@ -1,16 +1,25 @@
-from image_loader.models.image_model import generate_details,group_functions,raster_extents
+
 import os
 import csv
-
-
-from qgis.core import QgsProject
-from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem
 import json
+
+from qgis.core import QgsProject,QgsGeometry
+from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem
+
+from image_loader.models.details import generate_details
+from image_loader.functions import group_functions,raster_extents
+
+
+'''
+    boundingBox : QgsGeometry polygon
+    use QgsGeometry.isNull() to test if have bounding box
+'''
+
 
 
 class imageDetails:
     
-    def __init__(self,filePath,run=None,imageId=None,name=None,groups=None):
+    def __init__(self,filePath,run=None,imageId=None,name=None,groups=None,boundingBox=None):
         
         self.filePath = filePath
         
@@ -35,9 +44,16 @@ class imageDetails:
             
         self.groups = list(groups)
    
-            
-   
+        if boundingBox is None:
+            boundingBox = QgsGeometry()
+        self.boundingBox = boundingBox
+        #isinstance(d[0]['boundingBox'],QgsGeometry)
     
+    
+    
+    def findExtents(self):
+        if self.boundingBox.isNull():
+            self.boundingBox = raster_extents.rasterExtents(self.filePath)
     
     
     def __getitem__ (self,key):
@@ -56,9 +72,11 @@ class imageDetails:
         if key == 'groups':
             return self.groups
         
-        if key =='extents':
-            #return None
-            return self.boundingBox().ExportToWkt()
+        if key =='boundingBox':
+            return self.boundingBox
+
+        if key =='wkt':
+            return self.boundingBox.asWkt()
 
         raise KeyError('imageDetails has no item {0}'.format(key))
 
@@ -90,35 +108,22 @@ class imageDetails:
         node.setExpanded(expand)
                 
 
-#bounding box of raster as wkt.
-    def boundingBox(self):
-        return raster_extents.rasterExtents(self.filePath)#.ExportToWkt()
-
-
-
-
-    def toOgrFeature(self,fields):
-        pass
-
-
-
 def getFiles(folder,exts=None):
     for root, dirs, files in os.walk(folder, topdown=False):
         for f in files:
             if os.path.splitext(f)[1] in exts or exts is None:
                 yield os.path.normpath(os.path.join(root,f))
                 
-                
-'yields details for every .tif in folder+subfolders'
-def fromFolder(folder):
-    for f in getFiles(folder,['.tif']):
-        yield imageDetails(f)
-
-
- #lookup value from dict, returning None if not present
-def find(d,k):
+     
+        
+     
+ #lookup value from dict, returning default if not present
+def find(d,k,default=None):
     if k in d:
         return d[k]
+    return default
+
+
 
 #column named filepath. optional columns:imageId,name,groups
 #names are case insensitive.
@@ -134,19 +139,11 @@ def fromCsv(file):
                 filePath = d['filepath']
             else:
                 filePath = os.path.join(folder,d['filepath'])
-            
-            yield imageDetails(filePath=filePath,run=find(d,'runid'),imageId=find(d,'imageid'),name=find(d,'name'),groups=find(d,'groups'))
+             
+            yield imageDetails(filePath=filePath,run=find(d,'runid'),imageId=find(d,'imageid'),name=find(d,'name'),
+                               groups=find(d,'groups'),boundingBox=find(d,'extents'))
 
 
-
-#def fromDict(d):
-   # return imageDetails(filePath=d['filePath'],run=find(d,'run'),imageId=find(d,'imageId'),name=find(d,'name'),groups=find(d,'groups'))
-
-        
-
-        
-        
-        
         
 if __name__=='__console__':
     file = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt\MFV2_01_ImageInt_000003.tif'
@@ -155,4 +152,4 @@ if __name__=='__console__':
     
     f = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\numeric_run_names\100_6_ImageInt_000180.tif'
     d = imageDetails(f)
-    print(d.run)
+    print('image_details',d.run)

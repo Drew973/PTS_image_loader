@@ -27,7 +27,7 @@ from PyQt5.QtSql import QSqlQuery,QSqlTableModel
 from PyQt5.QtCore import pyqtSignal,Qt,QVariant
 
 from image_loader import exceptions
-from image_loader.models.image_model import details
+from image_loader.models.details import image_details
 
 import logging
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class imageModel(QSqlTableModel):
     def loadCsv(self,file):
         logger.debug('loadCsv({})'.format(file))
 
-        self.addData(details.fromCsv(file))
+        self.addData(image_details.fromCsv(file))
     
         
             
@@ -88,7 +88,7 @@ class imageModel(QSqlTableModel):
         
         if data:
             q = QSqlQuery(self.database())
-            if not q.prepare("insert into image_details(run,image_id,file_path,name,groups) values (:run,:id,:file_path,:name,:groups);"):#ST_GeomFromWKB(:geom)
+            if not q.prepare("insert into details(run,image_id,file_path,name,groups) values (:run,:id,:file_path,:name,:groups);"):#ST_GeomFromWKB(:geom)
                 raise exceptions.imageLoaderQueryError(q)
    
             data = [d for d in data]#make generator into list. end up going through it multiple times otherwise
@@ -120,7 +120,7 @@ class imageModel(QSqlTableModel):
     #generate from folder structure
     def fromFolder(self,folder):
         self.clearTable()
-        self.addData(details.fromFolder(folder))
+        self.addData(image_details.fromFolder(folder))
                    
         
     #list of image_details corresponding to from selected features of layer
@@ -146,7 +146,7 @@ class imageModel(QSqlTableModel):
                 q.exec()
                 
                 while q.next():
-                    d = details.imageDetails(filePath = q.value('file_path'),
+                    d = image_details.imageDetails(filePath = q.value('file_path'),
                               run = q.value('run'),
                               imageId = q.value('image_id'),
                               name = q.value('image_id'),
@@ -187,3 +187,4 @@ class imageModel(QSqlTableModel):
         self.dbChanged.emit()
         return r
         
+    

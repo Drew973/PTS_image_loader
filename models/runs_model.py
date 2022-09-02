@@ -8,51 +8,45 @@ Created on Thu Mar 24 15:25:12 2022
 model containing info about which images to load.
 
 
+from database:
+    run
+    start
+    end
 
-
-    delete from runs
-    insert into runs...
-    simpler than triggers
-
-#if all runs are numeric then sort numerically,
-otherwise sort alphabetically
+display
 
 
 """
-
 import logging
 logger = logging.getLogger(__name__)
 
 #import sqlite3
-from PyQt5.QtSql import QSqlTableModel
+from PyQt5.QtSql import QSqlQueryModel, QSqlQuery ,QSqlDatabase
 from PyQt5.QtCore import Qt
 
-#from image_loader.functions.load_image import loadImage
-import json
-from image_loader.models.image_model import details
-
-from image_loader.functions.setup_database import runQuery
 
 
-def toFloat(v):
-    try:
-        return float(v)
-    except:
-        return 
-
-
-
-class runsModel(QSqlTableModel):
+class runsModel(QSqlQueryModel ):
     
-    def __init__(self,db,parent=None):
+    def __init__(self,parent=None):
         logger.debug('__init__')
-        super().__init__(parent=parent,db=db)
-        self.setTable('runs')
-        self.setEditStrategy(QSqlTableModel.OnFieldChange)
+        super().__init__(parent=parent)
         self.select()
+        self.data = {}
+        
+       
+        
+    def select(self):
+        #round() returns float made of any digits in text,0 if none
+        self.setQuery(QSqlQuery('select run,max(image_id),min(image_id) from details group by run order by round(run),run',QSqlDatabase.database('image_loader')))
+
+
+    def fieldIndex(self,name):
+        return self.record().indexOf(name)
        
         
        
+        
     #converting run to float bad idea because eg float(100_6) = 1006.0.
     def data(self,index,role=Qt.DisplayRole):
         #SQlite has weird/no types.
@@ -90,47 +84,16 @@ class runsModel(QSqlTableModel):
 
     def maxValue(self,index):
         if index.column() == self.fieldIndex('start_id') or index.column() == self.fieldIndex('end_id'):
-            run = index.sibling(index.row(),self.fieldIndex('run')).data()
-            q = runQuery('select max(image_id) from image_details where run=:run',self.database(),{':run':run})
-            q.first()
-            return q.value(0)
+            return index.sibling(index.row(),self.fieldIndex('max')).data()
         else:
             raise NotImplementedError
             
-        
        
     def minValue(self,index):
          if index.column() == self.fieldIndex('start_id') or index.column() == self.fieldIndex('end_id'):
-             run = index.sibling(index.row(),self.fieldIndex('run')).data()
-             q = runQuery('select min(image_id) from image_details where run=:run',self.database(),{':run':run})
-             q.first()
-             return q.value(0)
+            return index.sibling(index.row(),self.fieldIndex('min')).data()
          else:
             raise NotImplementedError  
-
-
-
-    def select(self):
-        q = 'delete from runs where not run in (select distinct run from image_details);'
-        
-        #logger.debug(q)
-        runQuery(q,self.database())
-
-        q = '''insert or ignore into runs(run,start_id,end_id)
-        select run,min(image_id),max(image_id) from image_details 
-        group by run;
-        '''
-        #logger.debug(q)
-        runQuery(q,self.database())
-        
-        super().select()
-        
-        
-
-    def selectAll(self):
-        q = 'update runs set show=True;'
-        runQuery(q,self.database())
-        self.select()
 
 
     def framesLayer(self):
@@ -148,31 +111,6 @@ class runsModel(QSqlTableModel):
             return self.parent().runField()
     
     
-    def clearTable(self):
-        runQuery('delete from runs',self.database())
-        self.select()
-
-
-
-#list of details where selected in runs table
-    def getDetails(self):
-        q = '''select file_path,name,groups from runs inner join image_details 
-        on show=True and start_id<=image_id and image_id<=end_id and runs.run=image_details.run'''
-        
-        query = runQuery(q,self.database())
-        r = []
-        
-        while query.next():
-            d = details.imageDetails(filePath = query.value('file_path'),
-                      run = query.value('run'),
-                      imageId = query.value('image_id'),
-                      name = query.value('image_id'),
-                      groups = json.loads(query.value('groups')))
-            r.append(d)
-        return r
-
-
-
 
     def idFromFeatures(self,index):
         layer = self.framesLayer()

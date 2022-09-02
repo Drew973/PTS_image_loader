@@ -27,8 +27,6 @@ class fieldBox(QgsFieldComboBox):
             parent.layerChanged.connect(self.setLayer)
             self.setLayer(parent.currentLayer())
             
-            
-        
         
     def setLayer(self,layer):
         super().setLayer(layer)

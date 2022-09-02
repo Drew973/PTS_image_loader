@@ -19,16 +19,6 @@
      <widget class="QWidget" name="mainWidget" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QPushButton" name="loadButton">
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load images in selected runs where start_id&amp;lt;=image_id&amp;lt;=end_id. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Load Images</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QToolBox" name="toolBox">
          <property name="currentIndex">
           <number>0</number>
@@ -39,13 +29,20 @@
             <x>0</x>
             <y>0</y>
             <width>807</width>
-            <height>521</height>
+            <height>556</height>
            </rect>
           </property>
           <attribute name="label">
            <string>Runs</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QPushButton" name="markAndLoadButton">
+             <property name="text">
+              <string>Mark in Details and Load</string>
+             </property>
+            </widget>
+           </item>
            <item>
             <widget class="runsView" name="runsView">
              <property name="toolTip">
@@ -61,7 +58,7 @@
             <x>0</x>
             <y>0</y>
             <width>807</width>
-            <height>521</height>
+            <height>556</height>
            </rect>
           </property>
           <attribute name="label">
@@ -69,9 +66,22 @@
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <widget class="QTableView" name="fileDetailsView">
+            <widget class="QPushButton" name="loadButton">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load images in selected runs where start_id&amp;lt;=image_id&amp;lt;=end_id. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="text">
+              <string>Load Images</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="detailsView" name="fileDetailsView">
              <property name="toolTip">
               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Image details table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
              </property>
             </widget>
            </item>
@@ -90,6 +100,11 @@
    <class>runsView</class>
    <extends>QTableView</extends>
    <header>image_loader.widgets.runs_view</header>
+  </customwidget>
+  <customwidget>
+   <class>detailsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.widgets.details_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

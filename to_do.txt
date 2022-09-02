@@ -1,4 +1,10 @@
 
+
+finish runsModel
+
+
+
+
 frames containing bounds of raster images are contained in file with name like '%Spatial Frame Data%' in name
 want automated way to load these and apply formatting.
 
@@ -17,16 +23,8 @@ add
 add file name to display as tool is partly for editing raster image load files
 
 
-use spinBox delegate with min and max for start and end id columns
-
-
-cracking data(text file,same folder as frames and txt)
-load spatial Crack Data.txt
-
-
 want to create new raster image load files from this or edit existing.
 something to scroll through frames in order would be useful
-
 
 
 select from frame Layer.
@@ -36,17 +34,36 @@ select from frame Layer.
     
 each image has frame.
 Can get these from txt file or directly from geotif 
-test getting this from geotif. more direct and foolproof
+getting this from geotif more direct and foolproof but slower
 
 
-save as geopackage.
-
-
+store in spatialite:
+        
 
 single table simpler. details: info_to_load,load bool, frame geometry(polygon)
 some ui to filter.
 
 
+questions:
+rotating images through gdalwarp using time and disk space, benifits?
+display multiple runs vs display 1?
 
 
+actions:
+    select from layer: sets load = true where matches selected features of layer. image_details menu
+    select none: set load=false for all images.    
+    select action. context menu of view.
+
+
+
+show 1 run at time.
+    load: loads all images where load=True. button.
+    select images between ids: sets load = true where run = run and start<image_id<=end. image_details menu
+    
+vs    
+    show selected runs:
+   load: loads all images where load=True. button.
+   select images between ids: sets load = true where run in runs and start<image_id<=end. image_details menu   
+   select action. context menu of view.
+   
     
