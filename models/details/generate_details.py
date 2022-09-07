@@ -146,10 +146,3 @@ def listToGroupString(groups):
 
 
 
-if __name__=='__main__' or __name__=='__console__':
-    p = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt\MFV2_01_ImageInt_000000.tif'
-    print(generateImageId(p))
-    print(generateRun(p))
-    print(generateLayerName(p))
-    
-    folder = r'C:\Users\drew.bennett\Documents\mfv_images\LEEMING DREW\TIF Images\MFV2_01\ImageInt'

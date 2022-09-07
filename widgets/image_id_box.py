@@ -54,7 +54,7 @@ class imageIdBox(QSpinBox):
         menu = self.lineEdit().createStandardContextMenu()
         toMaxAct = menu.addAction('Set to maximum')
         toMaxAct.triggered.connect(self.setToMax)
-        toMinAct = menu.addAction('Set to mimumum')
+        toMinAct = menu.addAction('Set to minimum')
         toMinAct.triggered.connect(self.setToMin)
         fromFeaturesAct = menu.addAction('From selected features')
         fromFeaturesAct.triggered.connect(self.setFromFeatures)

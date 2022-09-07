@@ -11,18 +11,13 @@ https://forum.qt.io/topic/122486/creating-a-column-of-editable-checkbox-in-qtabl
 
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QStyledItemDelegate
-from PyQt5.QtCore import QVariant
+#from PyQt5.QtCore import QVariant
 from PyQt5.QtWidgets import QStyleOptionButton,QStyle,QApplication
+from PyQt5.QtCore import Qt
 
 
 
 def toBool(v):
-    if isinstance(v,bool):
-        return v
-    
-    if isinstance(v,QVariant):
-        return v.toBool()
-       
     return bool(v)
 
 
@@ -49,13 +44,13 @@ class checkBoxDelegate(QStyledItemDelegate):
 
         check_box_style_option = QStyleOptionButton()
 
-        if index.flags() & QtCore.Qt.ItemIsEditable:
+        if index.flags() & Qt.ItemIsEditable:
             check_box_style_option.state |= QStyle.State_Enabled
         else:
             check_box_style_option.state |= QStyle.State_ReadOnly
 
         
-        if toBool(index.data()):
+        if index.data(Qt.CheckStateRole) == Qt.Checked:
             check_box_style_option.state |= QStyle.State_On
         else:
             check_box_style_option.state |= QStyle.State_Off
@@ -80,7 +75,7 @@ class checkBoxDelegate(QStyledItemDelegate):
         '''
        # print 'Check Box editor Event detected : '
       #  print event.type()
-        if not index.flags() & QtCore.Qt.ItemIsEditable:
+        if not index.flags() & Qt.ItemIsEditable:
             return False
 
      #   print 'Check Box editor Event detected : passed first check'
@@ -88,12 +83,12 @@ class checkBoxDelegate(QStyledItemDelegate):
         if event.type() == QtCore.QEvent.MouseButtonPress:
           return False
         if event.type() == QtCore.QEvent.MouseButtonRelease or event.type() == QtCore.QEvent.MouseButtonDblClick:
-            if event.button() != QtCore.Qt.LeftButton or not self.getCheckBoxRect(option).contains(event.pos()):
+            if event.button() != Qt.LeftButton or not self.getCheckBoxRect(option).contains(event.pos()):
                 return False
             if event.type() == QtCore.QEvent.MouseButtonDblClick:
                 return True
         elif event.type() == QtCore.QEvent.KeyPress:
-            if event.key() != QtCore.Qt.Key_Space and event.key() != QtCore.Qt.Key_Select:
+            if event.key() != Qt.Key_Space and event.key() != Qt.Key_Select:
                 return False
         else:
             return False
@@ -108,7 +103,7 @@ class checkBoxDelegate(QStyledItemDelegate):
         The user wanted to change the old state in the opposite.
         '''
        # print 'SetModelData'
-        newValue = not toBool(index.data())
+        newValue = not toBool(index.data(QtCore.Qt.EditRole))
        # print 'New Value : {0}'.format(newValue)
         model.setData(index, newValue, QtCore.Qt.EditRole)
 

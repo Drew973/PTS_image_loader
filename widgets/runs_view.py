@@ -41,10 +41,11 @@ class runsView(QTableView):
         super().setModel(model)
 
         #if delegates are not class attributes crashes on model.select(). garbage collection?
-        self.setItemDelegateForColumn(self.runsModel().fieldIndex('show'),self.checkBoxDelegate)
+        self.setItemDelegateForColumn(self.runsModel().fieldIndex('load'),self.checkBoxDelegate)
         self.setItemDelegateForColumn(self.runsModel().fieldIndex('start_id'),self.minDelegate)
         self.setItemDelegateForColumn(self.runsModel().fieldIndex('end_id'),self.maxDelegate)
         self.setSortingEnabled(True)
         self.sortByColumn(self.runsModel().fieldIndex('run'),Qt.AscendingOrder)
-        
-        
+        self.setColumnHidden(self.runsModel().fieldIndex('min_id'),True)
+        self.setColumnHidden(self.runsModel().fieldIndex('max_id'),True)
+

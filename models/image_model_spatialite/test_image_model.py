@@ -5,46 +5,73 @@ Created on Wed Aug 31 12:30:57 2022
 @author: Drew.Bennett
 """
 
-from image_loader.models.image_model_spatialite.setup_database import setupDb
+
+import unittest
+import os
+
+from image_loader.models.setup_database import setupDb
 from image_loader.models.image_model_spatialite.image_model import imageModel
 from image_loader.models.details.image_details import imageDetails
 
 from PyQt5.QtSql import QSqlDatabase
 
 
-def test():
-    dbFile = r'C:\Users\drew.bennett\Documents\image_loader\test.sqlite'
-    db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
-    db.setDatabaseName(dbFile)
-    db.open()
-    setupDb(db,overwrite = True)
-    assert 'details' in QSqlDatabase.database('image_loader').tables()
-    m = imageModel(db = QSqlDatabase.database('image_loader'))
-    testClearTable(m)
-    testSaveAsCsv(m)
-    testLoadDetails(m)
-    return m
+from image_loader import test
+
+
+class testImageModel(unittest.TestCase):
+    def setUp(self):
+        db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
+        db.setDatabaseName(test.dbFile)
+        db.open()
+        setupDb(db)
+        
+
+    def model(self):
+        return imageModel(db = QSqlDatabase.database('image_loader'))
+
+
+    def csvFile(self):
+        return os.path.join(test.testFolder,'outputs','test.csv')
+
+
+    def testLoadDetails(self):
+        m = self.model()
+        f = os.path.join(test.testFolder,'inputs','MFV2_01_ImageInt_000005.tif')
+        d = imageDetails(f)
+        d.findExtents()
+        m.addDetails([d])
+        m.select()
+        self.assertEqual(m.rowCount(),1)
+
+
     
-    
-def testSaveAsCsv(model):
-    model.saveAsCsv(r'C:\Users\drew.bennett\Documents\image_loader\test.csv')
-    
-    
-def testClearTable(m):
-    m.clearTable()
-    assert m.rowCount()==0
-    
-    
-def testLoadDetails(model):
-    f = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs\MFV2_01_ImageInt_000005.tif'
-    d = imageDetails(f)
-    d.findExtents()
-    model.addDetails([d])
+    def testClearTable(self):
+        m = self.model()
+        m.clearTable()
+        self.assertEquals(m.rowCount(),0)
+        
+
+    def tearDown(self):
+        QSqlDatabase.database('image_loader').close()
+        
+        #remove csv output
+        f = self.csvFile()
+        if os.path.exists(f):
+            os.remove(f)
+
+
+    def testSaveAsCsv(self):
+        self.model().saveAsCsv(self.csvFile())
+
+
+
+
+
+
     
 if __name__=='__console__':
     
-    m = test()
-    QSqlDatabase.database('image_loader').close()
     layer = m.loadLayer()
     #add virtual field with wkt for debugging.
     field = QgsField('wkt', QVariant.String)

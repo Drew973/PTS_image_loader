@@ -33,10 +33,15 @@ from PyQt5.QtSql import QSqlDatabase
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
 
-from image_loader.models import image_model_spatialite as im
-from image_loader.models import  runs_model
+from image_loader.models.image_model_spatialite.image_model import imageModel
+from image_loader.models.runs_model_spatialite import runs_model
+from image_loader.models import setup_database
+
 
 from image_loader.models.details import image_details
+from image_loader.models.natural_sort import naturalSortFilterProxyModel
+
+
 
 from image_loader.functions.load_frame_data import loadFrameData
 from image_loader.functions.load_cracking import loadCracking
@@ -60,20 +65,28 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         logger.debug('__init__')
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
-        self.setFile(":memory:")
+        
+        #self.setFile(":memory:")
+        self.setFile(r'C:\Users\drew.bennett\Documents\image_loader\test.sqlite')##############change this
         self.loadButton.clicked.connect(self.load)
+        self.markButton.clicked.connect(self.runsLoad)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.initTopMenu()
-        
+        self.runsBox.currentTextChanged.connect(self.setRun)
+        self.setRun(self.runsBox.currentText())
 
 
-    def imageModel(self):
+    def im(self):
         return self.fileDetailsView.model()
 
 
     def runsModel(self):
         return self.runsView.runsModel()
 
+
+    def setRun(self,run):
+        if self.im() is not None:
+            self.im().setRun(run)
 
 
     def setFile(self,file):
@@ -82,14 +95,16 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         db.open()
                 
         self.setWindowTitle('{file} - Image Loader'.format(file=file))
-        im.setup_database.setupDb(db)
-        self.fileDetailsView.setModel(im.image_model.imageModel(parent=self,db=db))
-        self.imageModel().dbChanged.connect(self.infoChange)
-       # runs_model.createTable(db)
-     #   proxy = natural_sort.naturalSortFilterProxyModel(self)
-      #  proxy.setSourceModel(runs_model.runsModel(parent=self,db=db))
-      
-        self.runsView.setModel(runs_model.runsModel(parent=self))
+        setup_database.setupDb(db)
+        
+        self.fileDetailsView.setModel(imageModel(parent=self,db=db))
+        
+        m = runs_model.runsModel(parent=self,db=db)
+        self.runsBox.setModel(m)
+
+        proxy = naturalSortFilterProxyModel(self)
+        proxy.setSourceModel(m)
+        self.runsView.setModel(proxy)
         
         
         
@@ -143,7 +158,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
 
     def infoChange(self):
-        if isinstance(self.runsModel(),runs_model.runsModel):
+        if isinstance(self.runsModel(),rm.runs_model.runsModel):
             self.runsModel().select()
 
 
@@ -156,7 +171,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
     #load images.
     def load(self):
-        self.loadDetails(self.imageModel().getDetails())
+        self.loadDetails(self.im().getDetails())
 
 
     #load iterable of details and maybe display cancellable progress bar.
@@ -208,15 +223,22 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = '*.csv;;*.txt;;*')[0]
         if f:
             if f[0]:
-                self.imageModel().clearTable()
+                self.im().clearTable()
                 self.addDetails([d for d in image_details.fromCsv(f)])
 
     
     def saveToCsv(self):
         f = QFileDialog.getSaveFileName(caption = 'Save details to csv',filter = 'csv (*.csv);;txt (*.txt)')[0]
         if f:
-            self.imageModel().saveAsCsv(f)
+            self.im().saveAsCsv(f)
 
+
+#load rasters for selected runs in runsModel
+    def runsLoad(self):
+        if self.im() is not None and self.runsModel() is not None:
+            self.runsModel().markInDetails()
+            self.im().select()
+            self.load()
 
 
     #load all tif files in folder and consider showing progress bar
@@ -224,22 +246,37 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         logging.debug('detailsFromFolder')
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
-            self.addDetails([image_details.imageDetails(f) for f in image_details.getFiles(f,['.tif'])],findExtents=True)
+            self.addDetails([image_details.imageDetails(f) for f in image_details.getFiles(f,['.tif'])])
             
            
-            
-    def addDetails(self,details,findExtents=False):
+    '''        
+        #load list of details.
+        #loads batchSize at time. small batchSize results in slow loading. too large results in progressbar updating slowly.
+        
+    '''    
+    def addDetails(self,details,findExtents=False,batchSize=250):
      #  print(details)
-        progress = QProgressDialog("Finding image details...","Cancel", 0, len(details),self)
+     
+        if findExtents:
+            extentsProgress = QProgressDialog("finding image extents...","Cancel", 0, len(details),self)
+            extentsProgress.setWindowModality(Qt.WindowModal)
+            for i,d in enumerate(details):
+                extentsProgress.setValue(i)
+                if extentsProgress.wasCanceled():
+                    break
+                d.findExtents()
+            extentsProgress.deleteLater() 
+     
+        
+        chunks = [details[x:x+batchSize] for x in range(0, len(details), batchSize)]
+        progress = QProgressDialog("Adding image details...","Cancel", 0, len(chunks),self)
         progress.setWindowModality(Qt.WindowModal)
-        for i,d in enumerate(details):
+        for i,d in enumerate(chunks):
             progress.setValue(i)
             if progress.wasCanceled():
                 break
-            if findExtents:
-                d.findExtents()
-            self.imageModel().addDetails([d])        
-        self.imageModel().select()
+            self.im().addDetails(d)        
+        self.im().select()
         self.runsModel().select()
         progress.deleteLater()    
             

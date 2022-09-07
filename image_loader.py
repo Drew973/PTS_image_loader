@@ -238,8 +238,14 @@ class imageLoader:
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             
-            #create logger
-            logFile = os.path.join(os.path.dirname(__file__),'log.txt')
-            logging.basicConfig(filename=logFile,filemode='w',encoding='utf-8', level=logging.DEBUG)
+            
+            #logging causing version problems, different args to basicConfig
+            try:
+                logFile = os.path.join(os.path.dirname(__file__),'log.txt')
+                logging.basicConfig(filename=logFile,filemode='w', level=logging.DEBUG)#version problems. 
+            except:
+                pass
+
+            
             
             self.dockwidget.show()

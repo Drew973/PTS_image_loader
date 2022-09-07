@@ -1,5 +1,5 @@
 
-from PyQt5.QtSql import QSqlQuery,QSqlTableModel
+from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase,QSqlTableModel
 from PyQt5.QtCore import pyqtSignal,Qt,QVariant
 
 import csv
@@ -16,12 +16,8 @@ from image_loader.models.details import image_details
 logger = logging.getLogger(__name__)
 
 
-# define user defined function
-def extractDigits(s):
-    result = '123'
-    return result
  
-
+#select load,run,image_id,file_path,name,groups,pk from details where 1=1 order by round(run),run,image_id runs in dbBrowser
 
 class imageLoaderQueryError(Exception):
     def __init__(self,q):
@@ -49,10 +45,13 @@ class imageLoaderQueryError(Exception):
     clearTable(self)
     
     
+print(QSqlDatabase.database('image_loader').driver().hasFeature(QSqlDriver.QuerySize)) False.
+rowCount is the number of rows currently cached on the client as Spatialite driver cant get query size
+
 '''
 
 class imageModel(QSqlTableModel):
-    dbChanged = pyqtSignal()#changes made to database
+   # dbChanged = pyqtSignal()#changes made to database
 
 
 #can't do default for database because
@@ -63,19 +62,35 @@ class imageModel(QSqlTableModel):
         super().__init__(parent=parent,db=db)   
         self.setTable('details')
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
-        self.setFilter('1=1 ORDER BY run')
-        #self.setFilter('1=1 order by round(run),run,image_id')
-        #self.setSort(self.fieldIndex('run'),Qt.AscendingOrder)
-
-        #self.setRuns([])
-     #user defined function
-       # con = sqlite3.connect(db.databaseName())
-      #  con.create_function("extract_digits", 1, extractDigits)
-     #   con.close()
-        
-       # self.setFilter('1=1 order by extract_digits(run)')#not woring.
-       
+        self.setFilter('1=1 order by round(run),run,image_id')
+        #self.setRuns([])       
         self.select()
+        
+        
+        
+    def setRun(self,run):
+        self._run = run
+        self.setFilter("run='{run}' order by image_id".format(run=run))
+        self.select()
+        
+        
+    def run(self):
+        return self._run
+        
+ #   def select(self):
+            #round() returns float made of any digits in text,0 if none
+   #     self.setQuery(QSqlQuery('select load,run,image_id,file_path,name,groups,pk from details order by round(run),run,image_id',QSqlDatabase.database('image_loader')))
+
+
+ #   def fieldIndex(self,name):
+ #       return self.record().indexOf(name)
+
+ #   def fieldName(self,i):
+ #       return self.record().fieldName(i) 
+
+
+  #  def database(self):
+ #       return QSqlDatabase.database('image_loader')
         
         
     def setRuns(self,runs):
@@ -103,10 +118,9 @@ class imageModel(QSqlTableModel):
         
         q.exec()
         self.select()
-        self.dbChanged.emit()
     
 
-
+    #doing some type casting here as SQlite doesn't have strictly defined types.
     def data(self,index,role):
         #image_id supposed to be be int. SQlite doesn't realy have types.
         if index.column() == self.fieldIndex('image_id') and role == Qt.DisplayRole:
@@ -119,21 +133,37 @@ class imageModel(QSqlTableModel):
                 else:
                     return Qt.Unchecked
                 
-         #   if role == Qt.DisplayRole or role == Qt.EditRole:
-           #     return bool(super().data(index,role))
+            if role == Qt.DisplayRole or role == Qt.EditRole:
+                return bool(super().data(index,role))
  
         return super().data(index,role)
+    
+    
+    def pk(self,row):
+        return self.index(row,self.fieldIndex('pk')).data()
+    
+    
+   # def setData(self,index,value,role=Qt.EditRole):
+        
+    #    q = 'update details set {col} = :value where pk = :pk'.format(col = self.fieldName(index.column()))
+                                                                                        
+    #    pk = self.pk(index.row())
+    #    print(pk)
+    #    print(q) 
+    #   runQuery(q,self.database(),{':pk':pk,':val':value})
+     #   self.select()
+     #   return True
     
     
     
     def flags(self,index):
         if index.column()==self.fieldIndex('load'):
           #  return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
-            return super().flags(index) | Qt.ItemIsUserCheckable
+            return super().flags(index) | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
         
         #prevent editing run column.
         if index.column()==self.fieldIndex('name'):
-            return super().flags(index)
+            return super().flags(index) | Qt.ItemIsEditable
         
         return super().flags(index) & ~Qt.ItemIsEditable
 
@@ -180,9 +210,7 @@ class imageModel(QSqlTableModel):
             q = QSqlQuery(self.database())
             if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
                 raise exceptions.imageLoaderQueryError(q)
-   
-            data = [d for d in data]#make generator into list. end up going through it multiple times otherwise
-    
+       
             q.bindValue(':run',[d['run'] for d in data])
             q.bindValue(':id',[QVariant(d['imageId']) for d in data])
             q.bindValue(':file_path',[d['filePath'] for d in data])

@@ -68,18 +68,17 @@ class detailsView(QTableView):
             self.detailsModel().setData(i,False)
 
 
-
     def setModel(self,model):
         logging.debug('setModel')
         super().setModel(model)
-
         #if delegates are not class attributes crashes on model.select(). garbage collection?
         self.setItemDelegateForColumn(self.detailsModel().fieldIndex('load'),self.checkBoxDelegate)
-        self.setSortingEnabled(True)
-        self.sortByColumn(self.detailsModel().fieldIndex('run'),Qt.AscendingOrder)
-        self.setColumnHidden(self.detailsModel().fieldIndex('pk'),True)
-        self.setColumnHidden(self.detailsModel().fieldIndex('geom'),True)
+        
+        for c in ['pk','geom','run']:
+            self.setColumnHidden(self.detailsModel().fieldIndex(c),True)
+
         self.resizeColumnsToContents()
+        
         
     def contextMenuEvent(self, event):
         self.menu.exec_(self.mapToGlobal(event.pos()))
