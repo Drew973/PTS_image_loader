@@ -48,6 +48,7 @@ from image_loader.functions.load_cracking import loadCracking
 from image_loader.widgets import set_layers_dialog
 from image_loader.functions import group_functions
 
+from image_loader import test
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -67,7 +68,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
         
         #self.setFile(":memory:")
-        self.setFile(r'C:\Users\drew.bennett\Documents\image_loader\test.sqlite')##############change this
+        self.setFile(test.dbFile)
+        
         self.loadButton.clicked.connect(self.load)
         self.markButton.clicked.connect(self.runsLoad)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
@@ -132,9 +134,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct.triggered.connect(self.loadFrames)
         
  
-        setupMenu = topMenu.addMenu("Setup")
-        setLayers = setupMenu.addAction('Set layers and fields...')
-        setLayers.triggered.connect(self.layersDialog.exec_)
+       # setupMenu = topMenu.addMenu("Setup")
+      #  setLayers = setupMenu.addAction('Set layers and fields...')
+      #  setLayers.triggered.connect(self.layersDialog.exec_)
         
  
         loadCracksAct = layersMenu.addAction('Load Cracking Data...')
@@ -224,7 +226,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
             if f[0]:
                 self.im().clearTable()
-                self.addDetails([d for d in image_details.fromCsv(f)])
+                self.addDetails(self.im().addCsv(f))
 
     
     def saveToCsv(self):
@@ -246,39 +248,44 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         logging.debug('detailsFromFolder')
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
-            self.addDetails([image_details.imageDetails(f) for f in image_details.getFiles(f,['.tif'])])
+            self.addDetails(self.im().addFolder(f))
             
            
+            
+    #find extents for list of details. allows cancelling with progressDialog       
+    def findExtents(self,details):
+        progress = QProgressDialog("finding image extents...","Cancel",0,len(details),self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowTitle("finding image extents...")
+        progress.setMaximum(len(details))
+            
+        for i,d in enumerate(details):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                break
+            d.findExtents()
+            
     '''        
         #load list of details.
         #loads batchSize at time. small batchSize results in slow loading. too large results in progressbar updating slowly.
         
     '''    
-    def addDetails(self,details,findExtents=False,batchSize=250):
+    def addDetails(self,gen):
      #  print(details)
      
-        if findExtents:
-            extentsProgress = QProgressDialog("finding image extents...","Cancel", 0, len(details),self)
-            extentsProgress.setWindowModality(Qt.WindowModal)
-            for i,d in enumerate(details):
-                extentsProgress.setValue(i)
-                if extentsProgress.wasCanceled():
-                    break
-                d.findExtents()
-            extentsProgress.deleteLater() 
-     
-        
-        chunks = [details[x:x+batchSize] for x in range(0, len(details), batchSize)]
-        progress = QProgressDialog("Adding image details...","Cancel", 0, len(chunks),self)
+     #QProgressDialog(const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags()
+        progress = QProgressDialog("Adding image details...","Cancel",0,0,self)
         progress.setWindowModality(Qt.WindowModal)
-        for i,d in enumerate(chunks):
+
+        for i,le in gen:
+            progress.setMaximum(le)
             progress.setValue(i)
             if progress.wasCanceled():
                 break
-            self.im().addDetails(d)        
+        
         self.im().select()
         self.runsModel().select()
-        progress.deleteLater()    
+        #progress.deleteLater()    
             
 
     def closeEvent(self, event):

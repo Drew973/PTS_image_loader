@@ -37,14 +37,26 @@ class testImageModel(unittest.TestCase):
 
     def testLoadDetails(self):
         m = self.model()
+        c = m.rowCount()
+
         f = os.path.join(test.testFolder,'inputs','MFV2_01_ImageInt_000005.tif')
         d = imageDetails(f)
         d.findExtents()
-        m.addDetails([d])
+        for i in m.addDetails([d]):
+            pass
         m.select()
-        self.assertEqual(m.rowCount(),1)
+        self.assertEqual(m.rowCount()-c,1)
 
 
+    def testAddFolder(self):
+        m = self.model()
+        c = m.rowCount()
+        folder = os.path.join(test.testFolder,'inputs','test_folder')
+        for i in m.addFolder(folder):
+            pass
+        m.select()
+        self.assertEquals(m.rowCount()-c,191)#191 tif files in folder
+    
     
     def testClearTable(self):
         m = self.model()

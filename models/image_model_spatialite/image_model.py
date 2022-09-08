@@ -7,6 +7,9 @@ import json
 import logging
 import os
 
+from PyQt5.QtWidgets import QProgressDialog
+
+
 from qgis.utils import iface
 
 from image_loader import exceptions
@@ -196,41 +199,45 @@ class imageModel(QSqlTableModel):
         
 
 
-#geomFromText seems to return null for any 3d geom.
-    def addDetails(self,data):
-        logger.debug('addData')
-
-        def groupsToText(groups):
-            if isinstance(groups,list):
-                return json.dumps(groups)
-            else:
-                return groups
+    '''
+    GENERATOR!!!!!!!!!. 
+    load list of details.
+    loads batchSize at time.
+    yields progress.
+    can iterate through generator to update progress bar and abort if canceled
+    '''
+    def addDetails(self,details,batchSize=250):
         
-        if data:
-            q = QSqlQuery(self.database())
-            if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
-                raise exceptions.imageLoaderQueryError(q)
-       
-            q.bindValue(':run',[d['run'] for d in data])
-            q.bindValue(':id',[QVariant(d['imageId']) for d in data])
-            q.bindValue(':file_path',[d['filePath'] for d in data])
-            q.bindValue(':name', [d['name'] for d in data])
-            q.bindValue(':groups', [groupsToText(d['groups']) for d in data])
-            geoms = [d['wkt'] for d in data]
-            q.bindValue(':geom',geoms)
-           
-            logger.debug(q.boundValues())# crash if different lengths
-    
-            #check lengths equal. crash if not.
-            vals = q.boundValues()
-            lengths = [len(vals[v]) for v in vals]
+        q = QSqlQuery(self.database())
+        if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
+            raise exceptions.imageLoaderQueryError(q)
+        
+        
+        le = len(details)
+        for i in range(0,le,batchSize):
+
             
-            if not all([L==lengths[0] for L in lengths]):
-                raise ValueError('incorrect lengths')
-    
+            chunk = details[i:i+batchSize]
+            q.bindValue(':run',[d['run'] for d in chunk])
+            q.bindValue(':id',[d['imageId'] for d in chunk])
+            q.bindValue(':file_path',[d['filePath'] for d in chunk])
+            q.bindValue(':name',[d['name'] for d in chunk])
+            q.bindValue(':groups',[json.dumps(d['groups']) for d in chunk])
+            q.bindValue(':geom',[d['wkt'] for d in chunk])
+
             if not q.execBatch():
                 raise exceptions.imageLoaderQueryError(q)
-                
+            
+            yield i+len(chunk),le
+
+
+    def addFolder(self,folder):
+        return self.addDetails([image_details.imageDetails(f) for f in image_details.getFiles(folder,['.tif'])])
+
+
+    def addCsv(self,f):
+        return self.addDetails([d for d in image_details.fromCsv(f)])
+
 
     #load as qgis layer
     def loadLayer(self):
