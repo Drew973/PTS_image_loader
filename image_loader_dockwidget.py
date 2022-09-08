@@ -38,7 +38,6 @@ from image_loader.models.runs_model_spatialite import runs_model
 from image_loader.models import setup_database
 
 
-from image_loader.models.details import image_details
 from image_loader.models.natural_sort import naturalSortFilterProxyModel
 
 
@@ -48,7 +47,6 @@ from image_loader.functions.load_cracking import loadCracking
 from image_loader.widgets import set_layers_dialog
 from image_loader.functions import group_functions
 
-from image_loader import test
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -67,8 +65,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         
-        #self.setFile(":memory:")
-        self.setFile(test.dbFile)
+        self.setFile(":memory:")
+        #self.setFile(test.dbFile)#####good for debuging but user wont't have test
         
         self.loadButton.clicked.connect(self.load)
         self.markButton.clicked.connect(self.runsLoad)
