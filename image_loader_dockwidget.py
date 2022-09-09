@@ -24,28 +24,23 @@
 
 import os
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
-from PyQt5 import QtGui
-from PyQt5.QtSql import QSqlDatabase
-
-
-
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
 
-from image_loader.models.image_model_spatialite.image_model import imageModel
-from image_loader.models.runs_model_spatialite import runs_model
-from image_loader.models import setup_database
+from .models.image_model_spatialite.image_model import imageModel
+from .models.runs_model_spatialite import runs_model
+from .models import setup_database
+from .models.natural_sort import naturalSortFilterProxyModel
 
 
-from image_loader.models.natural_sort import naturalSortFilterProxyModel
+from .functions.load_frame_data import loadFrameData
+from .functions.load_cracking import loadCracking
+from .widgets import set_layers_dialog
+from .functions import group_functions
 
-
-
-from image_loader.functions.load_frame_data import loadFrameData
-from image_loader.functions.load_cracking import loadCracking
-from image_loader.widgets import set_layers_dialog
-from image_loader.functions import group_functions
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
+from PyQt5 import QtGui
+from PyQt5.QtSql import QSqlDatabase
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -66,7 +61,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
         
         self.setFile(":memory:")
-        #self.setFile(test.dbFile)#####good for debuging but user wont't have test
+        #from image_loader import test
+       # self.setFile(test.dbFile)#####good for debuging but user wont't have test
         
         self.loadButton.clicked.connect(self.load)
         self.markButton.clicked.connect(self.runsLoad)
@@ -100,6 +96,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.fileDetailsView.setModel(imageModel(parent=self,db=db))
         
         m = runs_model.runsModel(parent=self,db=db)
+        self.im().rowsChanged.connect(m.select)
         self.runsBox.setModel(m)
 
         proxy = naturalSortFilterProxyModel(self)
@@ -116,8 +113,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         newAct = fileMenu.addAction('New')
         newAct.triggered.connect(lambda:self.setFile(":memory:"))
         
-        loadCsvAct = fileMenu.addAction('Load image details from csv/txt...')
-        loadCsvAct.triggered.connect(self.loadCsv)
+        openAct = fileMenu.addAction('Open...')
+        openAct.triggered.connect(self.openFile)
         
         saveCsvAct = fileMenu.addAction('Save to csv...')
         saveCsvAct.triggered.connect(self.saveToCsv)
@@ -156,11 +153,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def runField(self):
         return self.layersDialog.runField()
     
-
-    def infoChange(self):
-        if isinstance(self.runsModel(),rm.runs_model.runsModel):
-            self.runsModel().select()
-
 
 #opens help/index.html in default browser
     def openHelp(self):
@@ -207,7 +199,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     #unused
     #load 'raster image load' txt file
-    def loadCsv(self):
+    def openFile(self):
         logging.debug('loadCsv')
  
         '''
@@ -220,7 +212,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         '''
         
         
-        f = QFileDialog.getOpenFileName(caption = 'Load details csv',filter = '*.csv;;*.txt;;*')[0]
+        f = QFileDialog.getOpenFileName(caption = 'open',filter = '*.csv;;*.txt;;*')[0]
         if f:
             if f[0]:
                 self.im().clearTable()
@@ -288,4 +280,5 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
+        QSqlDatabase.database('image_loader').close()
         event.accept()

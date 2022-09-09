@@ -54,7 +54,7 @@ rowCount is the number of rows currently cached on the client as Spatialite driv
 '''
 
 class imageModel(QSqlTableModel):
-   # dbChanged = pyqtSignal()#changes made to database
+    rowsChanged = pyqtSignal()#changes made to database
 
 
 #can't do default for database because
@@ -80,11 +80,7 @@ class imageModel(QSqlTableModel):
     def run(self):
         return self._run
         
- #   def select(self):
-            #round() returns float made of any digits in text,0 if none
-   #     self.setQuery(QSqlQuery('select load,run,image_id,file_path,name,groups,pk from details order by round(run),run,image_id',QSqlDatabase.database('image_loader')))
-
-
+    
  #   def fieldIndex(self,name):
  #       return self.record().indexOf(name)
 
@@ -121,6 +117,8 @@ class imageModel(QSqlTableModel):
         
         q.exec()
         self.select()
+        self.rowsChanged.emit()
+
     
 
     #doing some type casting here as SQlite doesn't have strictly defined types.
@@ -195,6 +193,7 @@ class imageModel(QSqlTableModel):
         pks = [str(pk) for pk in pks]
         q = 'delete from details where pk in ({pks})'.format(pks=','.join(pks))
         runQuery(q,self.database())
+        self.rowsChanged.emit()
 
         
 
@@ -229,6 +228,7 @@ class imageModel(QSqlTableModel):
                 raise exceptions.imageLoaderQueryError(q)
             
             yield i+len(chunk),le
+        self.rowsChanged.emit()
 
 
     def addFolder(self,folder):

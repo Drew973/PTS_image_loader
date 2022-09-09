@@ -25,31 +25,44 @@ class runsModel(QSqlTableModel):
         self.select()
         
     
-    #update tables then select.
+ 
     
-    
-    #remove where not in runs,
-    #add new rows
-    #update min and max
-    #update start_id and end_id to be between min and max?
+    '''
+        update runs table then select
+        using on conflict do update gives syntax errors for older versions of sqlite/qgis
+    '''
     def select(self):
-        e = self.database().exec('delete from runs where not run in (select run from details group by run)').lastError()
-        if e.isValid():
-            raise ValueError(e.text())
+        
+        if self.database().isOpen():
+            e = self.database().exec('delete from runs where not run in (select run from details group by run)').lastError()
+            if e.isValid():
+                raise ValueError(e.text())
+                
+            queries = []
+            queries.append('drop table if exists t')
+            queries.append('create table t as select run as r,start_id as s,end_id as e from runs')
+            queries.append('delete from runs')
             
-        q = '''insert into runs(run,load,min_id,max_id,start_id,end_id)
-        select run,False,min(image_id) as mini,max(image_id) as maxi,min(image_id) as mini,max(image_id) from details group by run
-        on conflict do
-        UPDATE SET max_id=excluded.max_id,min_id=excluded.min_id
-        ,start_id=min(max(excluded.min_id,start_id),excluded.max_id)
-        ,end_id=min(max(excluded.min_id,end_id),excluded.max_id)
-        '''
-
-        e = self.database().exec(q).lastError()
-        if e.isValid():
-            raise ValueError(e.text())
-        return super().select()
-
+            q = '''
+            insert into runs (run,load,min_id,max_id,start_id,end_id) select 
+            run,False,mini,maxi
+            ,case when mini<=t.s and t.s<=maxi then t.s else mini end
+            ,case when mini<=t.e and t.e<=maxi then t.e else maxi end
+            from
+            (select run,min(image_id) as mini,max(image_id) as maxi 
+            from details group by run) a
+            left join t on r=run
+            '''
+            queries.append(q)
+            queries.append('drop table if exists t')
+    
+            for q in queries:
+                e = self.database().exec(q).lastError()
+                if e.isValid():
+                    raise ValueError(e.text())
+            return super().select()
+        else:
+            return False
 
     #converting run to float bad idea because eg float(100_6) = 1006.0.
     def data(self,index,role=Qt.EditRole):
