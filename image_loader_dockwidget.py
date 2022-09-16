@@ -49,6 +49,11 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 import logging
 logger = logging.getLogger(__name__)
 
+dev = False#set to false for end user.
+
+if dev:
+    from . import test
+
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
@@ -56,20 +61,22 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
         
-        logger.debug('__init__')
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         
-        self.setFile(":memory:")
+        self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
+        self.setFile()
         #from image_loader import test
        # self.setFile(test.dbFile)#####good for debuging but user wont't have test
         
-        self.loadButton.clicked.connect(self.load)
+        self.loadButton.clicked.connect(self.loadDetails)
         self.markButton.clicked.connect(self.runsLoad)
-        self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.initTopMenu()
         self.runsBox.currentTextChanged.connect(self.setRun)
         self.setRun(self.runsBox.currentText())
+
+        if dev:
+            self.addDetails(self.im().addFolder(test.testFolder))
 
 
     def im(self):
@@ -85,9 +92,23 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.im().setRun(run)
 
 
-    def setFile(self,file):
+
+    #QFileDialog should return existing file or None.
+    #handle actual opening
+    #set file to '' for new.
+    def setFile(self,file='untitled'):
+        
+        ext = os.path.splitext(file)[-1]
+        
+        if  ext in ['.db','.sqlite']:
+            dbFile = file
+        else:
+            dbFile = ':memory:'
+        
+        self.file = file
+        
         db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
-        db.setDatabaseName(file)
+        db.setDatabaseName(dbFile)
         db.open()
                 
         self.setWindowTitle('{file} - Image Loader'.format(file=file))
@@ -97,13 +118,15 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         m = runs_model.runsModel(parent=self,db=db)
         self.im().rowsChanged.connect(m.select)
+        self.im().setLayers(self.layersDialog)
         self.runsBox.setModel(m)
 
         proxy = naturalSortFilterProxyModel(self)
         proxy.setSourceModel(m)
         self.runsView.setModel(proxy)
         
-        
+        if ext in ['csv','txt']:
+            self.addDetails(self.im().addCsv(file))
         
 
     def initTopMenu(self):
@@ -111,13 +134,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
-        newAct.triggered.connect(lambda:self.setFile(":memory:"))
+        newAct.triggered.connect(lambda:self.setFile())
         
         openAct = fileMenu.addAction('Open...')
         openAct.triggered.connect(self.openFile)
         
-        saveCsvAct = fileMenu.addAction('Save to csv...')
-        saveCsvAct.triggered.connect(self.saveToCsv)
+        saveAct = fileMenu.addAction('Save as...')
+        saveAct.triggered.connect(self.save)
         
         ######################load
         detailsMenu = topMenu.addMenu("Image_details")
@@ -129,9 +152,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct.triggered.connect(self.loadFrames)
         
  
-       # setupMenu = topMenu.addMenu("Setup")
-      #  setLayers = setupMenu.addAction('Set layers and fields...')
-      #  setLayers.triggered.connect(self.layersDialog.exec_)
+        setupMenu = topMenu.addMenu("Setup")
+        setLayers = setupMenu.addAction('Set layers and fields...')
+        setLayers.triggered.connect(self.layersDialog.exec_)
         
  
         loadCracksAct = layersMenu.addAction('Load Cracking Data...')
@@ -161,15 +184,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QtGui.QDesktopServices.openUrl(QUrl(helpPath))
 
         
-    #load images.
-    def load(self):
-        self.loadDetails(self.im().getDetails())
-
 
     #load iterable of details and maybe display cancellable progress bar.
    #QgsTask is very buggy. QProgressDialog much simpler.
-    def loadDetails(self,details):
+    def loadDetails(self):
         
+        details = self.im().getDetails()
         group_functions.removeChild('image_loader')#remove group
         progress = QProgressDialog("Loading images...","Cancel", 0, len(details),self)
         progress.setWindowModality(Qt.WindowModal)
@@ -180,6 +200,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if progress.wasCanceled():
                 break
         progress.deleteLater()
+
 
 
     def loadFrames(self):
@@ -197,32 +218,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 loadCracking(f[0])
                 
 
-    #unused
-    #load 'raster image load' txt file
+    #open dialog and load csv/sqlite file
     def openFile(self):
-        logging.debug('loadCsv')
- 
-        '''
-        f = regex_file_dialog.getFileName(
-            filterExpression = '.*raster image load.*',
-            parent = self,
-            caption = 'select Raster Image Load file',
-            extensionFilter = "txt (*.txt)",
-            caseSensitive = False)
-        '''
-        
-        
-        f = QFileDialog.getOpenFileName(caption = 'open',filter = '*.csv;;*.txt;;*')[0]
+        f = QFileDialog.getOpenFileName(caption = 'open',filter = '*.csv;;*.txt;;*.db;;*.sqlite;;*')[0]
         if f:
-            if f[0]:
-                self.im().clearTable()
-                self.addDetails(self.im().addCsv(f))
+            self.setFile(f)
+                
 
     
-    def saveToCsv(self):
-        f = QFileDialog.getSaveFileName(caption = 'Save details to csv',filter = 'csv (*.csv);;txt (*.txt)')[0]
+    def save(self):
+        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt);;sqlite (*.sqlite);;sqlite (*.db)')[0]
         if f:
-            self.im().saveAsCsv(f)
+            self.im().save(f)
 
 
 #load rasters for selected runs in runsModel

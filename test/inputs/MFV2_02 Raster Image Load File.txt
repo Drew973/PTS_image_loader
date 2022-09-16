@@ -1,0 +1,16 @@
+ImageType,FileName,FilePath
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000174.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000175.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000176.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000177.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000178.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000179.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000180.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000181.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000182.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000183.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000184.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000185.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000186.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000187.tif
+IntensityWithoutOverlay,MFV2_02,E:\TIF Images\MFV2_02\ImageInt\MFV2_02_ImageInt_000188.tif

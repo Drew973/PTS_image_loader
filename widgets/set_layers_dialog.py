@@ -43,7 +43,15 @@ class setLayersDialog(QDialog):
         return self.runBox.currentField()
 
     
+    def fields(self):
+        return {'framesLayer':self.layerWidget.currentLayer(),'idField':self.idBox.currentField(),'runField':self.runBox.currentField()}
 
+
+    #dict like.
+    def __getitem__ (self,key):
+        return self.fields()[key]
+        
+        
 def test():
     d = setLayersDialog()
     d.show()

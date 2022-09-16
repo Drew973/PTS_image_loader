@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtCore import QSortFilterProxyModel,Qt
 from PyQt5.QtWidgets import QMenu
+from PyQt5.QtCore import QItemSelectionModel
 
 
 
@@ -23,6 +24,9 @@ class detailsView(QTableView):
         super().__init__(parent)
         self.checkBoxDelegate = checkbox.checkBoxDelegate(parent=self)
         self.menu = QMenu(self)
+        
+        fromLayerAct = self.menu.addAction('Select from layer')
+        fromLayerAct.triggered.connect(self.selectFromLayer)
         markAct = self.menu.addAction('Mark to load')
         markAct.triggered.connect(self.mark)
         unmarkAct = self.menu.addAction('Unmark to load')
@@ -58,6 +62,24 @@ class detailsView(QTableView):
         self.detailsModel().select()
         
 
+    def selectFromLayer(self):
+        m = self.detailsModel()
+        inds = [m.index(r,0) for r in m.selectedFeatureRows()]        
+        if isinstance(self.model(),QSortFilterProxyModel):
+            inds = [self.model().mapFromSource(i).row() for i in inds]
+        self.clearSelection()
+        for ind in inds:
+            self.selectionModel().select(ind,QItemSelectionModel.Rows|QItemSelectionModel.Select)
+
+
+
+    def selectOnLayer(self):
+        inds = self.selectionModel().selectedRows()
+        if isinstance(self.model(),QSortFilterProxyModel):
+            inds = [self.model().mapFromSource(i).row() for i in inds]
+        self.detailsModel().selectOnLayer([i.row() for i in inds])
+
+
     def unmark(self):
         selected = self.selectionModel().selectedRows(self.detailsModel().fieldIndex('load'))
         
@@ -82,9 +104,5 @@ class detailsView(QTableView):
         
     def contextMenuEvent(self, event):
         self.menu.exec_(self.mapToGlobal(event.pos()))
-        
-        
-        
-   
         
         

@@ -11,6 +11,10 @@ from PyQt5.QtWidgets import QProgressDialog
 
 
 from qgis.utils import iface
+from qgis.core import Qgis
+
+
+
 
 from image_loader import exceptions
 from image_loader.functions.run_query import runQuery
@@ -51,6 +55,15 @@ class imageLoaderQueryError(Exception):
 print(QSqlDatabase.database('image_loader').driver().hasFeature(QSqlDriver.QuerySize)) False.
 rowCount is the number of rows currently cached on the client as Spatialite driver cant get query size
 
+
+
+
+
+
+
+
+def save(self,f)
+
 '''
 
 class imageModel(QSqlTableModel):
@@ -68,7 +81,7 @@ class imageModel(QSqlTableModel):
         self.setFilter('1=1 order by round(run),run,image_id')
         #self.setRuns([])       
         self.select()
-        
+        self.setLayers()
         
         
     def setRun(self,run):
@@ -119,7 +132,8 @@ class imageModel(QSqlTableModel):
         self.select()
         self.rowsChanged.emit()
 
-    
+
+
 
     #doing some type casting here as SQlite doesn't have strictly defined types.
     def data(self,index,role):
@@ -202,7 +216,7 @@ class imageModel(QSqlTableModel):
     GENERATOR!!!!!!!!!. 
     load list of details.
     loads batchSize at time.
-    yields progress.
+    yields progress and total.
     can iterate through generator to update progress bar and abort if canceled
     '''
     def addDetails(self,details,batchSize=250):
@@ -244,6 +258,39 @@ class imageModel(QSqlTableModel):
         uri = self.database().databaseName()+'|layername=details'
         return iface.addVectorLayer(uri,'details','ogr')
 
+
+    #save to new/existing file,overwrite of existing
+    def save(self,f):
+        ext = os.path.splitext(f)[-1]
+        if ext in ['.csv','.txt']:
+            self.saveAsCsv(f)
+            iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
+            return True
+        
+        if ext in ['.db','.sqlite']:          
+            db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
+            db.setDatabaseName(f)
+            
+            try:
+                db.open()
+                runQuery("ATTACH DATABASE '{f}' AS other;".format(f=self.database().databaseName()),db)
+                runQuery("drop table if exists details",db)
+                runQuery("create table details AS select * from other.details",db)
+                iface.messageBar().pushMessage("Image_loader", "Saved to database", level=Qgis.Info)
+                r = True
+
+            except Exception as e:
+                iface.messageBar().pushMessage("Error", "Could not save to database:{e}".format(e=str(e)), level=Qgis.Critical)
+                r = False
+
+            finally:
+                db.close()
+                return r
+                
+        iface.messageBar().pushMessage("Error", "Unknown format {e}".format(e=ext), level=Qgis.Critical)
+
+            
+
     #write csv, converting file_paths to relative
     def saveAsCsv(self,file):
                
@@ -257,3 +304,40 @@ class imageModel(QSqlTableModel):
             
             while q.next():
                 w.writerow([os.path.relpath(q.value(0),file)] + [q.value(n) for n in cols])
+                
+                
+    #find row given imageId and runId. -1 if not found
+    def findRow(self,imageId,runId):
+        idField = self.fieldIndex('image_id')
+        runField = self.fieldIndex('run')
+        for r in range(self.rowCount()):
+            if self.index(r,idField).data() == imageId and self.index(r,runField).data() == runId:
+                return r
+        return -1
+        
+                
+    def selectedFeatureRows(self):
+        rows = [] 
+        framesLayer = self.layers()['framesLayer']
+        idField = self.layers()['idField']
+        runField = self.layers()['runField']
+        if idField and runField and framesLayer is not None:
+            for f in framesLayer.selectedFeatures():
+                r = self.findRow(int(f[idField]),f[runField])
+                if r!=-1:
+                    rows.append(r)
+        return rows
+            
+    
+    def selectOnLayer(self,rows):
+        pass
+           
+    #dict or dialog with __getitem__ to get widget values.
+    #uses layers['framesLayer']
+    def setLayers(self,layers={'framesLayer':None,'idField':None,'runField':None}):
+        self._layers = layers
+        
+        
+    def layers(self):
+        return self._layers
+                

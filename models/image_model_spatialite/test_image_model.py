@@ -34,6 +34,9 @@ class testImageModel(unittest.TestCase):
     def csvFile(self):
         return os.path.join(test.testFolder,'outputs','test.csv')
 
+    def generateDbFile(self):
+        return os.path.join(test.testFolder,'outputs','test.db')
+
 
     def testLoadDetails(self):
         m = self.model()
@@ -77,7 +80,8 @@ class testImageModel(unittest.TestCase):
         self.model().saveAsCsv(self.csvFile())
 
 
-
+    def testSave(self):
+        self.assertTrue(self.model().save(self.generateDbFile()))
 
 
 
