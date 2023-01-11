@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSignal,Qt,QVariant
 
 import csv
 import json
-import logging
 import os
 
 from PyQt5.QtWidgets import QProgressDialog
@@ -19,8 +18,6 @@ from qgis.core import Qgis
 from image_loader import exceptions
 from image_loader.functions.run_query import runQuery
 from image_loader.models.details import image_details
-
-logger = logging.getLogger(__name__)
 
 
  
@@ -54,10 +51,6 @@ class imageLoaderQueryError(Exception):
     
 print(QSqlDatabase.database('image_loader').driver().hasFeature(QSqlDriver.QuerySize)) False.
 rowCount is the number of rows currently cached on the client as Spatialite driver cant get query size
-
-
-
-
 
 
 
