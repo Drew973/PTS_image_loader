@@ -15,15 +15,18 @@
 
 <p>Tool for loading and unloading geotif images into qgis.</p>
 <p>Details of images to load are stored in the 'image_details' table.</p>
-<p>The runs table is for selecting which of these images to load.</p>
+<p>Images with 'load' checked are loaded into QGIS when load images is clicked </p>
 <p>Loading images will remove anything in the 'image_loader' group. </p>
+
+
+<p>The runs table is a summary of the image details table for quickly selecting which of these images to load.</p>
 
 
 <h3 id="home">Generating image details from folder</h3>
     <p>"Image_details","Find from folder..." will add a row to the image details table for every .tif file in folder and subfolders.</p>
 
 
-<h3 id="home">Loading image details from csv/txt</h3>
+<h3 id="home">Loading from csv/txt</h3>
 <p>The tool can load image details from a csv or txt file.</p>
 <p>The file needs a header. The tool will ignore case and '_' charactors in field names .</p>
 
@@ -41,9 +44,15 @@
 
 
 <h3 id="home">Saving image details</h3>
-<p>Image details can be saved as a csv or txt through "Image details","Save as csv"</p>
+<p>Image details can be saved as a csv, txt or sqlite database(.db / .sqlite) file.</p>
 <p>Filepaths will be saved as a relative path (from the folder containing the csv).</p>
 <p>Relative paths allow a folder containing the csv and images to be moved without invalidating the file paths.</p>
+
+
+<h3 id="home">Frames layer</h3>
+<p>spatial fromes can be loaded trough load layers,load spatial frames data.</p>
+<p>After filling in the 'setup,set layers and fields' dialog:right clicking on the image details table then 'select from layer' selects rows matching the selected features of the layer.</p>
+
 
 
 </body>

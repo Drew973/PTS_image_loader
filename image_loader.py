@@ -31,7 +31,6 @@ from .resources import *
 from .image_loader_dockwidget import imageLoaderDockWidget
 import os.path
 
-import logging
 
 
 class imageLoader:
@@ -194,12 +193,7 @@ class imageLoader:
 
         self.pluginIsActive = False
 
-        #close log file. Want to allow uninstall if error.
-        for handler in logging.getLogger(__name__).handlers:
-            if isinstance(handler, logging.FileHandler):
-                handler.close()
-        
-        
+
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -237,15 +231,5 @@ class imageLoader:
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            
-            
-            #logging causing version problems, different args to basicConfig
-            try:
-                logFile = os.path.join(os.path.dirname(__file__),'log.txt')
-                logging.basicConfig(filename=logFile,filemode='w', level=logging.DEBUG)#version problems. 
-            except:
-                pass
-
-            
-            
+    
             self.dockwidget.show()

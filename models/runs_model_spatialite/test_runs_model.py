@@ -3,7 +3,6 @@
 Created on Tue Mar 29 09:14:33 2022
 @author: Drew.Bennett
 """
-import os
 from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.models.setup_database import setupDb
@@ -14,7 +13,6 @@ from image_loader.widgets.runs_view import runsView
 import unittest
 from image_loader import test
 
-print(test.testFolder)
 
 
 
@@ -40,7 +38,6 @@ class testRunsModel(unittest.TestCase):
 
  
 if __name__ == '__main__' or __name__=='__console__':
-    from PyQt5.QtWidgets import QTableView
     db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
     db.setDatabaseName(r'C:\Users\drew.bennett\Documents\image_loader\test.sqlite')
     db.open()

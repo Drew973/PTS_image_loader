@@ -33,6 +33,8 @@ class detailsView(QTableView):
         unmarkAct.triggered.connect(self.unmark)
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
+        #self.setTextElideMode(Qt.ElideLeft)
+        self.setWordWrap(False)
 
     #model might be proxy model.
     def detailsModel(self):

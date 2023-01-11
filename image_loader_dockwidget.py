@@ -46,13 +46,12 @@ from PyQt5.QtSql import QSqlDatabase
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
 
-import logging
-logger = logging.getLogger(__name__)
 
 dev = False#set to false for end user.
 
 if dev:
     from . import test
+
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
@@ -237,12 +236,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if self.im() is not None and self.runsModel() is not None:
             self.runsModel().markInDetails()
             self.im().select()
-            self.load()
+            self.loadDetails()
 
 
     #load all tif files in folder and consider showing progress bar
     def detailsFromFolder(self):
-        logging.debug('detailsFromFolder')
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
             self.addDetails(self.im().addFolder(f))
