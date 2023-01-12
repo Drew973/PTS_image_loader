@@ -3,16 +3,8 @@
 
 from PyQt5.QtWidgets import QStyledItemDelegate
 
-import logging
-logger = logging.getLogger(__name__)
-
 from image_loader.widgets import attribute_spin_box
     
-
-
-'''
-
-'''
     
     
 
@@ -56,7 +48,6 @@ class attributeSpinBoxDelegate(QStyledItemDelegate):
     
     
     def createEditor(self,parent,option,index):
-        logger.debug('createEditor')
         w = attribute_spin_box.attributeSpinBox(parent)
         w.setLayer(self.layer())
         w.setField(self.field())
@@ -64,9 +55,3 @@ class attributeSpinBoxDelegate(QStyledItemDelegate):
         w.setMaximum(9999)
         return w
     
-    
-    
- #   def setEditorData(self,editor,index):
-   #     logger.debug('setEditorData')
-  #      editor.setValue(index.data())
-        

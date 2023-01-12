@@ -8,9 +8,6 @@ Created on Wed Jun  8 10:32:34 2022
 from PyQt5.QtWidgets import QTableView
 from image_loader.delegates import checkbox,id_delegate#checkbox_delegate,attribute_spin_box_delegate
 
-import logging
-logger = logging.getLogger(__name__)
-
 from PyQt5.QtCore import QSortFilterProxyModel,Qt
 
 
@@ -37,9 +34,7 @@ class runsView(QTableView):
 
 
     def setModel(self,model):
-        logging.debug('setModel')
         super().setModel(model)
-
         #if delegates are not class attributes crashes on model.select(). garbage collection?
         self.setItemDelegateForColumn(self.runsModel().fieldIndex('load'),self.checkBoxDelegate)
         self.setItemDelegateForColumn(self.runsModel().fieldIndex('start_id'),self.minDelegate)

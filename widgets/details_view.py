@@ -7,11 +7,7 @@ Created on Wed Jun  8 10:32:34 2022
 
 from PyQt5.QtWidgets import QTableView
 from image_loader.delegates import checkbox
-
-import logging
-logger = logging.getLogger(__name__)
-
-from PyQt5.QtCore import QSortFilterProxyModel,Qt
+from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import QItemSelectionModel
 
@@ -93,7 +89,6 @@ class detailsView(QTableView):
 
 
     def setModel(self,model):
-        logging.debug('setModel')
         super().setModel(model)
         #if delegates are not class attributes crashes on model.select(). garbage collection?
         self.setItemDelegateForColumn(self.detailsModel().fieldIndex('load'),self.checkBoxDelegate)

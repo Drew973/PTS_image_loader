@@ -1,11 +1,9 @@
 import os
 from qgis.utils import iface
 from qgis.core import QgsField
-import logging
 from PyQt5.QtCore import QVariant
 import re
 
-logger = logging.getLogger(__name__)
 
 '''
     treats all fields as strings.
@@ -15,7 +13,6 @@ logger = logging.getLogger(__name__)
 '''
 
 def loadFrameData(file):
-    logger.debug('loadFrameData(%s)',file)
     name = os.path.splitext(os.path.basename(file))[0]
     uri = 'file:///{file}?type=csv&delimiter=;&maxFields=100&detectTypes=no&wktField=wkt&geomType=Polygon&crs=EPSG:27700&spatialIndex=no&subsetIndex=no&watchFile=no'.format(file=file)
     layer = iface.addVectorLayer(uri, name, "delimitedtext")

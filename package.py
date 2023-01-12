@@ -31,7 +31,7 @@ def checkExt(fileName,exclude=[]):
     
 #returns False if any element of exclude contained in dir name
 def checkDir(fileName,exclude=[]):
-    folder = os.path.dirname(fileName)
+  #  folder = os.path.dirname(fileName)
     parents = [p for p in parentNames(os.path.dirname(fileName))]
     for ex in exclude:
         if ex in parents:

@@ -1,18 +1,15 @@
 
-from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase,QSqlTableModel
-from PyQt5.QtCore import pyqtSignal,Qt,QVariant
+from PyQt5.QtSql import QSqlQuery,QSqlDatabase,QSqlTableModel
+from PyQt5.QtCore import pyqtSignal,Qt
 
 import csv
 import json
 import os
 
-from PyQt5.QtWidgets import QProgressDialog
 
 
 from qgis.utils import iface
 from qgis.core import Qgis
-
-
 
 
 from image_loader import exceptions
@@ -115,7 +112,6 @@ class imageModel(QSqlTableModel):
     
     
     def clearTable(self):
-        logger.debug('clearTable')
         query = 'delete from details'
         q = QSqlQuery(self.database())
         if not q.prepare(query):

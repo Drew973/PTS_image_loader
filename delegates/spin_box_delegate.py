@@ -3,8 +3,7 @@
 
 from PyQt5.QtWidgets import QStyledItemDelegate
 
-import logging
-logger = logging.getLogger(__name__)
+
 
 from image_loader.widgets import image_id_box
 
@@ -21,20 +20,11 @@ class idBoxDelegate(QStyledItemDelegate):
         
 
     def createEditor(self,parent,option,index):
-        logger.debug('createEditor')
         w = image_id_box.imageIdBox(parent)
-        
         #get index of source model if necessary.
         if isinstance(index.model(),QSortFilterProxyModel):
             index = index.model().mapToSource(index)
-            
         w.setIndex(index)
-        
         return w
     
     
-    
- #   def setEditorData(self,editor,index):
-   #     logger.debug('setEditorData')
-  #      editor.setValue(index.data())
-        

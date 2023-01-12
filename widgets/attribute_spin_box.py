@@ -16,15 +16,12 @@ QSpinBox subclass with ability to:
 from PyQt5.QtWidgets import QSpinBox,QMenu,QAction
 
 from PyQt5.QtCore import Qt
-import logging
-logger = logging.getLogger(__name__)
 
 
 class attributeSpinBox(QSpinBox):
     
     
     def __init__(self,parent=None):
-        logger.debug('__init__')
         super().__init__(parent)
         
         
@@ -47,7 +44,6 @@ class attributeSpinBox(QSpinBox):
         
        
     def setLayer(self,layer):
-        logger.debug('setLayer(%s)',layer)
         self._layer = layer
         
         
@@ -58,7 +54,6 @@ class attributeSpinBox(QSpinBox):
     
     
     def setField(self,field):
-        logger.debug('setField(%s)',field)
         self._field = field
         
         
@@ -81,7 +76,6 @@ class attributeSpinBox(QSpinBox):
     def fromFeatures(self):
         layer = self.layer()
         field = self.field()    
-        logger.debug('fromFeatures(). layer = %s, field=%s',layer,field)
 
         if layer is not None and field is not None:
             
@@ -93,20 +87,14 @@ class attributeSpinBox(QSpinBox):
                     self.setValue(min(vals))
         
     
-    
     def selectFeatures(self):
         layer = self.layer()
         field = self.field()
-        logger.debug('selectFeatures(). layer = %s, field=%s',layer,field)
-
         
         if layer is not None and field is not None:
             e = '"{field}" = {val}'.format(field=field, val=self.value())
             layer.selectByExpression(e)
             
-        
-    
-    
     
     def contextMenuEvent(self, event):
         # QtCore.QTimer.singleShot(0, self.on_timeout)
