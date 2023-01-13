@@ -47,35 +47,21 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
 
 
-dev = False#set to false for end user.
-
-if dev:
-    from . import test
-
-
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
 
-    def __init__(self, parent=None):
-        """Constructor."""
-        
+    def __init__(self, parent=None):        
         super(imageLoaderDockWidget, self).__init__(parent)
+        self.fileName = ''
         self.setupUi(self)
-        
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
-        self.setFile()
-        #from image_loader import test
-       # self.setFile(test.dbFile)#####good for debuging but user wont't have test
-        
+        self.setFile()        
         self.loadButton.clicked.connect(self.loadDetails)
         self.markButton.clicked.connect(self.runsLoad)
         self.initTopMenu()
         self.runsBox.currentTextChanged.connect(self.setRun)
         self.setRun(self.runsBox.currentText())
-
-        if dev:
-            self.addDetails(self.im().addFolder(test.testFolder))
 
 
     def im(self):
@@ -97,36 +83,33 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     #set file to '' for new.
     def setFile(self,file='untitled'):
         
-        ext = os.path.splitext(file)[-1]
-        
-        if  ext in ['.db','.sqlite']:
-            dbFile = file
-        else:
-            dbFile = ':memory:'
-        
-        self.file = file
-        
+        QSqlDatabase.database('image_loader').close()#make sure any past database close
+
+        dbFile = ':memory:'
         db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
         db.setDatabaseName(dbFile)
         db.open()
-                
-        self.setWindowTitle('{file} - Image Loader'.format(file=file))
         setup_database.setupDb(db)
         
-        self.fileDetailsView.setModel(imageModel(parent=self,db=db))
+        im = imageModel(parent=self,db=db)
+        
+        self.fileDetailsView.setModel(im)
         
         m = runs_model.runsModel(parent=self,db=db)
-        self.im().rowsChanged.connect(m.select)
-        self.im().setLayers(self.layersDialog)
-        self.runsBox.setModel(m)
+        im.rowsChanged.connect(m.select)#refresh runs view after details changed 
+        im.setLayers(self.layersDialog)
 
         proxy = naturalSortFilterProxyModel(self)
         proxy.setSourceModel(m)
         self.runsView.setModel(proxy)
-        
-        if ext in ['csv','txt']:
-            self.addDetails(self.im().addCsv(file))
-        
+        self.runsBox.setModel(m)
+
+        self.setWindowTitle('{file} - Image Loader'.format(file=file))
+        self.fileName = file
+
+        if file!='untitled':
+            im.loadFile(file)
+
 
     def initTopMenu(self):
         topMenu = QMenuBar(self.mainWidget)    
@@ -138,8 +121,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         openAct = fileMenu.addAction('Open...')
         openAct.triggered.connect(self.openFile)
         
-        saveAct = fileMenu.addAction('Save as...')
-        saveAct.triggered.connect(self.save)
+        saveAsAct = fileMenu.addAction('Save as...')
+        saveAsAct.triggered.connect(self.saveAs)
         
         ######################load
         detailsMenu = topMenu.addMenu("Image_details")
@@ -219,16 +202,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     #open dialog and load csv/sqlite file
     def openFile(self):
-        f = QFileDialog.getOpenFileName(caption = 'open',filter = '*.csv;;*.txt;;*.db;;*.sqlite;;*')[0]
+        f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
         if f:
             self.setFile(f)
                 
-
-    
-    def save(self):
-        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt);;sqlite (*.sqlite);;sqlite (*.db)')[0]
+            
+            
+    #could save to sqlite database. Would confuse users and no real advantages.
+    def saveAs(self):
+        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt)')[0]
         if f:
             self.im().save(f)
+
 
 
 #load rasters for selected runs in runsModel
@@ -243,44 +228,26 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def detailsFromFolder(self):
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
-            self.addDetails(self.im().addFolder(f))
-            
+            progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
+            progress.setWindowModality(Qt.WindowModal)
+            self.im().addFolder(f,progress=progress)
+            progress.deleteLater()
            
             
     #find extents for list of details. allows cancelling with progressDialog       
-    def findExtents(self,details):
-        progress = QProgressDialog("finding image extents...","Cancel",0,len(details),self)
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setWindowTitle("finding image extents...")
-        progress.setMaximum(len(details))
+    #def findExtents(self,details):
+     #   progress = QProgressDialog("finding image extents...","Cancel",0,len(details),self)
+    #    progress.setWindowModality(Qt.WindowModal)
+   ##     progress.setWindowTitle("finding image extents...")
+   #     progress.setMaximum(len(details))
             
-        for i,d in enumerate(details):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                break
-            d.findExtents()
+    #    for i,d in enumerate(details):
+    #        progress.setValue(i)
+    # #       if progress.wasCanceled():
+    #            break
+     #       d.findExtents()
             
-    '''        
-        #load list of details.
-        #loads batchSize at time. small batchSize results in slow loading. too large results in progressbar updating slowly.
-        
-    '''    
-    def addDetails(self,gen):
-     #  print(details)
-     
-     #QProgressDialog(const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags()
-        progress = QProgressDialog("Adding image details...","Cancel",0,0,self)
-        progress.setWindowModality(Qt.WindowModal)
 
-        for i,le in gen:
-            progress.setMaximum(le)
-            progress.setValue(i)
-            if progress.wasCanceled():
-                break
-        
-        self.im().select()
-        self.runsModel().select()
-        #progress.deleteLater()    
             
 
     def closeEvent(self, event):

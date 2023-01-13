@@ -37,8 +37,6 @@ def runQuery(text,db,bindValues={}):
 
 
 '''
-       #adding strict means proper type checking instead of dynamic types.
-       #needs > version 3.37.0 (2021-11-27) for this
        for spatiallite add
       #  "SELECT load_extension('mod_spatialite')",
  #"SELECT InitSpatialMetadata(1)",
@@ -49,8 +47,11 @@ def runQuery(text,db,bindValues={}):
 '''
 
 def createDetailsTable(db):
+    
+
+    
        q = '''
-            CREATE TABLE if not exists image_details (
+            CREATE TABLE if not exists details (
                 pk integer primary key,
                 run varchar NOT NULL,
                 image_id int NOT NULL,
@@ -74,58 +75,13 @@ def createRunsTable(db):
             )
         '''        
     runQuery(q,db)    
-    
-    
-    
-#currently unused. doing similar on select.
-#multiple insert statements happending with exec_batch. not properly supported?
 
+    
 
-def createRunsTriggers(db):
-    #create triggers
-    q = '''
-    CREATE TRIGGER IF NOT EXISTS details_insert 
-   AFTER INSERT
-   ON image_details
-   BEGIN
-       insert or ignore into runs(run,start_id,end_id)
-       select run,min(image_id),max(image_id) from image_details
-       where run =NEW.run
-       group by run;
-    END;
-    '''
-    runQuery(q,db)
-    
-    
-    q = '''
-    CREATE TRIGGER IF NOT EXISTS details_delete
-    AFTER delete
-    ON image_details
-    BEGIN
-       delete from runs where not run in (select distinct run from image_details);
-    END;
-    '''
-    runQuery(q,db)
-    
-    #images model might do do inserts as seperate queries.
-    q = '''
-    CREATE TRIGGER IF NOT EXISTS details_update
-    AFTER update
-    ON image_details
-    BEGIN
-       delete from runs where not run in (select distinct run from image_details);
-
-       insert or ignore into runs(run,start_id,end_id)
-       select run,min(image_id),max(image_id) from image_details 
-       group by run;
-    END;
-    '''
-    runQuery(q,db)
-      
- 
-    
  
 def setupDb(db):
+    runQuery('drop table if exists details',db)
+    runQuery('drop table if exists runs',db)
     createDetailsTable(db)
     createRunsTable(db)
     #createRunsTriggers(db)

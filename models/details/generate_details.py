@@ -96,8 +96,8 @@ def generateRun(filePath):
 
 
 
-f = '100_6_ImageInt_000180.tif'
-print(generateRun(f))
+#f = '100_6_ImageInt_000180.tif'
+#print(generateRun(f))
 
 
 #digits at end of filename without extention

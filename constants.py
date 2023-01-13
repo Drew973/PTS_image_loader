@@ -1,1 +1,0 @@
-rootGroup = 'image_loader'

@@ -28,21 +28,21 @@ class imageLoaderQueryError(Exception):
 
 
 '''
-    model to display details table
+
+
+    model to display details table. sqlite database in memory or on disk.
+    save will copy to file.
+    loadFile will clear image details table and then insert values from file.
+    
+    
     and add+remove rows
-    
-    setupDb(file) function here as depends on if using geopackage or sqlite or...
-    
+        
     ogr can't open dataSource when already open in QSqlDatabase()
-    
-    
-    setRuns(self,runs): filter to these runs.
     selectRun(self,run,start,end): set load to True for these
     deselectAll(self)
     selectRows(self,ids)
     addFiles(self,files)
     addFolder(self,folder)
-    load(self)
     clearTable(self)
     
     
@@ -66,6 +66,9 @@ class imageModel(QSqlTableModel):
     def __init__(self,db,parent=None):
         
         super().__init__(parent=parent,db=db)   
+        if not db.isOpen():
+            raise ValueError('database not open')
+        
         self.setTable('details')
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setFilter('1=1 order by round(run),run,image_id')
@@ -90,7 +93,6 @@ class imageModel(QSqlTableModel):
  #   def fieldName(self,i):
  #       return self.record().fieldName(i) 
 
-
   #  def database(self):
  #       return QSqlDatabase.database('image_loader')
         
@@ -111,18 +113,6 @@ class imageModel(QSqlTableModel):
         self.select()
     
     
-    def clearTable(self):
-        query = 'delete from details'
-        q = QSqlQuery(self.database())
-        if not q.prepare(query):
-            raise imageLoaderQueryError(q)    
-        
-        q.exec()
-        self.select()
-        self.rowsChanged.emit()
-
-
-
 
     #doing some type casting here as SQlite doesn't have strictly defined types.
     def data(self,index,role):
@@ -201,45 +191,82 @@ class imageModel(QSqlTableModel):
         
 
 
+#raster image load file is .txt in csv format.
+    def loadFile(self,file):        
+        ext = os.path.splitext(file)[-1]
+        if ext in ['.csv','.txt']:
+            self.addDetails([d for d in image_details.fromCsv(file)])
+            return True
+
+      #  if ext in ['.db','.sqlite']:        
+       #     self.clearTable()
+      #      db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
+         #   db.setDatabaseName(file)
+                
+        iface.messageBar().pushMessage('{ext} file format not supported.'.format(ext=ext), level=Qgis.Critical) 
+        return False
+    
+          #  try:
+             #   db.open()
+            #    runQuery("ATTACH DATABASE '{f}' AS other;".format(f=file),self.database())
+            #    runQuery("create table details AS select * from other.details",db)
+
+                #r = True
+
+          #  except Exception as e:
+           #     iface.messageBar().pushMessage("Error", "Could not save to database:{e}".format(e=str(e)), level=Qgis.Critical)
+             #   r = False
+
+        #    finally:
+          #      db.close()
+          #      return r
+
+
+
+
+#progress is QProgressDialog
+#finding extents is slow. other details is not.
+    def addFolder(self,folder,progress=None):
+        files = [f for f in image_details.getFiles(folder,['.tif'])]
+        self.addDetails([image_details.imageDetails(f) for f in files],progress=progress)
+
+
     '''
-    GENERATOR!!!!!!!!!. 
     load list of details.
-    loads batchSize at time.
-    yields progress and total.
-    can iterate through generator to update progress bar and abort if canceled
     '''
-    def addDetails(self,details,batchSize=250):
+    def addDetails(self,details,progress=None):
         
-        q = QSqlQuery(self.database())
+        if progress is not None:
+            progress.setMaximum(len(details))  
+            
+        db = self.database()
+        db.transaction()#doing all inserts in 1 transaction good for performance
+
+        q = QSqlQuery(db)
         if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
             raise exceptions.imageLoaderQueryError(q)
         
-        
-        le = len(details)
-        for i in range(0,le,batchSize):
-
+        for i,d in enumerate(details):
             
-            chunk = details[i:i+batchSize]
-            q.bindValue(':run',[d['run'] for d in chunk])
-            q.bindValue(':id',[d['imageId'] for d in chunk])
-            q.bindValue(':file_path',[d['filePath'] for d in chunk])
-            q.bindValue(':name',[d['name'] for d in chunk])
-            q.bindValue(':groups',[json.dumps(d['groups']) for d in chunk])
-            q.bindValue(':geom',[d['wkt'] for d in chunk])
-
-            if not q.execBatch():
+            q.bindValue(':run',d['run'])
+            q.bindValue(':id',d['imageId'])
+            q.bindValue(':file_path',d['filePath'])
+            q.bindValue(':name',d['name'])
+            q.bindValue(':groups',json.dumps(d['groups']))
+            q.bindValue(':geom',d['wkt'])
+            
+            if progress is not None:
+                progress.setValue(i)
+                if progress.wasCanceled():
+                    break      
+            
+            if not q.exec():
                 raise exceptions.imageLoaderQueryError(q)
-            
-            yield i+len(chunk),le
+                
+        db.commit()
+        self.select()
         self.rowsChanged.emit()
 
-
-    def addFolder(self,folder):
-        return self.addDetails([image_details.imageDetails(f) for f in image_details.getFiles(folder,['.tif'])])
-
-
-    def addCsv(self,f):
-        return self.addDetails([d for d in image_details.fromCsv(f)])
 
 
     #load as qgis layer
@@ -251,36 +278,38 @@ class imageModel(QSqlTableModel):
     #save to new/existing file,overwrite of existing
     def save(self,f):
         ext = os.path.splitext(f)[-1]
+        
         if ext in ['.csv','.txt']:
             self.saveAsCsv(f)
-            iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
             return True
         
-        if ext in ['.db','.sqlite']:          
-            db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
-            db.setDatabaseName(f)
+        if ext in ['.db','.sqlite']:        
+            return self.saveAsDb(f)
             
-            try:
-                db.open()
-                runQuery("ATTACH DATABASE '{f}' AS other;".format(f=self.database().databaseName()),db)
-                runQuery("drop table if exists details",db)
-                runQuery("create table details AS select * from other.details",db)
-                iface.messageBar().pushMessage("Image_loader", "Saved to database", level=Qgis.Info)
-                r = True
-
-            except Exception as e:
-                iface.messageBar().pushMessage("Error", "Could not save to database:{e}".format(e=str(e)), level=Qgis.Critical)
-                r = False
-
-            finally:
-                db.close()
-                return r
-                
+            
         iface.messageBar().pushMessage("Error", "Unknown format {e}".format(e=ext), level=Qgis.Critical)
 
+        
+    def saveAsDb(self,file):
+        db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
+        db.setDatabaseName(file)
+        try:
+            db.open()
+            runQuery("ATTACH DATABASE '{f}' AS other;".format(f=self.database().databaseName()),db)
+            runQuery("drop table if exists details",db)
+            runQuery("create table details AS select * from other.details",db)
+            iface.messageBar().pushMessage("Image_loader", "Saved to database", level=Qgis.Info)
+            r = True
             
+        except Exception as e:
+            iface.messageBar().pushMessage("Error", "Could not save to database:{e}".format(e=str(e)), level=Qgis.Critical)
+            r = False
+            
+        finally:
+            db.close()
+            return r
 
-    #write csv, converting file_paths to relative
+    #write csv/txt, converting file_paths to relative if possible
     def saveAsCsv(self,file):
                
         with open(file,'w',newline='') as f:
@@ -292,8 +321,15 @@ class imageModel(QSqlTableModel):
             cols = [1,2,3,4,5]#columns are 0 indexed.
             
             while q.next():
-                w.writerow([os.path.relpath(q.value(0),file)] + [q.value(n) for n in cols])
-                
+                #can't convert to relative path if on different drive.
+                try:
+                    p = os.path.relpath(q.value(0),file)
+                except:
+                    p = q.value(0)
+                    
+                w.writerow([p] + [q.value(n) for n in cols])
+        iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
+
                 
     #find row given imageId and runId. -1 if not found
     def findRow(self,imageId,runId):

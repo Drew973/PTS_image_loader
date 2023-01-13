@@ -66,7 +66,7 @@ class runsModel(QSqlTableModel):
 
     #converting run to float bad idea because eg float(100_6) = 1006.0.
     def data(self,index,role=Qt.EditRole):
-        #SQlite has weird/no types.
+        #SQlite has dynamic types.
         
         if index.column() == self.fieldIndex('load'):
             
