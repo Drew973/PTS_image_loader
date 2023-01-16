@@ -56,7 +56,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.fileName = ''
         self.setupUi(self)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
-        self.setFile()        
+        self.setFile()
         self.loadButton.clicked.connect(self.loadDetails)
         self.markButton.clicked.connect(self.runsLoad)
         self.initTopMenu()
@@ -86,6 +86,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QSqlDatabase.database('image_loader').close()#make sure any past database close
 
         dbFile = ':memory:'
+        
+        #in-memory databases always uses exclusive locking mode
         db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
         db.setDatabaseName(dbFile)
         db.open()

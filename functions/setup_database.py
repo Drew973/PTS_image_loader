@@ -47,9 +47,6 @@ def runQuery(text,db,bindValues={}):
 '''
 
 def createDetailsTable(db):
-    
-
-    
        q = '''
             CREATE TABLE if not exists details (
                 pk integer primary key,

@@ -10,7 +10,26 @@ mark in details and load:
 """
 from PyQt5.QtSql import QSqlQuery ,QSqlDatabase,QSqlTableModel
 from PyQt5.QtCore import Qt
+from image_loader import exceptions
 
+
+    #checks query text and returns QSqlQuery
+def preparedQuery(text,db):
+    query = QSqlQuery(db)
+    if not query.prepare(text):
+        print(text)
+        raise exceptions.imageLoaderQueryError(query)
+    return query
+
+def runQuery(text,db,bindValues={}):
+    q = preparedQuery(text,db)
+    
+    for k in bindValues:
+        q.bindValue(k,bindValues[k])
+    
+    if not q.exec():
+        raise exceptions.imageLoaderQueryError(q)
+    return q
 
 
 class runsModel(QSqlTableModel):
@@ -32,37 +51,31 @@ class runsModel(QSqlTableModel):
         using on conflict do update gives syntax errors for older versions of sqlite/qgis
     '''
     def select(self):
-        
+     #   print('runsModel.select')
         if self.database().isOpen():
-            e = self.database().exec('delete from runs where not run in (select run from details group by run)').lastError()
-            if e.isValid():
-                raise ValueError(e.text())
-                
-            queries = []
-            queries.append('drop table if exists t')
-            queries.append('create table t as select run as r,start_id as s,end_id as e from runs')
-            queries.append('delete from runs')
             
-            q = '''
-            insert into runs (run,load,min_id,max_id,start_id,end_id) select 
-            run,False,mini,maxi
-            ,case when mini<=t.s and t.s<=maxi then t.s else mini end
-            ,case when mini<=t.e and t.e<=maxi then t.e else maxi end
-            from
-            (select run,min(image_id) as mini,max(image_id) as maxi 
-            from details group by run) a
-            left join t on r=run
-            '''
-            queries.append(q)
-            queries.append('drop table if exists t')
-    
+            queries = []         
+            
+            queries.append('delete from runs where not run in (select run from details group by run)')
+            
+            queries.append('''
+            INSERT INTO runs (run, min_id,max_id,start_id,end_id)
+            select run,min(image_id) as min_id ,max(image_id) as max_id,min(image_id),max(image_id) 
+            from details group by run
+            ON CONFLICT (run) DO UPDATE SET min_id=excluded.min_id,max_id=excluded.max_id,
+            start_id = max(start_id,excluded.min_id),end_id = min(end_id,excluded.max_id)
+            ''')
+          #insert and update min/max and start/end id
+   
             for q in queries:
-                e = self.database().exec(q).lastError()
-                if e.isValid():
-                    raise ValueError(e.text())
+             #   print(q)
+                runQuery(q,self.database())
+            
             return super().select()
         else:
             return False
+
+
 
     #converting run to float bad idea because eg float(100_6) = 1006.0.
     def data(self,index,role=Qt.EditRole):
