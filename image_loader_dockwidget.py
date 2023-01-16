@@ -88,7 +88,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         dbFile = ':memory:'
         
         #in-memory databases always uses exclusive locking mode
-        db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
+       # db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
+        db = QSqlDatabase.addDatabase('QSQLITE','image_loader')
+
         db.setDatabaseName(dbFile)
         db.open()
         setup_database.setupDb(db)

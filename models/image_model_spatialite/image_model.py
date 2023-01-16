@@ -166,8 +166,8 @@ class imageModel(QSqlTableModel):
 #list of details where selected in runs table
     def getDetails(self):
         q = '''select file_path,name,groups from details 
-        where load'''
-        
+        where load = 1'''
+        #is load keyword?
         query = runQuery(q,self.database())
         r = []
         
@@ -243,7 +243,9 @@ class imageModel(QSqlTableModel):
         db.transaction()#doing all inserts in 1 transaction good for performance
 
         q = QSqlQuery(db)
-        if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
+      #  if not q.prepare("insert into details(load,run,image_id,file_path,name,groups,geom) values (False,:run,:id,:file_path,:name,:groups,GeomFromText(:geom,27700));"):#ST_GeomFromWKB(:geom)
+        if not q.prepare("insert into details(load,run,image_id,file_path,name,groups) values (False,:run,:id,:file_path,:name,:groups);"):#ST_GeomFromWKB(:geom)
+
             raise exceptions.imageLoaderQueryError(q)
         
         for i,d in enumerate(details):
@@ -253,7 +255,7 @@ class imageModel(QSqlTableModel):
             q.bindValue(':file_path',d['filePath'])
             q.bindValue(':name',d['name'])
             q.bindValue(':groups',json.dumps(d['groups']))
-            q.bindValue(':geom',d['wkt'])
+         #   q.bindValue(':geom',d['wkt'])
             
             if progress is not None:
                 progress.setValue(i)
