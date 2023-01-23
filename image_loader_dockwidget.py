@@ -86,6 +86,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QSqlDatabase.database('image_loader').close()#make sure any past database close
 
         dbFile = ':memory:'
+     #   dbFile = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\test.db'
+
         
         #in-memory databases always uses exclusive locking mode
        # db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader')
@@ -223,8 +225,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 #load rasters for selected runs in runsModel
     def runsLoad(self):
         if self.im() is not None and self.runsModel() is not None:
-            self.runsModel().markInDetails()
-            self.im().select()
+            self.im().setFromRuns()
             self.loadDetails()
 
 

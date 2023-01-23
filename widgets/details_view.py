@@ -18,7 +18,7 @@ class detailsView(QTableView):
             
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.checkBoxDelegate = checkbox.checkBoxDelegate(parent=self)
+       # self.checkBoxDelegate = checkbox.checkBoxDelegate(parent=self)
         self.menu = QMenu(self)
         
         fromLayerAct = self.menu.addAction('Select from layer')
@@ -39,6 +39,13 @@ class detailsView(QTableView):
         else:
             return self.model()
         
+
+ #   def edit(self,index,trigger,event):
+     #   if index.column() == self.detailsModel().fieldIndex('load'):
+    #        return False
+     #   
+      #  return super().edit(index,trigger,event)
+
 
 #all selected rows are in details model
     def mark(self):
@@ -91,7 +98,7 @@ class detailsView(QTableView):
     def setModel(self,model):
         super().setModel(model)
         #if delegates are not class attributes crashes on model.select(). garbage collection?
-        self.setItemDelegateForColumn(self.detailsModel().fieldIndex('load'),self.checkBoxDelegate)
+      #  self.setItemDelegateForColumn(self.detailsModel().fieldIndex('load'),self.checkBoxDelegate)
         
         for c in ['pk','geom','run']:
             self.setColumnHidden(self.detailsModel().fieldIndex(c),True)

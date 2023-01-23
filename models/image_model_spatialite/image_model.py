@@ -113,7 +113,13 @@ class imageModel(QSqlTableModel):
         self.select()
     
     
-
+    def setData(self,index,value,role= Qt.EditRole):
+        if index.column() == self.fieldIndex('load') and role == Qt.CheckStateRole:
+            return super().setData(index,value == Qt.Checked,Qt.EditRole)
+        return super().setData(index,value,role)
+    
+    
+    
     #doing some type casting here as SQlite doesn't have strictly defined types.
     def data(self,index,role):
         #image_id supposed to be be int. SQlite doesn't realy have types.
@@ -121,39 +127,30 @@ class imageModel(QSqlTableModel):
             return int(super().data(index,role))         
     
         if index.column() == self.fieldIndex('load'):
+            if role == Qt.DisplayRole:
+                return ''
+                
+            if role == Qt.EditRole:
+                return bool(super().data(index,role))    
+            
             if  role == Qt.CheckStateRole:
-                if bool(super().data(index,Qt.DisplayRole)):
+                if bool(super().data(index,Qt.EditRole)):
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
-                
-            if role == Qt.DisplayRole or role == Qt.EditRole:
-                return bool(super().data(index,role))
  
         return super().data(index,role)
     
     
     def pk(self,row):
         return self.index(row,self.fieldIndex('pk')).data()
-    
-    
-   # def setData(self,index,value,role=Qt.EditRole):
-        
-    #    q = 'update details set {col} = :value where pk = :pk'.format(col = self.fieldName(index.column()))
-                                                                                        
-    #    pk = self.pk(index.row())
-    #    print(pk)
-    #    print(q) 
-    #   runQuery(q,self.database(),{':pk':pk,':val':value})
-     #   self.select()
-     #   return True
-    
+       
     
     
     def flags(self,index):
         if index.column()==self.fieldIndex('load'):
           #  return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
-            return super().flags(index) | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
+            return super().flags(index) | Qt.ItemIsUserCheckable# | Qt.ItemIsEditable
         
         #prevent editing run column.
         if index.column()==self.fieldIndex('name'):
@@ -163,11 +160,26 @@ class imageModel(QSqlTableModel):
 
 
 
+#set load column of details table from runs table. all rows.
+    def setFromRuns(self):
+     #   print('setFromRuns')
+        q = '''
+            update details set load =
+            (
+            select
+            case when start_id<=image_id and image_id<=end_id then runs.load
+            else 0 end
+            from runs where runs.run=details.run
+            )
+            '''
+        runQuery(q,self.database())
+        self.select()
+            
+
 #list of details where selected in runs table
     def getDetails(self):
         q = '''select file_path,name,groups from details 
-        where load = 1'''
-        #is load keyword?
+        where load > 0'''
         query = runQuery(q,self.database())
         r = []
         
@@ -198,15 +210,17 @@ class imageModel(QSqlTableModel):
             self.addDetails([d for d in image_details.fromCsv(file)])
             return True
 
-      #  if ext in ['.db','.sqlite']:        
-       #     self.clearTable()
-      #      db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
-         #   db.setDatabaseName(file)
+
                 
         iface.messageBar().pushMessage('{ext} file format not supported.'.format(ext=ext), level=Qgis.Critical) 
         return False
     
           #  try:
+              
+              #  if ext in ['.db','.sqlite']:        
+              #      db = QSqlDatabase.addDatabase('QSPATIALITE','image_loader_new')
+                 #   db.setDatabaseName(file)
+              
              #   db.open()
             #    runQuery("ATTACH DATABASE '{f}' AS other;".format(f=file),self.database())
             #    runQuery("create table details AS select * from other.details",db)

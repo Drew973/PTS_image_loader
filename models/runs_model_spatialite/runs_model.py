@@ -77,6 +77,19 @@ class runsModel(QSqlTableModel):
 
 
 
+    def setData(self,index,value,role= Qt.EditRole):
+        if index.column() == self.fieldIndex('load') and role == Qt.CheckStateRole:          
+            if value == Qt.Checked:
+                v = 1
+            else:
+                v = 0
+            r = super().setData(index,v,Qt.EditRole)
+          #  print('setData. value={v} sucessfull={r}'.format(r=r,v=v))
+            return r
+        return super().setData(index,value,role)
+    
+    
+    
     #converting run to float bad idea because eg float(100_6) = 1006.0.
     def data(self,index,role=Qt.EditRole):
         #SQlite has dynamic types.
@@ -90,7 +103,7 @@ class runsModel(QSqlTableModel):
                 return bool(super().data(index,role))    
             
             if  role == Qt.CheckStateRole:
-                if bool(self.data(index,Qt.EditRole)):
+                if super().data(index,Qt.EditRole) ==1:
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
@@ -148,10 +161,6 @@ class runsModel(QSqlTableModel):
             return self.parent().runField()
     
     
-    def markInDetails(self):
-        self.database().exec('update details set load = runs.load and start_id<=image_id and image_id<=end_id from runs where runs.run=details.run')
-    
-
     def idFromFeatures(self,index):
         layer = self.framesLayer()
         field = self.idField()
