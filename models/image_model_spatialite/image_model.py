@@ -57,7 +57,7 @@ def save(self,f)
 '''
 
 class imageModel(QSqlTableModel):
-    rowsChanged = pyqtSignal()#changes made to database
+  #  rowsChanged = pyqtSignal()#changes made to database
 
 
 #can't do default for database because
@@ -192,6 +192,15 @@ class imageModel(QSqlTableModel):
             r.append(d)
         return r        
         
+
+
+
+    def rowDetails(self,row):
+        return image_details.imageDetails(filePath = self.index(row,self.fieldIndex('file_path')).data(),
+                  run = self.index(row,self.fieldIndex('run')).data(),
+                  imageId = self.index(row,self.fieldIndex('image_id')).data(),
+                  name = self.index(row,self.fieldIndex('name')).data(),
+                  groups = json.loads(self.index(row,self.fieldIndex('name')).data()))
 
   
     def drop(self,pks):

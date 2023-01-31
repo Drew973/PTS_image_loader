@@ -37,7 +37,7 @@ class imageDetails:
             
         #list
         if groups is None:
-            groups = generate_details.generateGroups2(self.run,generate_details.generateType(filePath))
+            groups = generate_details.generateGroups2(self.run,generate_details.generateType(filePath))#str
             
         if isinstance(groups,str):
             groups = json.loads(groups)
@@ -71,6 +71,9 @@ class imageDetails:
 
         if key == 'groups':
             return self.groups
+        
+        if key == 'groupsString':
+            return json.dumps(self.groups)       
         
         if key =='boundingBox':
             return self.boundingBox
@@ -107,6 +110,8 @@ class imageDetails:
         node.setItemVisibilityChecked(show)
         node.setExpanded(expand)
         return layer
+
+
 
 def getFiles(folder,exts=None):
     for root, dirs, files in os.walk(folder, topdown=False):

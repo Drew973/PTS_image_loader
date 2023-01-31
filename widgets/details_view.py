@@ -6,7 +6,7 @@ Created on Wed Jun  8 10:32:34 2022
 """
 
 from PyQt5.QtWidgets import QTableView
-from image_loader.delegates import checkbox
+#from image_loader.delegates import checkbox
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtWidgets import QMenu
 from PyQt5.QtCore import QItemSelectionModel
@@ -58,14 +58,12 @@ class detailsView(QTableView):
             self.detailsModel().setData(i,True)
 
 
-    def selectedPks(self):
-        return [i.data() for i in self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))]
-       
-
+  
     def dropSelected(self):
-        self.detailsModel().drop(self.selectedPks())
-        self.detailsModel().select()
-        
+        rows = [i.row() for i in self.selectionModel().selectedRows(self.detailsModel().fieldIndex('run'))]
+        self.detailsModel().dropRows(rows)
+    
+
 
     def selectFromLayer(self):
         m = self.detailsModel()
@@ -100,11 +98,13 @@ class detailsView(QTableView):
         #if delegates are not class attributes crashes on model.select(). garbage collection?
       #  self.setItemDelegateForColumn(self.detailsModel().fieldIndex('load'),self.checkBoxDelegate)
         
-        for c in ['pk','geom','run']:
-            self.setColumnHidden(self.detailsModel().fieldIndex(c),True)
-
-        self.resizeColumnsToContents()
+        if model is not None:
         
+         #   for c in ['pk','geom','run']:
+        #        self.setColumnHidden(self.detailsModel().fieldIndex(c),True)
+    
+            self.resizeColumnsToContents()
+            
         
     def contextMenuEvent(self, event):
         self.menu.exec_(self.mapToGlobal(event.pos()))
