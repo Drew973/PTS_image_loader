@@ -26,17 +26,8 @@ import os
 
 from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
-
-#from .models.image_model_spatialite.image_model import imageModel
-
-
-
-from .models import details_model
-
-#from .models.runs_model import runsModel
-#from .models import setup_database
-from .models.natural_sort import naturalSortFilterProxyModel
-from .models import runs
+from qgis.utils import iface
+from qgis.core import Qgis
 
 
 from .functions.load_frame_data import loadFrameData
@@ -45,7 +36,8 @@ from .widgets import set_layers_dialog
 
 from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
 from PyQt5 import QtGui
-from PyQt5.QtSql import QSqlDatabase
+
+from image_loader.details_tree_model import detailsTreeModel
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -58,90 +50,23 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def __init__(self, parent=None):        
         super(imageLoaderDockWidget, self).__init__(parent)
-        self.fileName = ''
         self.setupUi(self)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.loadButton.clicked.connect(self.loadDetails)
-        self.markButton.clicked.connect(self.runsLoad)
         self.initTopMenu()
-
-    
-        #model not set here
-   #     if hasattr(self.im(),'runsChanged'):
-         #   self.im().runsChanged.disconnect()
-
-        self.fileDetailsView.setModel(details_model.detailsModel())
+        print(type(self.detailsView))
+        self.detailsView.setModel(detailsTreeModel())
         
-        m = runs.runsModel()
-        
-        
-        self.im().runsChanged.connect(self.updateRuns)#connect to self.updateRuns rather than directly to runModel.update. model might be deleted.
-
-        proxy = naturalSortFilterProxyModel(self)
-        proxy.setSourceModel(m)
-        
-        self.runsView.setModel(proxy)
-
-        self.runsBox.setModel(m)
-        self.runsBox.insertItem(0,'')
-    
+      
        # self.im().runsModel = m
-        self.im().setLayers(self.layersDialog)
+     #   self.im().setLayers(self.layersDialog)
 
         self.setFile()
-        self.runsBox.currentTextChanged.connect(self.setRun)
-        self.setRun(self.runsBox.currentText())
-
-
-    def updateRuns(self,runs):
-        #print('updateRuns',runs)
-        if self.rm() is not None and self.im() is not None:
-            self.rm().update(runs=runs,imageModel=self.im())
-        
-
-
-    def imageFromRuns(self):
-        im = self.im()
-        rm = self.rm()
-        
-        
-        rmLoadCol = rm.fieldIndex('load')
-        runCol = rm.fieldIndex('run')
-        sCol = rm.fieldIndex('start_id')
-        eCol = rm.fieldIndex('end_id')
-
-        imRunCol = im.fieldIndex('run')
-        imIdCol = im.fieldIndex('image_id')
-        loadCol = im.fieldIndex('load')
-
-        if rm is not None and im is not None:
-            for r in range(rm.rowCount()):
-                run = rm.index(r,runCol).data()
-                s = rm.index(r,sCol).data()
-                e = rm.index(r,eCol).data()
-                load = rm.index(r,rmLoadCol).data()
-                
-          #      print(run,s,e,load)
-                if load:
-                    for i in range(im.rowCount()):
-                        imageId = im.index(i,imIdCol).data() 
-                        if im.index(i,imRunCol).data() == run and s<=imageId and imageId<=e:
-                            im.setData(im.index(i,loadCol),True)
-                    
 
 
     def im(self):
-        return self.fileDetailsView.model()
+        return self.detailsView.model()
 
-
-    def rm(self):
-        return self.runsView.runsModel()
-
-
-    def setRun(self,run):
-        if self.im() is not None:
-            #self.im().setRun(run)
-            pass
 
 
     #QFileDialog should return existing file or None.
@@ -152,7 +77,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
       #  if self.im() is not None:
-        self.im().clear()
+        if self.im() is not None:
+            self.im().clear()
     
       #      self.setWindowTitle('{file} - Image Loader'.format(file=file))
       #      self.fileName = file
@@ -217,14 +143,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
 
-    #load iterable of details and maybe display cancellable progress bar.
    #QgsTask is very buggy. QProgressDialog much simpler.
     def loadDetails(self):        
         im = self.im()
         if im is not None:
             progress = QProgressDialog("Loading images...","Cancel", 0, 0,self)
+           # progress.setMinimumDuration(0)
             progress.setWindowModality(Qt.WindowModal)
-            im.loadDetails(progress = progress)
+            im.loadImages(progress = progress)
             progress.deleteLater()
 
 
@@ -257,24 +183,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt)')[0]
         if f:
             self.im().save(f)
+            iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
 
-
-
-#load rasters for selected runs in runsModel
-    def runsLoad(self):
-        if self.im() is not None and self.rm() is not None:
-            self.imageFromRuns()
-            self.loadDetails()
 
 
     #load all tif files in folder and consider showing progress bar
     def detailsFromFolder(self):
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
         if f:
-            progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
-            progress.setWindowModality(Qt.WindowModal)
-            self.im().addFolder(f,progress=progress)
-            progress.deleteLater()
+           # progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
+         #   progress.setWindowModality(Qt.WindowModal)
+            self.im().addFolder(f)
+           # progress.deleteLater()
            
             
     #find extents for list of details. allows cancelling with progressDialog       
@@ -295,5 +215,4 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
-        QSqlDatabase.database('image_loader').close()
         event.accept()

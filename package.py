@@ -16,7 +16,7 @@ def package(folder,zipPath=None,excludeExt=['.pyc','.zip','.gitignore'],excludeD
         for folderName, subfolders, filenames in os.walk(folder):
             for filename in filenames:
                 toZip = os.path.join(folderName,filename)
-                if checkExt(toZip,excludeExt) and checkDir(toZip,excludeDir):
+                if checkExt(toZip,excludeExt) and checkDir(toZip,excludeDir) and not 'test' in toZip:
                     arcPath = os.path.join(os.path.basename(folder),os.path.relpath(toZip,folder))
                     z.write(toZip,arcPath)
                     #2nd arg archname is path within archive

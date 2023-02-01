@@ -34,3 +34,15 @@ def classFactory(iface):  # pylint: disable=invalid-name
     #
     from .image_loader import imageLoader
     return imageLoader(iface)
+
+
+#import sys
+#import os
+#f = os.path.dirname(__file__)
+
+#if not f in sys.path:
+ #   sys.path.append(f)
+
+#print(sys.path)
+
+

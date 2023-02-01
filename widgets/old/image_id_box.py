@@ -22,26 +22,10 @@ class imageIdBox(QSpinBox):
     
     def setIndex(self,index):
         self._index = index
-       
-        v = index.model().minValue(index)
-        if isinstance(v,int):
-            self.setMinimum(v)
-        
-        v = index.model().maxValue(index)
-        if isinstance(v,int):
-            self.setMaximum(v)
-            
+        self.setRange(index.model().valueRange(index))
         self.setValue(int(index.data()))
 
 
-    def setFromFeatures(self):
-        if self.index() is not None:
-            self.index().model().setFromFeatures(self.index())
-            i = self.index().model().idFromFeatures(self.index())
-            if isinstance(i,int):
-                self.setValue(i)
-            
-    
     def setToMax(self):
         self.setValue(self.maximum())
         
@@ -56,6 +40,6 @@ class imageIdBox(QSpinBox):
         toMaxAct.triggered.connect(self.setToMax)
         toMinAct = menu.addAction('Set to minimum')
         toMinAct.triggered.connect(self.setToMin)
-        fromFeaturesAct = menu.addAction('From selected features')
-        fromFeaturesAct.triggered.connect(self.setFromFeatures)
+        #fromFeaturesAct = menu.addAction('From selected features')
+     #   fromFeaturesAct.triggered.connect(self.setFromFeatures)
         menu.exec_(event.globalPos())

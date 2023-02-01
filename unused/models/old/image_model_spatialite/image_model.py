@@ -147,16 +147,16 @@ class imageModel(QSqlTableModel):
        
     
     
-    def flags(self,index):
-        if index.column()==self.fieldIndex('load'):
+  #  def flags(self,index):
+    #    if index.column()==self.fieldIndex('load'):
           #  return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
-            return super().flags(index) | Qt.ItemIsUserCheckable# | Qt.ItemIsEditable
+    #        return super().flags(index) | Qt.ItemIsUserCheckable# | Qt.ItemIsEditable
         
         #prevent editing run column.
-        if index.column()==self.fieldIndex('name'):
-            return super().flags(index) | Qt.ItemIsEditable
+    #    if index.column()==self.fieldIndex('name'):
+     #       return super().flags(index) | Qt.ItemIsEditable
         
-        return super().flags(index) & ~Qt.ItemIsEditable
+      #  return super().flags(index) & ~Qt.ItemIsEditable
 
 
 

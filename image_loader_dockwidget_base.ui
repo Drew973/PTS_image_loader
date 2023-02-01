@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>851</width>
-    <height>688</height>
+    <width>520</width>
+    <height>374</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,92 +19,17 @@
      <widget class="QWidget" name="mainWidget" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QToolBox" name="toolBox">
-         <property name="currentIndex">
-          <number>0</number>
+        <widget class="QPushButton" name="loadButton">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load all images where load is checked. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
-         <widget class="QWidget" name="page">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>807</width>
-            <height>556</height>
-           </rect>
-          </property>
-          <attribute name="label">
-           <string>Runs</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <item>
-            <widget class="QPushButton" name="markButton">
-             <property name="text">
-              <string>Mark in Details and Load</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="runsView" name="runsView">
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Runs table. For selecting which images to load.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="selectionMode">
-              <enum>QAbstractItemView::ExtendedSelection</enum>
-             </property>
-             <property name="selectionBehavior">
-              <enum>QAbstractItemView::SelectRows</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="page_2">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>807</width>
-            <height>556</height>
-           </rect>
-          </property>
-          <attribute name="label">
-           <string>Image Details</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_4">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout">
-             <item>
-              <widget class="QPushButton" name="loadButton">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load all images where load is checked. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-               <property name="text">
-                <string>Load Images</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="runsBox">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displaying details for this run.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="detailsView" name="fileDetailsView">
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Image details table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="selectionBehavior">
-              <enum>QAbstractItemView::SelectRows</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
+         <property name="text">
+          <string>Load Images</string>
+         </property>
         </widget>
+       </item>
+       <item>
+        <widget class="detailsTreeView" name="detailsView"/>
        </item>
       </layout>
      </widget>
@@ -114,14 +39,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>runsView</class>
-   <extends>QTableView</extends>
-   <header>image_loader.widgets.runs_view</header>
-  </customwidget>
-  <customwidget>
-   <class>detailsView</class>
-   <extends>QTableView</extends>
-   <header>image_loader.widgets.details_view</header>
+   <class>detailsTreeView</class>
+   <extends>QTreeView</extends>
+   <header>image_loader.details_tree_view</header>
   </customwidget>
  </customwidgets>
  <resources/>
