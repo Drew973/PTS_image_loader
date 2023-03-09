@@ -147,12 +147,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def loadDetails(self):        
         im = self.im()
         if im is not None:
-            progress = QProgressDialog("Loading images...","Cancel", 0, 0,self)
+            progress = QProgressDialog("Loading images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
            # progress.setMinimumDuration(0)
             progress.setWindowModality(Qt.WindowModal)
             im.loadImages(progress = progress)
-            progress.deleteLater()
-
+            progress.setValue(progress.maximum())#double check progress reaches 100%
+            progress.close()#close immediatly otherwise haunted by ghostly progressbar
+            del progress
 
 
     def loadFrames(self):

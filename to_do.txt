@@ -1,69 +1,11 @@
 
 
-finish runsModel
-
-
-
-
-frames containing bounds of raster images are contained in file with name like '%Spatial Frame Data%' in name
-want automated way to load these and apply formatting.
-
-want to make table of 
-	RunID
-	FromFrame: first frame of run. spinbox with option to select from layer with frames
-	toFrame: last frame of run. . spinbox with option to select from layer with frames
-	run start
-	run end
-	
-add 
-	run start
-	run end 
-	columns to runs table
-	
-add file name to display as tool is partly for editing raster image load files
-
-
-want to create new raster image load files from this or edit existing.
-something to scroll through frames in order would be useful
-
-
-select from frame Layer.
-    add dialog to set layer and anything else required.
-    add 'load selected frames' button
-    
+finish runsModel    
     
 each image has frame.
 Can get these from txt file or directly from geotif 
 getting this from geotif more direct and foolproof but slower
 
-
-store in spatialite:
-        
-
-single table simpler. details: info_to_load,load bool, frame geometry(polygon)
-some ui to filter.
-
-
 questions:
 rotating images through gdalwarp using time and disk space, benifits?
-display multiple runs vs display 1?
 
-
-actions:
-    select from layer: sets load = true where matches selected features of layer. image_details menu
-    select none: set load=false for all images.    
-    select action. context menu of view.
-
-
-
-show 1 run at time.
-    load: loads all images where load=True. button.
-    select images between ids: sets load = true where run = run and start<image_id<=end. image_details menu
-    
-vs    
-    show selected runs:
-   load: loads all images where load=True. button.
-   select images between ids: sets load = true where run in runs and start<image_id<=end. image_details menu   
-   select action. context menu of view.
-   
-    

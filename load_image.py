@@ -9,7 +9,15 @@ Created on Wed Feb  1 13:31:30 2023
 from qgis.core import QgsProject
 from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem,QgsLayerTreeGroup
 
+#from qgis.utils import iface
 
+#for profiling purposes
+def makeLayer(filepath,name,crs):
+    layer = QgsRasterLayer(filepath, name)
+   # layer = iface.addRasterLayer(filepath,name)#much slower
+
+    layer.setCrs(crs)
+    return layer
 
 
     #load layer. expand expands group. show renders image.
@@ -17,17 +25,19 @@ from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem,QgsLayerTreeGr
     #groups []
 def loadImage(filepath,name,groups,expand=False,show=True,crs=QgsCoordinateReferenceSystem('EPSG:27700')):
    
-   
-    layer = QgsRasterLayer(filepath, name)
-    layer.setCrs(crs)
+    layer = makeLayer(filepath,name,crs)
+    #layer = QgsRasterLayer(filepath, name)
+    #layer.setCrs(crs)
         
     group = getGroup(groups)
     group.addLayer(layer)
-                
+    group.setExpanded(expand)
+    
+ #   print(group)#QgsLayerTreeGroup
     QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
             
     node = group.findLayer(layer)
-    node.setItemVisibilityChecked(show)
+  #  node.setItemVisibilityChecked(show)
     node.setExpanded(expand)
     return layer
 
