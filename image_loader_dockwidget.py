@@ -37,7 +37,10 @@ from .widgets import set_layers_dialog
 from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
 from PyQt5 import QtGui
 
-from image_loader.details_tree_model import detailsTreeModel
+from PyQt5.QtCore import QModelIndex
+
+
+from image_loader import details_tree_model
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -54,37 +57,52 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.loadButton.clicked.connect(self.loadDetails)
         self.initTopMenu()
-        print(type(self.detailsView))
-        self.detailsView.setModel(detailsTreeModel())
-        
       
-       # self.im().runsModel = m
-     #   self.im().setLayers(self.layersDialog)
+        
+        self.model = details_tree_model.detailsTreeModel()
+        self.runsView.setModel(self.model)
+        
+     #   self.runsView.setModel(self.model)
+      #  self.runsView.setColumnHidden(col,True)
+
+     #   self.runsView.selectionModel().selectionChanged.connect(self.runChange)
+     #   self.imagesView.setRootIndex(QModelIndex())
+
+    #    self.detailsView.setModel(detailsTreeModel())
 
         self.setFile()
 
 
-    def im(self):
-        return self.detailsView.model()
-
-
-
+    '''
+#QItemSelection selected
+    def runChange(self,selected,deselected):
+        row = -1
+        runCol = details_tree_model.cols.run
+       
+        for i in selected.indexes():
+          
+            if i.column()==runCol:               
+               if i.row()>row:
+                   row = i.row()
+        
+        index = self.model.index(row,runCol)
+        if index.isValid():
+            self.imagesView.setModel(self.model)
+            self.imagesView.setRootIndex(index)
+            self.imagesView.setColumnHidden(details_tree_model.cols.run,True)
+        else:
+            self.imagesView.setModel(None)
+    '''
+    
+    
+    
     #QFileDialog should return existing file or None.
     #handle actual opening
     #set file to '' for new.
     def setFile(self,file='untitled'):
-        
-
-        
-      #  if self.im() is not None:
-        if self.im() is not None:
-            self.im().clear()
-    
-      #      self.setWindowTitle('{file} - Image Loader'.format(file=file))
-      #      self.fileName = file
-    
+        self.model.clear()
         if file!='untitled':
-            self.im().loadFile(file)
+            self.model.loadFile(file)
 
 
     def initTopMenu(self):

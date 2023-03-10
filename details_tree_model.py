@@ -27,28 +27,39 @@ from qgis.utils import iface
 
 from image_loader import generate_details
 from image_loader import load_image
+from image_loader import image
 
 
 import os
 import csv
 import json
 
+from enum import IntEnum
 
-cols = {'run':0,
-        'image_id':1,
-        'load':2,
-        'name':3,
-        'file_path':4,
-        'groups':5
-        }
+
+
+class cols(IntEnum):
+    run = 0
+    chainageCorrection = 1
+    offsetCorrection = 2
+    
+    load = 3
+    imageId = 4
+    name = 5
+    file = 6
+    georeferenced = 7
+    groups = 8
+
 
 
 header = ['run',
-          'chainage correction\nimage_id',
-          'selected',
+          'chainage\ncorrection',
+          'offset\ncorrection',
+          'select',
+          'image_id',
           'name',
           'file',
-          'georeferenced file',
+          'georeferenced\nfile',
           'groups']
 
 
@@ -57,29 +68,52 @@ endRole = Qt.UserRole+3
 
 
 
+class run:
+    def __init__(self,name='',images = [],chainageCorrection=0,offsetCorrection = 0):
+        self.name = name
+        self.images = images
+        self.chainageCorrection = chainageCorrection
+        self.offsetCorrection = offsetCorrection
+        
+        
+        
+
 class detailsTreeModel(QStandardItemModel):
     
     
     def __init__(self,parent=None):
         super().__init__(0,1,parent=parent)
-        #self.setHorizontalHeaderLabels(['run','name','image id','load','file path','groups'])
-        self.setHorizontalHeaderLabels([k for k in cols])
-      #  self.detailCount = 0
-
+     #   self.setHorizontalHeaderLabels(['run'])
+        self.clear()
+     
 
     def clear(self):
-        super().clear()
-        self.setHorizontalHeaderLabels([k for k in cols])
+        self.setHorizontalHeaderLabels(header)
+        #for r in range(self.rowCount()):
+         #   self.takeRow(r)
         
+        
+        
+        
+    def isRun(self,index):
+        if index.parent().isValid():
+            return False
+        return True
+    
 
     def data(self,index,role):
         #yellow if any rows with load==True in run
-        if role == Qt.BackgroundColorRole:
-            for row in range(self.rowCount(index)):
-                if self.index(row,cols['load'],index).data():
-                    return QColor('yellow')
-            return QColor('white')    
-            #QColor
+       # if role == Qt.BackgroundColorRole and self.isRun(index):
+         #   for row in range(self.rowCount(index)):
+       #         if self.index(row,cols.load,index).data():
+         #           return QColor('yellow')
+         #   return QColor('white')    
+        
+        
+       # if not index.parent().isValid():#run
+        #    if role == Qt.DisplayRole:
+       #         if index.column() == 0:
+        #            return 'run:'+str(index.data(Qt.EditRole))
         
         return super().data(index,role)
 
@@ -107,20 +141,61 @@ class detailsTreeModel(QStandardItemModel):
         ids = sorted(self.ids(runIndex)+[imageId])
         pos = ids.index(imageId)
         
-        items = [toItem(''),toItem(imageId),toItem(load),toItem(name),toItem(filepath),toItem(groupsString)]
+        
+        items = [None]*len(cols)
+        items[cols.run] = toItem('')
+        items[cols.imageId] = toItem(imageId)
+        items[cols.load] = toItem(load)
+        items[cols.name] = toItem(name)
+        items[cols.file] = toItem(filepath)
+        items[cols.groups] = toItem(groupsString)
+        
         ri.insertRow(pos,items)#ordered by run id
         
      #   self.detailCount += 1
     
+    #images:image[] -> None
+    def addImages(self,images):
+        images = sorted(images) #sorted by run,id,file...
+        
+        runs = {} #{run:[image[]}
+        
+        for i in images:
+            if i.run in images:
+                runs[i.run].append(i)
+            else:
+                runs[i.run] = [i]
+                
+        
+        for run in runs:
+            ri = self.runItem(run)
+            if ri is None:
+                ri = self._addRun(run)
+            
+            runIndex = self.indexFromItem(ri)
+
+            ids  = self.ids(runIndex)
+            
+           # for i in runs[run]:
+            #    se
+            
+    #i:image
+    def addImage(self,i,runIndex,row):
+        
+        items = [None]*len(cols)
+        items[cols.run] = toItem('')
+        items[cols.imageId] = toItem(i.imageId)
+        items[cols.load] = toItem(False)
+        items[cols.name] = toItem(i.name)
+        items[cols.file] = toItem(i.filepath)
+        items[cols.groups] = toItem(i.groupsString)
+        
+       # ri.insertRow(pos,items)#ordered by run id
     
-  #  def addDetails(self,details):
-   #     for d in details:
-     #       self.addDetail(d['run'],d['imageId'],filePath=d['filePath'],groupsString=d['groupsString'])
-            
-            
-            
+    
+    
     def ids(self,runIndex):
-        idCol = cols['image_id']
+        idCol = cols.imageId
         return [self.index(r,idCol,runIndex).data() for r in range(self.rowCount(runIndex))]
       
         
@@ -146,7 +221,7 @@ class detailsTreeModel(QStandardItemModel):
         if ext in ['.csv','.txt']:
           #  self.addDetails([d for d in image_details.fromCsv(file)])
 
-            
+            images = []
             with open(file,'r',encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 reader.fieldnames = [name.lower().replace('_','') for name in reader.fieldnames]#lower case keys/fieldnames                 
@@ -170,6 +245,14 @@ class detailsTreeModel(QStandardItemModel):
                         imageId = None
                     
                     
+                   # images.append(image(filepath = filePath,
+                        #           run = find(d,'runid'),
+                    #               imageId = imageId,
+                       #            name = find(d,'name'),
+                      #             groupsString = find(d,'groups'),
+                      #             ))
+                    
+                    
                     self.addDetail(filepath = filePath,
                                    run = find(d,'runid'),
                                    imageId = imageId,
@@ -178,13 +261,14 @@ class detailsTreeModel(QStandardItemModel):
                                    load=load)
                     
 
+
     #count all images where load is True
     def loadCount(self):
         total = 0
         for r in range(self.rowCount()):
-            ri = self.index(r,cols['run'])
+            ri = self.index(r,cols.run)
             for r2 in range(self.rowCount(ri)):
-                if self.index(r2,cols['load'],ri).data() == True:
+                if self.index(r2,cols.load,ri).data() == True:
                     total+=1
         return total
 
@@ -212,37 +296,31 @@ class detailsTreeModel(QStandardItemModel):
        # imageLoaderGroup = QgsProject.instance().layerTreeRoot().addGroup('image_loader')
 
         for r in range(self.rowCount()):
-            ri = self.index(r,cols['run'])
-            
+            ri = self.index(r,cols.run)
           #  group = parent.addGroup(ri.data())
-            
             for r2 in range(self.rowCount(ri)):
-                progress.setValue(total)
-                
+               
                 if progress.wasCanceled():
                     return
                 
-                if self.index(r2,cols['load'],ri).data() == True:
+                if self.index(r2,cols.load,ri).data() == True:
                     #default groups to ['image_loader'] if not valid JSON
                     try:
-                        groups = json.loads(self.index(r2,cols['groups'],ri).data())
+                        groups = json.loads(self.index(r2,cols.groups,ri).data())
                     except:
                         groups = ['image_loader']
                     
-                    
-                    filePath = self.index(r2,cols['file_path'],ri).data()
+                    filePath = self.index(r2,cols.file,ri).data()
                     if os.path.exists(filePath):
                         load_image.loadImage(filepath = filePath,
-                                  name = self.index(r2,cols['name'],ri).data(),
+                                  name = self.index(r2,cols.name,ri).data(),
                                   groups = groups)
                         
                     else:
                         unfound.append(filePath)
-                        
                     total += 1
-                #    time.sleep(0.03)#############################################
-                    #print(total)
-                    progress.setValue(total)
+                    progress.setValue(total)######slow
+                    
         if unfound:
             iface.messageBar().pushMessage("image loader failed to find: "+'\n'.join(unfound), level=Qgis.Info)
 
@@ -266,7 +344,7 @@ class detailsTreeModel(QStandardItemModel):
            # q = runQuery('select file_path,run,image_id,name,groups,AsText(geom) from details',self.database())
 
             for r in range(self.rowCount()):
-                ri = self.index(r,cols['run'])
+                ri = self.index(r,cols.run)
                 
                 for row in range(self.rowCount(ri)):
                    
@@ -275,7 +353,7 @@ class detailsTreeModel(QStandardItemModel):
                     try:
                         p = os.path.relpath(p,file)
                     except:
-                        p = self.index(row,cols['file_path'],ri).data()
+                        p = self.index(row,cols.file,ri).data()
 
 
                     w.writerow([p,

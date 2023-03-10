@@ -6,8 +6,8 @@ Created on Wed Feb  1 08:07:39 2023
 """
 
 
-from details_tree_model import detailsTreeModel
-from details_tree_view import detailsTreeView
+from image_loader.details_tree_model import detailsTreeModel
+from image_loader.details_tree_view import detailsTreeView
 
 
 

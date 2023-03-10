@@ -66,6 +66,27 @@ class testDetailsModel(unittest.TestCase):
        # self.assertEqual(self.model.rowCount(),400)#should have 400 rows here.
     
     
+    
+    def testProfileRasterImageLoad(self):
+        
+        
+        profile = os.path.join(test.testFolder,'loadRIL.prof')
+       # file = os.path.join(test.testFolder,'inputs','MFV1_011 Raster Image Load File.txt')
+        file = os.path.join(test.testFolder,'inputs','cursed.txt')
+
+        pr = cProfile.Profile()
+        
+        #####
+        pr.enable()        
+        self.model.loadFile(file)
+        pr.disable()
+        ##########snakeviz loadRIL.prof
+
+        
+        pr.dump_stats(profile)#compatible with snakeviz
+        
+        
+    
     #profile how long loading images into QGIS takes
     def testProfileLoad(self):
         file = os.path.join(test.testFolder,'inputs','test2.csv')
@@ -89,6 +110,7 @@ class testDetailsModel(unittest.TestCase):
         
         
         pr.dump_stats(profile)#compatible with snakeviz
+        #snakeviz loadImages.prof
         
         with open(profile2, 'w') as to:
             stats = pstats.Stats(pr, stream=to)
