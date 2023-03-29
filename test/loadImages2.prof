@@ -1,63 +1,24 @@
-         350697 function calls in 2.335 seconds
+         1741 function calls in 0.004 seconds
 
    Ordered by: cumulative time
 
    ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.004    0.004    2.346    2.346 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:216(loadImages)
-      191    0.002    0.000    2.307    0.012 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\load_image.py:26(loadImage)
-      191    1.583    0.008    1.585    0.008 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\load_image.py:15(makeLayer)
-      191    0.141    0.001    0.537    0.003 {built-in method addMapLayer}
-      955    0.001    0.000    0.396    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\lrs\ui\lrslayercombomanager.py:67(canvasLayersChanged)
-      955    0.038    0.000    0.394    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\lrs\ui\lrslayercombomanager.py:71(reload)
-     1910    0.230    0.000    0.230    0.000 {built-in method mapLayers}
-      191    0.153    0.001    0.153    0.001 {built-in method addLayer}
-   106005    0.052    0.000    0.101    0.000 {built-in method type}
-   106005    0.027    0.000    0.049    0.000 C:\OSGeo4W\apps\Python39\lib\enum.py:334(__call__)
-      191    0.001    0.000    0.023    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\load_image.py:69(getGroup)
-      573    0.002    0.000    0.022    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\load_image.py:58(findOrMake)
-   106005    0.021    0.000    0.021    0.000 C:\OSGeo4W\apps\Python39\lib\enum.py:646(__new__)
-      574    0.018    0.000    0.018    0.000 {built-in method children}
-      955    0.009    0.000    0.016    0.000 {built-in method data}
-      191    0.000    0.000    0.012    0.000 C:\OSGeo4W\apps\Python39\lib\genericpath.py:16(exists)
-      191    0.012    0.000    0.012    0.000 {built-in method nt.stat}
-      955    0.001    0.000    0.008    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:84(data)
-      955    0.007    0.000    0.007    0.000 {function detailsTreeModel.data at 0x0000023FFF589CA0}
-      955    0.006    0.000    0.006    0.000 {built-in method match}
-      191    0.004    0.000    0.004    0.000 {built-in method findLayer}
-        1    0.000    0.000    0.004    0.004 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:204(loadCount)
-      191    0.001    0.000    0.003    0.000 C:\OSGeo4W\apps\Python39\lib\json\__init__.py:299(loads)
-      382    0.002    0.000    0.002    0.000 {built-in method setExpanded}
-      191    0.001    0.000    0.002    0.000 C:\OSGeo4W\apps\Python39\lib\json\decoder.py:332(decode)
-      191    0.002    0.000    0.002    0.000 {built-in method setCrs}
-     1914    0.002    0.000    0.002    0.000 {built-in method index}
-     2292    0.001    0.000    0.001    0.000 {built-in method geometryType}
-     1910    0.001    0.000    0.001    0.000 {built-in method item}
-      955    0.001    0.000    0.001    0.000 {built-in method setText}
-     2293    0.001    0.000    0.001    0.000 {instance}
-      961    0.001    0.000    0.001    0.000 {built-in method rowCount}
-        6    0.001    0.000    0.001    0.000 {built-in method addGroup}
-      955    0.001    0.000    0.001    0.000 {built-in method sort}
-      191    0.001    0.000    0.001    0.000 C:\OSGeo4W\apps\Python39\lib\json\decoder.py:343(raw_decode)
-      192    0.001    0.000    0.001    0.000 {built-in method setValue}
-      382    0.001    0.000    0.001    0.000 {method 'match' of 're.Pattern' objects}
-      191    0.000    0.000    0.001    0.000 C:\OSGeo4W\apps\Python39\lib\enum.py:391(__getattr__)
-      955    0.001    0.000    0.001    0.000 {built-in method id}
-      955    0.001    0.000    0.001    0.000 {built-in method name}
-      191    0.001    0.000    0.001    0.000 C:\OSGeo4W\apps\Python39\lib\types.py:171(__get__)
-      192    0.000    0.000    0.000    0.000 {built-in method layerTreeRoot}
-     1337    0.000    0.000    0.000    0.000 {built-in method builtins.len}
-      955    0.000    0.000    0.000    0.000 {method 'values' of 'dict' objects}
-      191    0.000    0.000    0.000    0.000 C:\OSGeo4W\apps\Python39\lib\enum.py:22(_is_dunder)
-      955    0.000    0.000    0.000    0.000 {built-in method row}
-      955    0.000    0.000    0.000    0.000 {method 'keys' of 'dict' objects}
+        1    0.000    0.000    0.004    0.004 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:249(loadImages)
+      382    0.002    0.000    0.003    0.000 {built-in method data}
+        1    0.000    0.000    0.002    0.002 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:237(loadCount)
+      382    0.000    0.000    0.001    0.000 C:\Users/drew.bennett/AppData/Roaming/QGIS/QGIS3\profiles\default/python/plugins\image_loader\details_tree_model.py:96(data)
+      382    0.001    0.000    0.001    0.000 {function detailsTreeModel.data at 0x00000259482B51F0}
+      386    0.000    0.000    0.000    0.000 {built-in method index}
+        1    0.000    0.000    0.000    0.000 {built-in method children}
       191    0.000    0.000    0.000    0.000 {built-in method wasCanceled}
-      758    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
-      955    0.000    0.000    0.000    0.000 {built-in method column}
-      191    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
-      382    0.000    0.000    0.000    0.000 {method 'end' of 're.Match' objects}
-        1    0.000    0.000    0.000    0.000 {built-in method setWindowModality}
-        1    0.000    0.000    0.000    0.000 {built-in method setMaximum}
+        1    0.000    0.000    0.000    0.000 {built-in method setValue}
+        1    0.000    0.000    0.000    0.000 {instance}
+        6    0.000    0.000    0.000    0.000 {built-in method rowCount}
         1    0.000    0.000    0.000    0.000 {built-in method deleteLater}
+        1    0.000    0.000    0.000    0.000 {built-in method layerTreeRoot}
+        1    0.000    0.000    0.000    0.000 {built-in method setWindowModality}
+        1    0.000    0.000    0.000    0.000 {built-in method name}
+        1    0.000    0.000    0.000    0.000 {built-in method setMaximum}
         1    0.000    0.000    0.000    0.000 {built-in method maximum}
         1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
 

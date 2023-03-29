@@ -6,23 +6,13 @@ Created on Wed Feb  1 10:55:03 2023
 """
 
 
-
-
-
 import unittest
 import os
-
 from image_loader.details_tree_model import detailsTreeModel
-
-
 from image_loader import test
 
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QProgressDialog
-
-
-import cProfile, pstats
+import cProfile
 
 
 
@@ -43,7 +33,7 @@ class testDetailsModel(unittest.TestCase):
     def testAddFolder(self):
         m = self.model
         c = m.rowCount()
-        print(c)
+      #  print(c)
         folder = os.path.join(test.testFolder,'inputs','test_folder')
         m.addFolder(folder)
         #self.assertEquals(m.rowCount()-c,191)#191 tif files in folder
@@ -64,61 +54,34 @@ class testDetailsModel(unittest.TestCase):
         file = os.path.join(test.testFolder,'inputs','MFV2_01 Raster Image Load File.txt')
         self.model.loadFile(file)
        # self.assertEqual(self.model.rowCount(),400)#should have 400 rows here.
+        self.assertTrue(self.model.rowCount()>0)
     
+    
+    def testClear(self):
+        file = os.path.join(test.testFolder,'inputs','MFV2_01 Raster Image Load File.txt')
+        self.model.loadFile(file)
+        self.model.clear()
+        self.assertEqual(self.model.rowCount(),0)
+        
+    def testMarked(self):
+        self.model.marked()
     
     
     def testProfileRasterImageLoad(self):
-        
-        
         profile = os.path.join(test.testFolder,'loadRIL.prof')
        # file = os.path.join(test.testFolder,'inputs','MFV1_011 Raster Image Load File.txt')
         file = os.path.join(test.testFolder,'inputs','cursed.txt')
-
         pr = cProfile.Profile()
-        
         #####
         pr.enable()        
         self.model.loadFile(file)
         pr.disable()
         ##########snakeviz loadRIL.prof
-
-        
         pr.dump_stats(profile)#compatible with snakeviz
-        
-        
-    
-    #profile how long loading images into QGIS takes
-    def testProfileLoad(self):
-        file = os.path.join(test.testFolder,'inputs','test2.csv')
-        profile = os.path.join(test.testFolder,'loadImages.prof')
-        profile2 = os.path.join(test.testFolder,'loadImages2.prof')
-
-        
-        self.model.loadFile(file,load=True)
+   #     print('rowCount',self.model.rowCount())
+   #     print('index(0,0) rowCount',self.model.rowCount(self.model.index(0,0)))
 
 
-        pr = cProfile.Profile()
-        pr.enable()        
-        progress = QProgressDialog("Loading images...","Cancel", 0, 0)
-       # progress.setMinimumDuration(0)
-        progress.setWindowModality(Qt.WindowModal)
-        self.model.loadImages(progress = progress)
-        progress.setValue(progress.maximum())#double check progress reaches 100%
-        progress.deleteLater()
-        
-        pr.disable()
-        
-        
-        pr.dump_stats(profile)#compatible with snakeviz
-        #snakeviz loadImages.prof
-        
-        with open(profile2, 'w') as to:
-            stats = pstats.Stats(pr, stream=to)
-            stats.sort_stats('cumtime')
-            stats.print_stats()
-    
-    
-    
     
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testDetailsModel)

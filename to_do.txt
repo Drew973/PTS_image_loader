@@ -2,10 +2,125 @@
 
 finish runsModel    
     
-each image has frame.
-Can get these from txt file or directly from geotif 
-getting this from geotif more direct and foolproof but slower
+image .jpg has metadata...
+
 
 questions:
 rotating images through gdalwarp using time and disk space, benifits?
+QGIS slow/crashes with too many VRTs
 
+
+
+column headers not problem with 2 tables
+less wasted space as no empty cells
+
+
+runs table.
+	name
+	chainage_correction
+	offset_correction
+	start
+	end
+	max selected(read only)
+	min selected(read only)
+	
+	
+	actions:
+		mark between
+		mark start
+		mark end
+	
+	
+images table.
+	QFilterProxyModel?
+	actions:
+		mark,unmark,remove
+		
+		
+		
+		
+		
+		
+		
+		
+
+
+measure values in folder of xml files like
+
+	<SectionID>2</SectionID>
+	<DistanceBegin_m>10.000</DistanceBegin_m>
+	<DistanceEnd_m>14.995</DistanceEnd_m>
+	
+	
+section id unique within folder.
+
+
+
+gps points in csv.
+
+	eg D:\RAF Shawbury\Hawkeye Exported Data\MFV1_011-rutacd-1.csv
+
+	Section,Enabled,Chainage (km),Sub Chainage (km),MPD1,MPD2,MPD3,MPD4,MPD5,Speed (km/h),Latitude (deg),Longitude (deg),Altitude (m),GPS position is calculated,Events,Survey Day,Survey Time,Survey Name,Vehicle Name,Operator Name,Device Sync Flag
+	LEADIN,Y,0.104,0.100,1.859955,2.097464,1.889833,1.880252,1.873706,0.0,52.80147817,-2.66229304,125.1,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
+	LEADIN,Y,0.204,0.200,1.64288,2.086893,1.587502,1.831523,1.723411,37.6,52.80073172,-2.66149196,124.5,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
+	
+	
+	
+	
+parsed frame data:
+	Path to XML Files: D:\RAF Shawbury\Data\2023-01-21\MFV1_011\Run 13\LCMS Module 1\Results\XML Files\
+	Survey length (m): 8145
+	Number of sections: 1629
+	Section length (m): 5
+	Number of profile points: 4160
+	fileName,sectionID,startChainage,endChainage
+	2023-01-21 11h51m29s Video Module 2 MFV1_011 ACD 001.xml,50,250,255
+	2023-01-21 11h51m29s Video Module 2 MFV1_011 ACD 001.xml,51,255,260
+	
+	
+	
+folder structure:
+
+
+
+	root folder like  D:\RAF Shawbury\
+
+
+	D:\RAF Shawbury\Parsed Distress Data\
+
+
+
+
+
+
+
+
+
+
+	origonal jpg file:
+	under root/data
+	D:\RAF Shawbury\Data\2023-01-21\MFV1_011\Run 13\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 11h51m29s LCMS Module 1 000991.jpg
+
+
+	geotifs added to
+	root\TIF images\(name)\(type)
+	eg 	D:\RAF Shawbury\TIF Images\MFV1_011\ImageInt\MFV1_011_ImageInt_000991.tif
+
+
+
+
+
+	RIL file produced at
+	root\Spatial Data\Text Files\(name) Raster Image Load File.txt
+
+
+
+
+
+running multiple subprocess in paralell:
+
+from subprocess import Popen
+commands = ['command1', 'command2']
+procs = [ Popen(i) for i in commands ]
+for p in procs:
+   p.wait()

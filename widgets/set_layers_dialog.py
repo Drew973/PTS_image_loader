@@ -5,7 +5,8 @@ Created on Fri Aug 19 10:05:27 2022
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QDialog,QFormLayout
+from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit
+
 from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
 from qgis.gui import QgsMapLayerComboBox
 
@@ -25,11 +26,23 @@ class setLayersDialog(QDialog):
         self.idBox.setFilters(QgsFieldProxyModel.Int|QgsFieldProxyModel.String)
         self.layout().addRow('Field with id',self.idBox)
       
-        self.runBox = fieldBox(parent = self.layerWidget,default = 'run')
-        self.runBox.setFilters(QgsFieldProxyModel.String)
-        self.layout().addRow('Field with run',self.runBox)
+       # self.runBox = fieldBox(parent = self.layerWidget,default = 'run')
+        #self.runBox.setFilters(QgsFieldProxyModel.String)
+       # self.layout().addRow('Field with run',self.runBox)
         
         
+        self.gpsLayerBox = QgsMapLayerComboBox(self)
+        self.gpsLayerBox.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.layout().addRow('Layer with gps points',self.gpsLayerBox)
+        
+        self.mBox = fieldBox(parent = self.gpsLayerBox,default = 'Chainage (km)')
+        self.mBox.setFilters(QgsFieldProxyModel.Numeric)
+        self.layout().addRow('Field with m values',self.mBox)        
+        
+        self.folder = QLineEdit()
+        self.layout().addRow('Project folder',self.folder)
+
+
 
     def framesLayer(self):
         return self.layerWidget.currentLayer()
@@ -44,7 +57,9 @@ class setLayersDialog(QDialog):
 
     
     def fields(self):
-        return {'framesLayer':self.layerWidget.currentLayer(),'idField':self.idBox.currentField(),'runField':self.runBox.currentField()}
+        return {'framesLayer':self.layerWidget.currentLayer(),'idField':self.idBox.currentField(),
+                'folder':self.folder.text(),'gpsPoints':self.gpsLayerBox.currentLayer(),
+                'mField':self.mBox.currentField()}
 
 
     #dict like.

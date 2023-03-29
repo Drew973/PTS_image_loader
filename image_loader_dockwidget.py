@@ -37,11 +37,17 @@ from .widgets import set_layers_dialog
 from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
 from PyQt5 import QtGui
 
-from PyQt5.QtCore import QModelIndex
+#from PyQt5.QtCore import QModelIndex
+#from PyQt5.QtCore import QSortFilterProxyModel
+
+
+
+from image_loader import test########################
+import cProfile
 
 
 from image_loader import details_tree_model
-
+from image_loader import image
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -56,21 +62,39 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.setupUi(self)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.loadButton.clicked.connect(self.loadDetails)
+        self.remakeButton.clicked.connect(self.remake)
+
         self.initTopMenu()
       
         
         self.model = details_tree_model.detailsTreeModel()
+        self.model.fields = self.layersDialog
+        
+        
         self.runsView.setModel(self.model)
         
-     #   self.runsView.setModel(self.model)
-      #  self.runsView.setColumnHidden(col,True)
-
-     #   self.runsView.selectionModel().selectionChanged.connect(self.runChange)
-     #   self.imagesView.setRootIndex(QModelIndex())
-
-    #    self.detailsView.setModel(detailsTreeModel())
-
+        self.runBox.setModel(self.model)
+        self.runBox.currentIndexChanged.connect(self.runChange)
+ 
         self.setFile()
+
+        self.imagesView.setModel(self.model)
+        self.imagesView.hideCols()
+        self.runChange()
+
+        
+
+    def runChange(self):        
+        index = self.runBox.currentIndex()#int
+        i = self.model.index(index,self.runBox.modelColumn())
+       
+        #i = self.proxy.mapFromSource(i)
+        if i.isValid():
+            self.imagesView.setModel(i.model())
+            self.imagesView.setRootIndex(i)
+            self.imagesView.hideCols()
+        else:
+            self.imagesView.setModel(None)
 
 
     '''
@@ -103,6 +127,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model.clear()
         if file!='untitled':
             self.model.loadFile(file)
+        self.runChange()
 
 
     def initTopMenu(self):
@@ -161,17 +186,51 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
 
-   #QgsTask is very buggy. QProgressDialog much simpler.
-    def loadDetails(self):        
-        im = self.im()
-        if im is not None:
-            progress = QProgressDialog("Loading images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
-           # progress.setMinimumDuration(0)
+    #remake images where load==True
+    def remake(self):
+        
+        profile = os.path.join(test.testFolder,'remake.prof')
+        pr = cProfile.Profile()
+        #####
+        pr.enable()  
+        
+        
+        points = self.model.fields['gpsPoints']
+        field = self.model.fields['mField']
+        
+        
+        if points and field:
+            progress = QProgressDialog("remaking images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
             progress.setWindowModality(Qt.WindowModal)
-            im.loadImages(progress = progress)
-            progress.setValue(progress.maximum())#double check progress reaches 100%
+            images = [i for i in self.model.marked()]#image[]
+            image.remakeImages(images=images,layer = points,startField=field,progress = progress)
             progress.close()#close immediatly otherwise haunted by ghostly progressbar
             del progress
+
+        pr.disable()
+        ##########snakeviz remake.prof
+        pr.dump_stats(profile)#compatible with snakeviz
+        #almost all time spent in getFeatures. 20s for csv. 5s for geopackage with index.
+        #5s for gdal to remake 10 images.
+
+
+   #QgsTask is very buggy. QProgressDialog much simpler.
+    def loadDetails(self):
+        progress = QProgressDialog("Loading images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
+       # progress.setMinimumDuration(0)
+        progress.setWindowModality(Qt.WindowModal)
+                
+        images = [i for i in self.model.marked()]#image[]
+        progress.setMaximum(len(images))
+        
+        for i,im in enumerate(images):
+            if progress.wasCanceled():
+                return
+            im.load()
+            progress.setValue(i)
+        
+        progress.close()#close immediatly otherwise haunted by ghostly progressbar
+        del progress
 
 
     def loadFrames(self):
@@ -201,7 +260,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def saveAs(self):
         f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt)')[0]
         if f:
-            self.im().save(f)
+            self.model.save(f)
             iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
 
 
@@ -212,7 +271,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
            # progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
          #   progress.setWindowModality(Qt.WindowModal)
-            self.im().addFolder(f)
+            self.model.addFolder(f)
            # progress.deleteLater()
            
             

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>675</width>
-    <height>610</height>
+    <width>962</width>
+    <height>714</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QWidget" name="mainWidget" native="true">
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
@@ -31,7 +31,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton">
+          <widget class="QPushButton" name="remakeButton">
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remake georeferenced images using corrections for run.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
            </property>
@@ -43,7 +43,73 @@
         </layout>
        </item>
        <item>
-        <widget class="detailsTreeView" name="runsView"/>
+        <widget class="QToolBox" name="toolBox">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="page">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>918</width>
+            <height>545</height>
+           </rect>
+          </property>
+          <attribute name="label">
+           <string>Runs</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="runsView" name="runsView">
+             <property name="contextMenuPolicy">
+              <enum>Qt::DefaultContextMenu</enum>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="page_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>918</width>
+            <height>545</height>
+           </rect>
+          </property>
+          <attribute name="label">
+           <string>Images</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QComboBox" name="runBox"/>
+           </item>
+           <item>
+            <widget class="imagesView" name="imagesView">
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -53,9 +119,14 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>detailsTreeView</class>
-   <extends>QTreeView</extends>
-   <header>image_loader.details_tree_view</header>
+   <class>runsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.runs_view</header>
+  </customwidget>
+  <customwidget>
+   <class>imagesView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.images_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

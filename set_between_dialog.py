@@ -67,13 +67,11 @@ class setBetweenDialog(QDialog):
         self.startBox = imageIdBox()
         self.startBox.setToolTip('Start Id')
         self.layout().addWidget(self.startBox)
-        self.startBox.valueChanged.connect(self.startSet)
         
         self.endBox = imageIdBox()
         self.endBox.setToolTip('End Id')
 
         self.layout().addWidget(self.endBox)
-        self.endBox.valueChanged.connect(self.endSet)
         
         self.okButton = QPushButton('Ok')
         self.layout().addWidget(self.okButton)
@@ -111,16 +109,6 @@ class setBetweenDialog(QDialog):
             self.index.model().markBetween(self.index,self.startBox.value(),self.endBox.value())
         return super().accept()
     
-    
-    def startSet(self,value):
-        if self.index.isValid():
-            self.index.model().setData(self.index,value,details_tree_model.startRole)
-
-
-    def endSet(self,value):
-        if self.index.isValid():
-            self.index.model().setData(self.index,value,details_tree_model.endRole)
-
 
 if __name__ in ['__main__','__console__']:
     d = setBetweenDialog()
