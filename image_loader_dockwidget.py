@@ -200,7 +200,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         
         if points and field:
-            progress = QProgressDialog("remaking images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
+            progress = QProgressDialog("Calculating positions...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
+            progress.setMinimumDuration(0)
+            progress.setAutoClose(False)
+            
             progress.setWindowModality(Qt.WindowModal)
             images = [i for i in self.model.marked()]#image[]
             image.remakeImages(images=images,layer = points,startField=field,progress = progress)

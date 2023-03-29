@@ -23,16 +23,7 @@ import cProfile, pstats
 
 
 class testImage(unittest.TestCase):
-    
-    def setUp(self):
-        pass
 
-    
-    def testLoad(self):
-        f = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs\test_folder\MFV2_01\ImageInt\MFV2_01_ImageInt_000000.tif'
-        im = image.image(georeferenced = f)
-        
-      #  im.load()
 
 
     def testRemake(self):
@@ -47,6 +38,16 @@ class testImage(unittest.TestCase):
 
         im.remake(to = to)
 
+        im.load()
+    
+    def setUp(self):
+        pass
+
+    
+    def testLoad(self):
+        f = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs\test_folder\MFV2_01\ImageInt\MFV2_01_ImageInt_000000.tif'
+        im = image.image(georeferenced = f)
+        
         im.load()
         
     
@@ -69,9 +70,39 @@ class testImage(unittest.TestCase):
         self.assertEqual(len(images),2108)
 
 
+    
+
+class testImages(unittest.TestCase):
+    
+    def setUp(self):
+        folder = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs'
+        files = [f for f in os.listdir(folder) if os.path.splitext(f)[-1] == '.jpg']
+        outputFolder = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\outputs'
+        self.images = []
+        
+        for f in files:
+            file = os.path.join(folder,f)
+            georeferenced = os.path.normpath(os.path.join(outputFolder,os.path.splitext(os.path.basename(file))[0]+'.tif'))
+            im = image.image(file = file,georeferenced = georeferenced)
+            im.startPoint = QgsPointXY(355203.126,321922.095)
+            im.endPoint = QgsPointXY(355209.064,321919.791)
+            im.temp = os.path.normpath(os.path.join(outputFolder,os.path.splitext(os.path.basename(im.file))[0]+'.vrt'))
+            im.imageType = image.types.intensity
+            self.images.append(im)
+      
+
+    
+    def testRemake(self):
+        #print(self.images[0].temp)
+        #QProgressDialog()
+        image.remakeImages(self.images,progress = QProgressDialog())
+
+        for i in self.images:
+            i.load()
 
 if __name__ in ['__main__','__console__']:
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImage)
-    unittest.TextTestRunner().run(suite)
+    #suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImage)
+    #unittest.TextTestRunner().run(suite)
    
-  
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImages)
+    unittest.TextTestRunner().run(suite)

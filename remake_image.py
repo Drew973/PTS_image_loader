@@ -40,53 +40,31 @@ for p in procs:
 
 
 '''
-def remakeImage(origonal,to,GCPs,grayscale = True):
-    temp = os.path.join(os.path.dirname(to),'temp.vrt')
+
+
+
+
+
+
+
+def translateCommand(origonal,temp,GCPs,grayscale = True):
     translateCommand = 'gdal_translate -a_srs "EPSG:27700" {g} -r bilinear "{f}" "{to}"'.format(
     g = ' '.join([GCPCommand(p) for p in GCPs]),
     f = origonal,
     to=temp)
     if grayscale:
         translateCommand += ' -b 1 -colorinterp_1 gray'
-    #print(translateCommand)
-    subprocess.check_call(translateCommand,creationflags = subprocess.CREATE_NO_WINDOW)
-    warpCommand = 'gdalwarp -of COG -co NUM_THREADS=ALL_CPUS -co COMPRESS=JPEG -co QUALITY=75 -t_srs "EPSG:27700" -r bilinear -tps -dstalpha -overwrite "{s}" "{d}" '.format(
+    return translateCommand
+
+
+
+
+
+def warpCommand(temp,to):
+    return 'gdalwarp -of COG -co COMPRESS=JPEG -co QUALITY=75 -t_srs "EPSG:27700" -r bilinear -tps -dstalpha -overwrite "{s}" "{d}" '.format(
         s=temp,
         d=to
         )
-    try:
-        subprocess.check_call(warpCommand,creationflags = subprocess.CREATE_NO_WINDOW)
-        return to
-    except:
-        return ''
-    # if os.path.isfile(temp):
-    #     os.remove(temp)
-
-
-
-
-def remakeCommand(origonal,to,GCPs,grayscale = True):
-    
-    
-    temp = os.path.join(os.path.dirname(to),os.path.basename(to)+'.vrt')
-    translateCommand = 'gdal_translate -a_srs "EPSG:27700" {g} -r bilinear "{f}" "{to}"'.format(
-    g = ' '.join([GCPCommand(p) for p in GCPs]),
-    f = origonal,
-    to=temp)
-    if grayscale:
-        translateCommand += ' -b 1 -colorinterp_1 gray'
-    #print(translateCommand)
-   
-    warpCommand = 'gdalwarp -of COG -co NUM_THREADS=ALL_CPUS -co COMPRESS=JPEG -co QUALITY=75 -t_srs "EPSG:27700" -r bilinear -tps -dstalpha -overwrite "{s}" "{d}" '.format(
-        s=temp,
-        d=to
-        )
-    
-    return translateCommand + ' ; ' + warpCommand
-  
-    
-    
-    
     
 
 if __name__ in ('__console__'):

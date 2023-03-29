@@ -24,14 +24,20 @@ import csv
 import subprocess
 from image_loader.measure_to_point import measureToPoint
 
-from image_loader.remake_image import remakeImage
+from image_loader.remake_image import translateCommand,warpCommand
 
 
 WIDTH = 4.0
 PIXELS = 1038
 LINES = 1250
 #LENGTH = 5.0
+from enum import IntEnum
 
+class types(IntEnum):
+    intensity = 1
+    rg = 2
+    
+    
 
 class image:
     
@@ -39,7 +45,7 @@ class image:
     def __init__(self,imageId = None,file='',georeferenced='',run = ''):
         
         self.georeferenced = str(georeferenced)
-        self.file = file
+        self.file = str(file)
 
         #file to get details from
         f = ''
@@ -72,7 +78,7 @@ class image:
         self.startPoint = QgsPointXY()
         self.endPoint = QgsPointXY()
         
-        
+        self.temp = ''
         
 
       #image_loader,type,run
@@ -142,6 +148,15 @@ class image:
     
     
     
+    def translateCommand(self):
+        gcps = GCPs(startPoint = self.startPoint,endPoint = self.endPoint,offset = self.offset)
+        return translateCommand(origonal = self.file,temp=self.temp,GCPs=gcps,grayscale = self.imageType in [types.intensity,types.rg])
+
+            
+            
+    def warpCommand(self):
+        return warpCommand(self.temp,self.georeferenced)
+            
     
     #recalculate start/end point from layer and start/end m values.
     def recalcPoints(self,layer,field):
@@ -346,11 +361,7 @@ def getFiles(folder,exts=None):
                 yield os.path.join(root,f)
 
 
-from enum import IntEnum
 
-class types(IntEnum):
-    intensity = 1
-    rg = 2
 
 
 
@@ -397,22 +408,57 @@ def origonalFiles(images,root = None):
     
         
     
-    
+from subprocess import Popen,PIPE
+   
+
 #todo: run multiple commands in paralell
 #todo: calculate GCPS more efficiently. getFeatures() slow.
-def remakeImages(images,layer,startField,progress):
+def remakeImages(images,progress,layer=None,startField=None,endField=None):
     
     progress.setMaximum(len(images))
-    
+
     for i,im in enumerate(images):
-        
         if progress.wasCanceled():
             return  
-        im.recalcPoints(layer=layer,field=startField)
-        im.remake()
-        progress.setValue(i)
-
+        if layer and startField:
+            im.recalcPoints(layer=layer,field=startField)
+        
+     #   to = im.georeferenced
+        if not im.temp:
+            im.temp = os.path.join(os.path.dirname(im.georeferenced),os.path.basename(im.georeferenced)+'.vrt')
     
+    translateImages(images,progress)
+    warpImages(images,progress)
+        
+        
+
+def translateImages(images,progress):
+    progress.setLabelText('Translating images')
+    commands = [im.translateCommand() for im in images]
+    runCommands(commands,progress)
+
+
+def warpImages(images,progress):
+    progress.setLabelText('Warping images')
+    commands = [im.warpCommand() for im in images]
+    runCommands(commands,progress)
+    
+
+'''
+    run commands in paralell.
+    progress bar is rough guide.
+'''
+def runCommands(commands,progress):
+    progress.setMaximum(len(commands))
+    progress.reset()
+    processes = [Popen(c,stdout=PIPE, stderr=PIPE,creationflags = subprocess.CREATE_NO_WINDOW) for c in commands]
+    for i,p in enumerate(processes):
+        p.wait()
+        progress.setValue(i)
+        err = p.stderr.read()
+        if err:
+            print(commands[i],err)
+
 
 #digits at end of filename without extention
 # str -> int
