@@ -82,6 +82,9 @@ class testDetailsModel(unittest.TestCase):
    #     print('index(0,0) rowCount',self.model.rowCount(self.model.index(0,0)))
 
 
+    def test_getLine(self):
+        self.model.getLine()
+
     
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testDetailsModel)

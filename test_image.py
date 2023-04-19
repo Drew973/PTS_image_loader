@@ -17,7 +17,7 @@ from image_loader import test
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QProgressDialog
-from qgis.core import QgsPointXY
+from qgis.core import QgsPointXY,QgsProject
 
 import cProfile, pstats
 
@@ -84,10 +84,11 @@ class testImages(unittest.TestCase):
             file = os.path.join(folder,f)
             georeferenced = os.path.normpath(os.path.join(outputFolder,os.path.splitext(os.path.basename(file))[0]+'.tif'))
             im = image.image(file = file,georeferenced = georeferenced)
-            im.startPoint = QgsPointXY(355203.126,321922.095)
-            im.endPoint = QgsPointXY(355209.064,321919.791)
-            im.temp = os.path.normpath(os.path.join(outputFolder,os.path.splitext(os.path.basename(im.file))[0]+'.vrt'))
+       #     im.startPoint = QgsPointXY(355203.126,321922.095)
+          #  im.endPoint = QgsPointXY(355209.064,321919.791)
             im.imageType = image.types.intensity
+            im.startM = im.imageId * 5
+            im.endM = im.startM + 5
             self.images.append(im)
       
 
@@ -100,9 +101,23 @@ class testImages(unittest.TestCase):
         for i in self.images:
             i.load()
 
+
+    def testRecalc(self):
+        gps = QgsProject.instance().mapLayersByName('gps')
+        assert len(gps)>0
+        gps = gps[0]
+        sField = 'startM'
+        eField = 'endM'
+
+        image.remakeImages(images = self.images,progress = QProgressDialog(),layer = gps,startField=sField,endField = eField)
+
+        for i in self.images:
+            i.load()
+
+
 if __name__ in ['__main__','__console__']:
-    #suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImage)
-    #unittest.TextTestRunner().run(suite)
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImage)
+    unittest.TextTestRunner().run(suite)
    
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImages)
     unittest.TextTestRunner().run(suite)

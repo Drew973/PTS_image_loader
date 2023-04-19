@@ -5,109 +5,95 @@ Created on Wed Mar 22 15:37:31 2023
 @author: Drew.Bennett
 """
 
-from qgis.core import QgsFeatureRequest,QgsProject,QgsGeometry,QgsPointXY,QgsCoordinateReferenceSystem
-import math
+from qgis.core import QgsFeatureRequest,QgsProject,QgsPointXY,QgsCoordinateReferenceSystem
 
 
-#gets point from point layer and m value.
-#field = field with m values.
 
 
-#def measureToPoint(layer:QgsVectorLayer,field:str,m:float): -> QgsPointXY
-def measureToPoint(layer,field,m):
-      
-        context = QgsProject.instance().transformContext()
-        
-        s = None
-        exp = '"{f}" <= {m}'.format(f=field,m=m)
-        req = QgsFeatureRequest().setFilterExpression(exp).setLimit(1).addOrderBy('"{f}"'.format(f = field), ascending = False)
-        req = req.setDestinationCrs(QgsCoordinateReferenceSystem(27700),context)
-        sp = QgsPointXY()
-        for f in layer.getFeatures(req):
-            sp = f.geometry().asPoint()
-            s = f[field]
-        
-       
-        exp = '"{f}" >= {m}'.format(f=field,m=m)
-        req = QgsFeatureRequest().setFilterExpression(exp).setLimit(1).addOrderBy('"{f}"'.format(f = field), ascending = True)
-        req = req.setDestinationCrs(QgsCoordinateReferenceSystem(27700),context)
-
-        e = None
-        ep = QgsPointXY()
-        for f in layer.getFeatures(req):
-            ep = f.geometry().asPoint()
-            e = f[field]
-        
-        
-        #print('s',s,'e',e)
-        
-        if s is None and e is None:
-            return  QgsPointXY()
-        
-        if s and e is None:
-            return sp
-        
-        if e and s is None:
-            return ep
+def measureToPoint(layer,startField,endField,m):
     
-        if s==e:
-            return sp
-        else:
-            geom = QgsGeometry.fromPolylineXY([sp,ep])
-            f = (m-s)/(e-s)
-            p = geom.interpolate(f * geom.length())
-            if not p.isNull():
-                return p.asPoint()
-        
-        return QgsPointXY()
-        
+    context = QgsProject.instance().transformContext()
+
+    exp = '"{sField}" <= {v} and {v} <= "{eField}"'.format(sField = startField,eField=endField,v = m)
+  #  print(exp)
+    req = QgsFeatureRequest().setFilterExpression(exp)
+    req = req.setDestinationCrs(QgsCoordinateReferenceSystem(27700),context)
+ #   req.setLimit(1)
     
+    for f in layer.getFeatures(req):
+        try:
+            s = float(f[startField])
+            e = float(f[endField])
+            geom = f.geometry()
+            frac = (m-s)/abs(e-s)
+            #print('frac',frac)
+            p = geom.interpolate(frac*geom.length())
+            return p.asPoint()
+        except Exception as e:
+            print(e.__repr__())
     
+    return QgsPointXY()
     
     
     
 #def measureToPoint(layer:QgsVectorLayer,field:str,m:float[]): -> QgsPointXY[]
 def measuresToPoints(layer,startField,endField,measures):
       
-        context = QgsProject.instance().transformContext()
+    context = QgsProject.instance().transformContext()
+    points = [QgsPointXY()]*len(measures)
         
-        exp = '"{sField}"<= "{maximum}" and "{eField}" >= {minimum}'.format(sField = startField,eField=endField,maximum = max(measures),minimum = min(measures))
+    for i,m in enumerate(measures):
+        exp = '"{sField}" <= {v} and {v} <= "{eField}"'.format(sField = startField,eField=endField,v = m)
+      #  print(exp)
         req = QgsFeatureRequest().setFilterExpression(exp)
         req = req.setDestinationCrs(QgsCoordinateReferenceSystem(27700),context)
+        req.setLimit(1)
         
         for f in layer.getFeatures(req):
-            s = f[startField]
-            e = f[endField]
-            
-            #for m in measures:
-            #    pass
-     
-    
-    
+            try:
+                s = float(f[startField])
+                e = float(f[endField])
+                geom = f.geometry()
+                frac = (m-s)/abs(e-s)
+                #print('frac',frac)
+                p = geom.interpolate(frac*geom.length())
+                points[i] = p.asPoint()
+            except Exception as e:
+                print(e.__repr__())
+            break#*should* only have 1 feature as limit set.   
+    return points
     
     
 
-def testMeasureToPoint():
     
-    points = QgsProject.instance().mapLayersByName('points')
-    assert len(points)>0
-    points = points[0]
-        
-        
-    field = 'Chainage (km)'
+def testMeasuresToPoint():
     
-    r = measureToPoint(points,field,0.101)
+    gps = QgsProject.instance().mapLayersByName('gps')
+    assert len(gps)>0
+    gps = gps[0]
+        
+    sField = 'start_m'
+    eField = 'end_m'
+
+    r = measuresToPoints(gps,sField,eField,[1,2,3,4,5,6,7,8,9])
     print(r)
     
-    r = measureToPoint(points,field,5013.5)
-  #  print(r)
+    
+    
+def testMeasureToPoint():
+    
+    gps = QgsProject.instance().mapLayersByName('gps')
+    assert len(gps)>0
+    gps = gps[0]
+        
+    sField = 'start_m'
+    eField = 'end_m'
 
-
-    r = measureToPoint(points,field,0)
-   # print(r)
-
-    r = measureToPoint(points,field,100000)
-    #print(r)
+    r = measureToPoint(gps,sField,eField,9)
+    print(r)
+        
+    
     
 if __name__ in ('__console__'):
+  #  testMeasuresToPoint()
     testMeasureToPoint()

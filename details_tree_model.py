@@ -4,28 +4,28 @@ Created on Thu Jan 26 12:00:08 2023
 
 @author: Drew.Bennett
 
-
 tree model to store details and run info
-
-mark(rows)
-unmark(rows)
-load(rows)
-remake(rows)
-drop(rows)
-loadFile(file)
-marked()->image[]
 
 """
 
 from PyQt5.QtGui import QStandardItemModel,QColor
 from PyQt5.QtCore import Qt,QModelIndex
 from image_loader import image
+
+from image_loader.get_line import getLine
+from image_loader.locate_point import locatePoint
 from image_loader.run_item import runItem
+
+from qgis.utils import iface
+from qgis.core import Qgis
+
 import os
 import csv
 from enum import IntEnum
 
-from image_loader.measure_to_point import measureToPoint
+
+from PyQt5.QtWidgets import QProgressDialog
+#from image_loader.measure_to_point import measureToPoint
 
 
 class cols(IntEnum):
@@ -36,6 +36,8 @@ class cols(IntEnum):
     imageId = 4
     file = 5
     georeferenced = 6
+    startM = 7
+    endM = 8
 
 
 header = ['run',
@@ -63,9 +65,9 @@ class detailsTreeModel(QStandardItemModel):
         self.fields = {'folder':''}
 
 
-    def clear(self):
-        for r in reversed(range(0,self.rowCount())):
-            self.takeRow(r)
+  #  def clear(self):
+   #     for r in reversed(range(0,self.rowCount())):
+     #       self.takeRow(r)
         
         
     def isRun(self,index):
@@ -81,15 +83,59 @@ class detailsTreeModel(QStandardItemModel):
                 if self.index(row,cols.load,index).data():
                     return QColor('yellow')
             return QColor('white')            
-       # if not index.parent().isValid():#run
-        #    if role == Qt.DisplayRole:
-       #         if index.column() == 0:
-        #            return 'run:'+str(index.data(Qt.EditRole))
         return super().data(index,role)
 
     
+#(QgsPointXY,QGSPointXY,QModelIndex)->(float,float)
+
+#nearest feature within startM and endM
+
+    #QgsGeometry, linestringM
+    def _getLine(self,start,end):
+        gps = self.fields['gps']
+        startField = self.fields['startMField']
+        endField = self.fields['endMField']
+        if gps and startField and endField:
+            return getLine(gps,startField,endField,startM=start,endM=end)
+
+                
+        
+        
+
+    #add or set correction.
+   # QgsPointXY,QgsPointXY,QModelIndex
+    def addCorrection(self,startPoint,endPoint,index):
+        
+        
+        if self.isRun(index):
+            startM = self.index(0,cols.startM,index).data()
+            endM = self.index(self.rowCount(index)-1,cols.endM,index).data()#max m in run
+
+       # else:
+         #   startM = self.index(index.row(),cols.startM,index.parent()).data()
+          #  endM = self.index(index.row(),cols.endM,index.parent()).data()
+
+        print('startM',startM)
+        print('endM',endM)
+
+        line = self._getLine(startM,endM)
+        #print(line)
+        if line:
+            
+            startMeasure,startOffset = locatePoint(line=line,startM=startM,endM=endM,point=startPoint)
+            #def locatePoint(line,startM,endM,point):
+
+
+            endMeasure,endOffset = locatePoint(line=line,startM=startM,endM=endM,point=endPoint)
+            print('startMeas',startMeasure)
+
+
+            self.setData(self.index(index.row(),cols.chainageCorrection),endMeasure-startMeasure)
+            self.setData(self.index(index.row(),cols.offsetCorrection),endOffset-startOffset)
+
+
     #images:image[] -> None
-    def addImages(self,images):        
+    def _addImages(self,images):        
        # print(images[0:5])
         toAdd = {}
         for i in images:#ordered by run
@@ -129,7 +175,7 @@ class detailsTreeModel(QStandardItemModel):
         images = [i for i in image.fromCsv(file)]            
         if os.path.exists(self.fields['folder']):
             image.origonalFiles(images,root = self.fields['folder'])
-        self.addImages(images)
+        self._addImages(images)
 
 
     #image[] where load True
@@ -138,26 +184,13 @@ class detailsTreeModel(QStandardItemModel):
         for row in range(self.rowCount()):
             ri = self.item(row,cols.run)
             marked += ri.marked()
-        
-        if findPoints:
-            points = self.fields['gpsPoints']
-            field = self.fields['mField']       
-            
-            if points and field:
-                
-                for im in marked:                
-                    im.startPoint = measureToPoint(layer = points,field=field , m  = im.startM)
-                    im.endPoint = measureToPoint(layer = points,field=field , m  = im.endM)
-
-        
-        
         return marked
 
 
 
 
     def addFolder(self,folder):
-        self.addImages([image.image(file=file) for file in getFiles(folder,['.tif'])])
+        self._addImages([image.image(file=file) for file in getFiles(folder,['.tif'])])
         
 
     def save(self,file):
@@ -234,6 +267,27 @@ class detailsTreeModel(QStandardItemModel):
       #  return super().flags(index)
     
     
+    def remake(self):
+        
+        gps = self.fields['gps']
+        startField = self.fields['startMField']
+        endField = self.fields['endMField']
+        if gps and startField and endField:
+
+                
+            progress = QProgressDialog("Calculating positions...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
+            progress.setMinimumDuration(0)
+            progress.setAutoClose(False)
+            progress.setWindowModality(Qt.WindowModal)
+            images = [i for i in self.marked()]#image[]
+            image.remakeImages(images=images,layer = gps,startField=startField,endField = endField,progress = progress)
+            progress.close()#close immediatly otherwise haunted by ghostly progressbar
+            del progress
+        
+        else:
+            iface.messageBar().pushMessage("Image_loader", "'gps layer,startField and EndField required'", level=Qgis.Info)    
+        
+
         
         
     def indexIsRun(self,index):

@@ -34,7 +34,7 @@ from .functions.load_frame_data import loadFrameData
 from .functions.load_cracking import loadCracking
 from .widgets import set_layers_dialog
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QProgressDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QDataWidgetMapper,QProgressDialog
 from PyQt5 import QtGui
 
 #from PyQt5.QtCore import QModelIndex
@@ -42,12 +42,15 @@ from PyQt5 import QtGui
 
 
 
-from image_loader import test########################
-import cProfile
+#from image_loader import test########################
+#import cProfile
 
 
 from image_loader import details_tree_model
-from image_loader import image
+from image_loader.load_gps import loadGpsLines
+
+from image_loader.corrections_dialog import correctionsDialog
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -63,13 +66,22 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         self.loadButton.clicked.connect(self.loadDetails)
         self.remakeButton.clicked.connect(self.remake)
+        
+        
+        self.correctionsDialog = correctionsDialog()
+        self.correctionsButton.clicked.connect(self.correctionsDialog.show)#need non modal to click map
 
+        
         self.initTopMenu()
       
         
         self.model = details_tree_model.detailsTreeModel()
         self.model.fields = self.layersDialog
         
+        self.mapper = QDataWidgetMapper()
+        self.mapper.setModel(self.model)
+        self.mapper.addMapping(self.chainageCorrection, details_tree_model.cols.chainageCorrection)
+        self.mapper.addMapping(self.offset, details_tree_model.cols.offsetCorrection)   
         
         self.runsView.setModel(self.model)
         
@@ -82,11 +94,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.imagesView.hideCols()
         self.runChange()
 
-        
+
+
+
 
     def runChange(self):        
         index = self.runBox.currentIndex()#int
+        self.mapper.setCurrentIndex(index)
+        
         i = self.model.index(index,self.runBox.modelColumn())
+       
+        self.correctionsDialog.setIndex(i) 
        
         #i = self.proxy.mapFromSource(i)
         if i.isValid():
@@ -144,21 +162,25 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         saveAsAct.triggered.connect(self.saveAs)
         
         ######################load
-        detailsMenu = topMenu.addMenu("Image_details")
-        fromFolderAct = detailsMenu.addAction('Find from folder...')
+        toolsMenu = topMenu.addMenu("Tools")
+        fromFolderAct = toolsMenu.addAction('Find details from folder...')
         fromFolderAct.triggered.connect(self.detailsFromFolder)
 
-        layersMenu = topMenu.addMenu("Load layers")
-        loadFramesAct = layersMenu.addAction('Load Spatial Frame Data...')
+        #layersMenu = topMenu.addMenu("Load layers")
+        loadFramesAct = toolsMenu.addAction('Load Spatial Frame Data...')
         loadFramesAct.triggered.connect(self.loadFrames)
         
- 
+        loadGpsAct = toolsMenu.addAction('Load GPS data...')
+        loadGpsAct.triggered.connect(self.loadGps)
+        
+      #  chainageAct = toolsMenu.addAction('Find chainage difference...')
+       # chainageAct.triggered.connect(self.chainageDialog.exec_)
+        
         setupMenu = topMenu.addMenu("Setup")
         setLayers = setupMenu.addAction('Set layers and fields...')
         setLayers.triggered.connect(self.layersDialog.exec_)
         
- 
-        loadCracksAct = layersMenu.addAction('Load Cracking Data...')
+        loadCracksAct = toolsMenu.addAction('Load Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
         
         helpMenu = topMenu.addMenu('Help')
@@ -188,31 +210,20 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     #remake images where load==True
     def remake(self):
-        
-        profile = os.path.join(test.testFolder,'remake.prof')
-        pr = cProfile.Profile()
+        self.model.remake()
+     #   profile = os.path.join(test.testFolder,'remake.prof')
+     #   pr = cProfile.Profile()
         #####
-        pr.enable()  
+    #    pr.enable()  
         
-        
-        points = self.model.fields['gpsPoints']
-        field = self.model.fields['mField']
-        
-        
-        if points and field:
-            progress = QProgressDialog("Calculating positions...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
-            progress.setMinimumDuration(0)
-            progress.setAutoClose(False)
-            
-            progress.setWindowModality(Qt.WindowModal)
-            images = [i for i in self.model.marked()]#image[]
-            image.remakeImages(images=images,layer = points,startField=field,progress = progress)
-            progress.close()#close immediatly otherwise haunted by ghostly progressbar
-            del progress
+        #    pr.disable()
+      #      pr.dump_stats(profile)#compatible with snakeviz
+##########snakeviz remake.prof
 
-        pr.disable()
-        ##########snakeviz remake.prof
-        pr.dump_stats(profile)#compatible with snakeviz
+
+
+       
+        
         #almost all time spent in getFeatures. 20s for csv. 5s for geopackage with index.
         #5s for gdal to remake 10 images.
 
@@ -241,6 +252,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
             if f[0]:
                 loadFrameData(f[0])
+
+
+
+    def loadGps(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)')
+        if f:
+            if f[0]:
+                loadGpsLines(f[0])
 
 
 

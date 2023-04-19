@@ -18,13 +18,13 @@ class setLayersDialog(QDialog):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.setLayout(QFormLayout(self))
-        self.layerWidget = QgsMapLayerComboBox(self)
-        self.layerWidget.setFilters(QgsMapLayerProxyModel.PolygonLayer)
-        self.layout().addRow('Layer with frames',self.layerWidget)
+      #  self.layerWidget = QgsMapLayerComboBox(self)
+      #  self.layerWidget.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+      #  self.layout().addRow('Layer with frames',self.layerWidget)
         
-        self.idBox = fieldBox(parent = self.layerWidget,default = 'sectionID')
-        self.idBox.setFilters(QgsFieldProxyModel.Int|QgsFieldProxyModel.String)
-        self.layout().addRow('Field with id',self.idBox)
+      #  self.idBox = fieldBox(parent = self.layerWidget,default = 'sectionID')
+     #   self.idBox.setFilters(QgsFieldProxyModel.Int|QgsFieldProxyModel.String)
+      #  self.layout().addRow('Field with id',self.idBox)
       
        # self.runBox = fieldBox(parent = self.layerWidget,default = 'run')
         #self.runBox.setFilters(QgsFieldProxyModel.String)
@@ -32,16 +32,22 @@ class setLayersDialog(QDialog):
         
         
         self.gpsLayerBox = QgsMapLayerComboBox(self)
-        self.gpsLayerBox.setFilters(QgsMapLayerProxyModel.PointLayer)
-        self.layout().addRow('Layer with gps points',self.gpsLayerBox)
+        self.gpsLayerBox.setFilters(QgsMapLayerProxyModel.LineLayer)
+        self.layout().addRow('Layer with gps lines',self.gpsLayerBox)
         
-        self.mBox = fieldBox(parent = self.gpsLayerBox,default = 'Chainage (km)')
-        self.mBox.setFilters(QgsFieldProxyModel.Numeric)
-        self.layout().addRow('Field with m values',self.mBox)        
+        self.startMBox = fieldBox(parent = self.gpsLayerBox,default = 'startM')
+        self.startMBox.setFilters(QgsFieldProxyModel.Numeric)
+        self.layout().addRow('Field with start m values',self.startMBox)        
+        
+        self.endMBox = fieldBox(parent = self.gpsLayerBox,default = 'endM')
+        self.endMBox.setFilters(QgsFieldProxyModel.Numeric)
+        self.layout().addRow('Field with end m values',self.endMBox)      
+        
         
         self.folder = QLineEdit()
+        self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
-
+        
 
 
     def framesLayer(self):
@@ -57,9 +63,14 @@ class setLayersDialog(QDialog):
 
     
     def fields(self):
-        return {'framesLayer':self.layerWidget.currentLayer(),'idField':self.idBox.currentField(),
-                'folder':self.folder.text(),'gpsPoints':self.gpsLayerBox.currentLayer(),
-                'mField':self.mBox.currentField()}
+        return {
+               # 'framesLayer':self.layerWidget.currentLayer(),
+             #   'idField':self.idBox.currentField(),
+                'folder':self.folder.text(),
+                'gps':self.gpsLayerBox.currentLayer(),
+                'startMField':self.startMBox.currentField(),
+                'endMField':self.endMBox.currentField()
+                }
 
 
     #dict like.

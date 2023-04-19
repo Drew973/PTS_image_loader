@@ -28,8 +28,8 @@ class runsView(QTableView):
         unmarkRunAct = self.runsMenu.addAction('Unmark all in run')     
         unmarkRunAct.triggered.connect(self.unMarkRun)
         
-        self.copyAct = self.runsMenu.addAction('Copy')
-        self.copyAct.triggered.connect(self.copy)
+      #  self.copyAct = self.runsMenu.addAction('Copy')
+    #    self.copyAct.triggered.connect(self.copy)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
 
 

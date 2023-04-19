@@ -24,6 +24,8 @@ class imageCols(IntEnum):
     imageId = 4
     file = 5
     georeferenced = 6
+    startM = 7
+    endM = 8
 
 
 
@@ -54,7 +56,9 @@ class runItem(QStandardItem):
         run = self.data(Qt.EditRole),
         imageId = self.child(row,imageCols.imageId).data(role),
         file = self.child(row,imageCols.file).data(role),
-        georeferenced = self.child(row,imageCols.georeferenced).data(role)
+        georeferenced = self.child(row,imageCols.georeferenced).data(role),
+        startM = self.child(row,imageCols.startM).data(role),
+        endM = self.child(row,imageCols.endM).data(role)
         )
         
 
@@ -66,6 +70,8 @@ class runItem(QStandardItem):
         items[imageCols.imageId] = toItem(image.imageId)
         items[imageCols.file] = toItem(image.file)
         items[imageCols.georeferenced] = toItem(image.georeferenced)
+        items[imageCols.startM] = toItem(image.startM)
+        items[imageCols.endM] = toItem(image.endM)
         return items
            
     
@@ -80,8 +86,8 @@ class runItem(QStandardItem):
         for row in range(self.rowCount()):
             if self.child(row,imageCols.load).data(Qt.EditRole) ==True:
                 im = self.imageFromRow(row)
-                im.startM = (im.imageId * 5 + chainageCorrection)/1000 ###want correction in km
-                im.endM = im.startM+0.005 # 5m later
+                im.startM = im.imageId * 5 + chainageCorrection #in meters
+                im.endM = im.startM+5 # 5m later
                 im.offset = offsetCorrection
                 images.append(im)
                 

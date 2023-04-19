@@ -22,9 +22,9 @@ import re
 from qgis.core import QgsRasterLayer,QgsPointXY
 import csv
 import subprocess
-from image_loader.measure_to_point import measureToPoint
 
 from image_loader.remake_image import translateCommand,warpCommand
+
 
 
 WIDTH = 4.0
@@ -42,7 +42,7 @@ class types(IntEnum):
 class image:
     
     #run:str
-    def __init__(self,imageId = None,file='',georeferenced='',run = ''):
+    def __init__(self,imageId = None,file='',georeferenced='',run = '',startM = None ,endM = None, offset = 0.0):
         
         self.georeferenced = str(georeferenced)
         self.file = str(file)
@@ -70,16 +70,21 @@ class image:
                     
         self.imageType = imageType(f)
         
-        self.startM = 0.0
-        self.endM = 0.0
-        self.offset = 0.0
+        if startM is None:
+            startM = self.imageId * 5
+        
+        if endM is None:
+            endM = self.imageId * 5 + 5
+        
+        self.startM = startM #in meters
+        self.endM = endM #in meters
+        self.offset = offset #in meters
 
-        #calculate from layer. slow.
-        self.startPoint = QgsPointXY()
-        self.endPoint = QgsPointXY()
-        
+        self.gcps = []
         self.temp = ''
-        
+        if not self.temp:
+            self.temp = os.path.normpath(os.path.join(os.path.dirname(self.georeferenced),os.path.splitext(os.path.basename(self.georeferenced))[0]+'.vrt'))
+
 
       #image_loader,type,run
     @property
@@ -89,87 +94,23 @@ class image:
                       self.run]
     
     
-    #remake georeferenced raster
-    #set georeferenced to newFile
-    #remake should not load/remove layers.
-    
-    def remake(self,to = ''):
-        
-        
-        layers = []
-       # groups = []
-        data = []
-        
-        for i in QgsProject.instance().layerTreeRoot().findLayers():
-            layer = i.layer()
-            if layer:
-                file = layer.dataProvider().dataSourceUri()
-                if file == to:
-                  #  sources.append(layer.dataProvider().dataSourceUri())
-                #    groups.append(i)
-                
-                    layers.append(layer)
-                    data.append(layer.dataProvider().dataSourceUri())
-                   # groups.append()
-                    layer.dataProvider().setDataSourceUri('')
-             #       QgsProject.instance().removeMapLayer(layer.id())
-
-
-        
-        if not to:
-            to = self.georeferenced
-        
-        if os.path.exists(self.file):
-        
-         #   if os.path.exists(to):
-           #     removeSources(to)#unload layer so GDAL can rewrite it.
-            
-            gcps = GCPs(startPoint = self.startPoint,endPoint = self.endPoint,offset = self.offset)
-           
-            remakeImage(origonal = self.file,to=to,GCPs=gcps,grayscale = self.imageType in [types.intensity,types.rg])
-           
-            self.georeferenced = to
-    
-    
-        #reset providers
-        for i,layer in enumerate(layers):
-            layer.dataProvider().setDataSourceUri(data[i])
-           
-           
-        #    layer2 = QgsRasterLayer(s)
-         #   groups[i].addLayer(layer2)
-          #  QgsProject.instance().addMapLayer(layer2,False)#don't immediatly add to legend
-           # node = groups[i].findLayer(layer2)
-            #node.setItemVisibilityChecked(True)
-            #node.setExpanded(False)    
-            
-            layer.reload()
-            layer.triggerRepaint()
-    
-    
-    
     def translateCommand(self):
-        gcps = GCPs(startPoint = self.startPoint,endPoint = self.endPoint,offset = self.offset)
-        return translateCommand(origonal = self.file,temp=self.temp,GCPs=gcps,grayscale = self.imageType in [types.intensity,types.rg])
-
+        return translateCommand(origonal = self.file,temp=self.temp,GCPs=self.gcps,grayscale = self.imageType in [types.intensity,types.rg])
             
             
     def warpCommand(self):
         return warpCommand(self.temp,self.georeferenced)
-            
-    
-    #recalculate start/end point from layer and start/end m values.
-    def recalcPoints(self,layer,field):
-        self.startPoint = measureToPoint(layer = layer,field=field , m  = self.startM)
-        self.endPoint = measureToPoint(layer = layer,field=field , m  = self.endM)
-    
+         
     
     #load into QGIS
     def load(self):
         name = os.path.splitext(os.path.basename(self.georeferenced))[0]
-        layer = QgsRasterLayer(self.georeferenced,name)
+        #layer = QgsRasterLayer(self.georeferenced,name)
+        layer = QgsRasterLayer(self.file,name)
+
         group = getGroup(self.groups)
         group.addLayer(layer)
+        group.setExpanded(False)    
         QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
         node = group.findLayer(layer)
         node.setItemVisibilityChecked(True)
@@ -231,11 +172,17 @@ from osgeo import gdal
 
 
 
-#calculate GCPs for image from start and endPoints
-#GCPs are moved to right by offset
+'''
+    calculate GCPS treating image is rectangle. Where vehicle turned corner sensor follows curved path. this causes warping...
+    GCPs are moved to right by offset
+'''
 
-#startPoint:QgsPoint,endPoint:Qgspoint -> gdal.GCP
-def GCPs(startPoint,endPoint,offset = 0):
+def gcps(lineLayer,startField,endField,startM,endM,offset=0.0):
+    
+    startPoint = measureToPoint(lineLayer,startField,endField,startM)
+    endPoint = measureToPoint(lineLayer,startField,endField,endM)
+         
+    
     s = pointToVector(startPoint)
     e = pointToVector(endPoint)
             
@@ -251,8 +198,53 @@ def GCPs(startPoint,endPoint,offset = 0):
     return [gdal.GCP(TL.x(),TL.y(),0,0,0),
              gdal.GCP(TR.x(),TR.y(),0,PIXELS,0),
              gdal.GCP(BL.x(),BL.y(),0,0,LINES),
-             gdal.GCP(BR.x(),BR.y(),0,PIXELS,LINES)]
+             gdal.GCP(BR.x(),BR.y(),0,PIXELS,LINES)]    
+    
 
+
+
+'''
+    calculate GCPS treating image as curved path WIDTH wide.
+'''
+'''
+#import numpy
+from image_loader.get_line import getLine
+from qgis.core import QgsGeometry
+
+def gcps(lineLayer,startField,endField,startM,endM,offset=0.0):
+    geom = getLine(lineLayer,startField,endField,startM,endM)#QgsGeometry
+    
+    #length = geom.length()
+    
+    r = []
+    
+    #left edge
+    left = geom.offsetCurve(distance= offset-WIDTH * 0.5, segments = 64,joinStyle = QgsGeometry.JoinStyleRound, miterLimit=0.0)
+    leftLength = left.length()
+    d = 0
+    last = None
+    for v in left.vertices():
+        if last is not None:
+            d += v.distance(last)    
+        last = v        
+        line = LINES * ( 1 -d / leftLength )
+        r.append(gdal.GCP(v.x(),v.y(),0,0,line)) #pixel = 0
+        
+        
+    #right edge
+    right = geom.offsetCurve(distance = offset+WIDTH * 0.5, segments = 64,joinStyle = QgsGeometry.JoinStyleRound, miterLimit=0.0)
+    rightLength = right.length()
+    d = 0
+    last = None
+    for v in right.vertices():
+        if last is not None:
+            d += v.distance(last)    
+        last = v        
+        line = LINES * (1 - d / rightLength )
+        r.append(gdal.GCP(v.x(),v.y(),0,PIXELS,line)) #pixel = PIXELS for right of image
+        
+    return r
+'''    
 
 
 #'GDAL translate command to add GCPS to raster'
@@ -262,6 +254,9 @@ def GCPCommand(gcp):
         line = gcp.GCPLine,
         x = gcp.GCPX,
         y = gcp.GCPY)
+
+
+
 
 
 from qgis.core import QgsProject
@@ -276,6 +271,33 @@ def removeSources(files,group = QgsProject.instance().layerTreeRoot()):
                 QgsProject.instance().removeMapLayer(i.layer().id())
 
 
+from qgis.utils import iface
+
+def refreshLayers(files,group = QgsProject.instance().layerTreeRoot()):
+    for i in group.findLayers():
+        layer = i.layer()
+        if layer:
+            file = layer.dataProvider().dataSourceUri()
+            if file in files:
+                #layer.reload()
+               # layer.triggerRepaint()
+               
+               # uri = layer.dataProvider().dataSourceUri()
+               # layer.dataProvider().setDataSourceUri(None)
+               # layer.dataProvider().updateExtents()
+
+             #   layer.dataProvider().reloadData()
+              #  layer.dataProvider().setDataSourceUri(uri)
+               # layer.dataProvider().reloadData()
+                layer.dataProvider().updateExtents()
+                layer.dataProvider().reloadData()
+
+               # layer.dataProvider().reload()
+                layer.triggerRepaint()
+    iface.mapCanvas().refresh()
+    
+    
+    
 #assume type and id do not contain _ charactor
 #str->str
 def generateRun(filePath):
@@ -406,59 +428,155 @@ def origonalFiles(images,root = None):
         im.file = origonals[i]
     
     
-        
+from image_loader.measure_to_point import measureToPoint
     
-from subprocess import Popen,PIPE
    
+#from image_loader.georeference import georeference
 
-#todo: run multiple commands in paralell
-#todo: calculate GCPS more efficiently. getFeatures() slow.
+
+#'GDAL translate/edit command to add GCPS to raster'
+def _GCPCommand(gcp):
+    #-gcp <pixel> <line> <easting> <northing>
+    return '-gcp {pixel} {line} {x} {y}'.format(pixel = gcp.GCPPixel,
+        line = gcp.GCPLine,
+        x = gcp.GCPX,
+        y = gcp.GCPY)
+
+def overviewCommand(file):
+    return 'gdaladdo "{}" 2 4 8 16 --config COMPRESS_OVERVIEW JPEG --config PHOTOMETRIC_OVERVIEW YCBCR --config INTERLEAVE_OVERVIEW PIXEL'.format(file)
+
+
+
+def editCommand(file,gcps):
+    g = ' '.join([_GCPCommand(gcp) for gcp in gcps])
+    
+    prog = r'C:\OSGeo4W\apps\Python39\Scripts\gdal_edit'
+    return '"{prog}" "{file}" -ro -a_srs "EPSG:27700" -a_nodata 255 {gcp}'.format(file=file,gcp=g,prog=prog)
+
+
+
+from subprocess import Popen,PIPE,CREATE_NO_WINDOW
+
+import time
+
 def remakeImages(images,progress,layer=None,startField=None,endField=None):
-    
-    progress.setMaximum(len(images))
+    if layer and startField and endField:
+        
+        #recalc points
+        progress.setValue(0)
+        progress.setLabelText('Calculating GPS positions')
+        progress.setMaximum(len(images))
+        
+        for i,im in enumerate(images):
+            if progress.wasCanceled():
+                return  
+            #im.startPoint = measureToPoint(layer,startField,endField,im.startM)
+            #im.endPoint = measureToPoint(layer,startField,endField,im.endM)
+            
+            im.gcps = gcps(lineLayer = layer,
+                 startField = startField,
+                 endField = endField,
+                 startM = im.startM,
+                 endM = im.endM,
+                 offset = im.offset)
+            
+            progress.setValue(i)
+            
+            
+        #remove layers            
+      #  progress.setLabelText('Removing layers')
+      #  progress.setValue(0)
+     #   removeSources([im.file for im in images])
+        
+        #georeference
+        progress.setLabelText('Georeferencing images')
+        progress.setValue(0)
+        
+        
+        
+        
+        editCommands = [editCommand(im.file,im.gcps) for im in images]
+     #   print(editCommands)
+        processes = [Popen(c,stdout=PIPE, stderr=PIPE,creationflags = CREATE_NO_WINDOW,shell=True) for c in editCommands]
+        
+     #   st = time.time()#seconds
+     #   t = 0
+     #   timeout = 10 # seconds
+        
+     #   while t<timeout:
+      #      t = time.time()-st
+             #print(t)
+      # #     time.sleep(1)
+            
+            
+          #  progress.setValue(len([proc for proc in processes if proc.poll() is not None]))
+         #   if progress.wasCanceled():
+         #       for proc in processes:
+         #           proc.terminate()
+            
+        #    v = 0
+         #   for proc in processes:
+         ##       if proc.poll() is not None:
+                  #  v+=1
+                    
+         #   progress.setValue(v)
+        for i,p in enumerate(processes):
+             p.wait()
+             if progress.wasCanceled():
+                 for proc in processes:
+                     proc.terminate()
+                    
+             
+             progress.setValue(i)
+             err = p.stderr.read()
+             if err:
+                 print(editCommands[i],err)
+        
+       # for i,im in enumerate(images):
+           
+            #georeference(file = im.file,GCPs = im.gcps)
+          #  im.georeferenced = im.file
+           # progress.setValue(i)
+        progress.setLabelText('Refreshing layers')
+        progress.setValue(0)
+        refreshLayers([im.file for im in images])
 
-    for i,im in enumerate(images):
-        if progress.wasCanceled():
-            return  
-        if layer and startField:
-            im.recalcPoints(layer=layer,field=startField)
-        
-     #   to = im.georeferenced
-        if not im.temp:
-            im.temp = os.path.join(os.path.dirname(im.georeferenced),os.path.basename(im.georeferenced)+'.vrt')
-    
-    translateImages(images,progress)
-    warpImages(images,progress)
-        
-        
 
+#from subprocess import Popen,PIPE,CREATE_NO_WINDOW
+
+
+
+'''
 def translateImages(images,progress):
     progress.setLabelText('Translating images')
+    progress.setMaximum(len(images))
     commands = [im.translateCommand() for im in images]
     runCommands(commands,progress)
 
 
 def warpImages(images,progress):
     progress.setLabelText('Warping images')
+    progress.setMaximum(len(images))
     commands = [im.warpCommand() for im in images]
     runCommands(commands,progress)
     
 
 '''
-    run commands in paralell.
-    progress bar is rough guide.
-'''
+   # run commands in paralell.
+   # progress bar is rough guide.
 def runCommands(commands,progress):
     progress.setMaximum(len(commands))
-    progress.reset()
-    processes = [Popen(c,stdout=PIPE, stderr=PIPE,creationflags = subprocess.CREATE_NO_WINDOW) for c in commands]
+    progress.setValue(0)
+    processes = [Popen(c,stdout=PIPE, stderr=PIPE,creationflags = subprocess.CREATE_NO_WINDOW,shell=True) for c in commands]
     for i,p in enumerate(processes):
         p.wait()
+        if progress.wasCanceled():
+            return  
         progress.setValue(i)
         err = p.stderr.read()
         if err:
             print(commands[i],err)
-
+            
 
 #digits at end of filename without extention
 # str -> int
@@ -469,3 +587,4 @@ def imageId(filePath):
         return int(m.group(0))
     else:
         return -1
+
