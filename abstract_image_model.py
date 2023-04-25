@@ -23,8 +23,10 @@ class imageModel:
     def dropRows(self,indexes):
         pass
     
+    def clear(self):
+        pass
     
-    def openFile(self,file):
+    def loadFile(self,file):
         pass
     
     

@@ -5,7 +5,7 @@ Created on Fri Aug 19 10:05:27 2022
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit
+from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit,QCheckBox
 
 from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
 from qgis.gui import QgsMapLayerComboBox
@@ -31,24 +31,28 @@ class setLayersDialog(QDialog):
        # self.layout().addRow('Field with run',self.runBox)
         
         
-        self.gpsLayerBox = QgsMapLayerComboBox(self)
-        self.gpsLayerBox.setFilters(QgsMapLayerProxyModel.LineLayer)
-        self.layout().addRow('Layer with gps lines',self.gpsLayerBox)
+     #   self.gpsLayerBox = QgsMapLayerComboBox(self)
+     #   self.gpsLayerBox.setFilters(QgsMapLayerProxyModel.LineLayer)
+     #   self.layout().addRow('Layer with gps lines',self.gpsLayerBox)
         
-        self.startMBox = fieldBox(parent = self.gpsLayerBox,default = 'startM')
-        self.startMBox.setFilters(QgsFieldProxyModel.Numeric)
-        self.layout().addRow('Field with start m values',self.startMBox)        
+     #   self.startMBox = fieldBox(parent = self.gpsLayerBox,default = 'startM')
+     #   self.startMBox.setFilters(QgsFieldProxyModel.Numeric)
+     #   self.layout().addRow('Field with start m values',self.startMBox)        
         
-        self.endMBox = fieldBox(parent = self.gpsLayerBox,default = 'endM')
-        self.endMBox.setFilters(QgsFieldProxyModel.Numeric)
-        self.layout().addRow('Field with end m values',self.endMBox)      
+        #self.endMBox = fieldBox(parent = self.gpsLayerBox,default = 'endM')
+      #  self.endMBox.setFilters(QgsFieldProxyModel.Numeric)
+     #   self.layout().addRow('Field with end m values',self.endMBox)      
         
         
         self.folder = QLineEdit()
         self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
         
+      #  self.useRectangle = QCheckBox()
+     #   self.useRectangle.setChecked(True)
+       # self.layout().addRow('Treat images as rectangle',self.useRectangle)      
 
+        
 
     def framesLayer(self):
         return self.layerWidget.currentLayer()
@@ -67,9 +71,10 @@ class setLayersDialog(QDialog):
                # 'framesLayer':self.layerWidget.currentLayer(),
              #   'idField':self.idBox.currentField(),
                 'folder':self.folder.text(),
-                'gps':self.gpsLayerBox.currentLayer(),
-                'startMField':self.startMBox.currentField(),
-                'endMField':self.endMBox.currentField()
+          #      'gps':self.gpsLayerBox.currentLayer(),
+           #     'startMField':self.startMBox.currentField(),
+           #     'endMField':self.endMBox.currentField(),
+           #     'useRectangle':self.useRectangle.isChecked()
                 }
 
 

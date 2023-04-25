@@ -14,50 +14,53 @@ class imagesView(QTableView):
   
     def __init__(self,parent=None):
         super().__init__(parent)
-       # self.checkBoxDelegate = checkbox.checkBoxDelegate(parent=self)
         self.menu = QMenu(self)
-     #   fromLayerAct = self.menu.addAction('Select from layer')
-      #  fromLayerAct.triggered.connect(self.selectFromLayer)
         markAct = self.menu.addAction('Mark selected rows')
         markAct.triggered.connect(self.mark)
         unmarkAct = self.menu.addAction('Unmark selected rows')
         unmarkAct.triggered.connect(self.unmark)
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
-        #self.setTextElideMode(Qt.ElideLeft)
         self.setWordWrap(False)        
-  
+        
     
-    #def setModel(self,model):
-   #     super().setModel(model)
-   #     self.hideCols()
-   
-    def hideCols(self):
-        if hasattr(self.model(),'cols'):
-            cols = self.model().cols
-            toShow = [cols.load,cols.imageId,cols.file,cols.georeferenced]
-            for c in range(self.model().columnCount()):
-                self.setColumnHidden(c,not c in toShow)
-              #  print(c,not c in toShow)
-              
-              
-#all selected rows are in details model
-    def mark(self):
+    def setModel(self,model):
+        super().setModel(model)
+        
+        toShow = [model.fieldIndex('image_id'),model.fieldIndex('file')]
+        for c in range(model.columnCount()):
+            self.setColumnHidden(c,not c in toShow)
+        
+
+         
+    def selected(self):
+        return self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))
+        
+       
+    #triggered emits bool
+    def _mark(self,value=True):
         if self.detailsModel():
-            selected = self.selectionModel().selectedRows(self.detailsModel().cols.load)
+            selected = self.selectionModel().selectedRows(self.detailsModel().fieldIndex('marked'))
             
             if isinstance(self.model(),QSortFilterProxyModel):
                 selected = [self.model().mapToSource(i) for i in selected]
                 
-            for i in selected:
-                self.detailsModel().setData(i,True)
+                
+            self.detailsModel().mark(indexes = selected, value = value)
+          
+            
+    def mark(self):
+        self._mark(value=True)
 
-
+    def unmark(self):
+        self._mark(value=False)
+        
+        
+        
   
     def dropSelected(self):
         if self.detailsModel():
-            rows = [i.row() for i in self.selectionModel().selectedRows(self.detailsModel().cols.run)]
-            self.detailsModel().dropRows(rows)
+            self.detailsModel().dropRows(self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk')))
     
 
 
@@ -82,13 +85,6 @@ class imagesView(QTableView):
             self.detailsModel().selectOnLayer([i.row() for i in inds])
 
 
-    def unmark(self):
-        if self.detailsModel():
-            selected = self.selectionModel().selectedRows(self.detailsModel().cols.load)
-            if isinstance(self.model(),QSortFilterProxyModel):
-                selected = [self.model().mapToSource(i) for i in selected]
-            for i in selected:
-                self.detailsModel().setData(i,False)
 
         
     def contextMenuEvent(self, event):

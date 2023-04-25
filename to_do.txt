@@ -4,37 +4,7 @@ image georeferencing through subprocess. use gdal_edit in paralell to make world
 
 os.name. && runs mutiple commands in 1 line on windows. ; on linux.
 
-
-
-The collator treats images as a rectangular area of road.
-This causes some warping where the vehicle turned a corner.
-Treating images as curved path 4m wide fixes this.
-
-
-
-
-image format:
-	check examples ok.
-	is there a reason for translating and warping the images rather than creating a world file through something like gdal_edit?
-	Making a world file is much faster and takes ~3kb per image vs ~5Mb
-
-
-	images produced by collator are ~5Mb including overviews.
-	COG giving smaller file sizes (~0.3Mb vs ~5Mb) and seems about as fast for qgis to render.
-	intensity and range only need 2 bands (gray and alpha).
-	JPEG with quality of 75
-
-
-
-
-
-
-
-image .jpg has metadata...
-
-
 measure values in folder of xml files like
-
 	<SectionID>2</SectionID>
 	<DistanceBegin_m>10.000</DistanceBegin_m>
 	<DistanceEnd_m>14.995</DistanceEnd_m>
@@ -48,6 +18,10 @@ gps points in csv.
 	LEADIN,Y,0.104,0.100,1.859955,2.097464,1.889833,1.880252,1.873706,0.0,52.80147817,-2.66229304,125.1,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
 	LEADIN,Y,0.204,0.200,1.64288,2.086893,1.587502,1.831523,1.723411,37.6,52.80073172,-2.66149196,124.5,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
 	
+	
+	
+need efficient way to get linestring from m values.
+spatialite?
 	
 	
 	
@@ -64,26 +38,16 @@ parsed frame data:
 	
 	
 folder structure:
-
-
-
 	root folder like  D:\RAF Shawbury\
-
-
 	D:\RAF Shawbury\Parsed Distress Data\
-
-
 
 	origonal jpg file:
 	under root/data
 	D:\RAF Shawbury\Data\2023-01-21\MFV1_011\Run 13\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 11h51m29s LCMS Module 1 000991.jpg
 
-
 	geotifs added to
 	root\TIF images\(name)\(type)
 	eg 	D:\RAF Shawbury\TIF Images\MFV1_011\ImageInt\MFV1_011_ImageInt_000991.tif
-
-
 
 	RIL file produced at
 	root\Spatial Data\Text Files\(name) Raster Image Load File.txt
@@ -91,13 +55,6 @@ folder structure:
 
 
 
-
-
-
-gps is linestringm at 1m intervals./sequence of points
-
-store as points?
-
-chainage correction and offset correction per vertex?
-
-m,x,y,chainage correction,offset
+interpolating corrections:
+s = coalense (last_value ,next_value , 0)
+e = coalense (next_value ,last_value , 0)

@@ -1,55 +1,39 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Feb  1 13:31:30 2023
+Created on Thu Apr 20 13:17:19 2023
 
 @author: Drew.Bennett
 """
 
+from qgis.core import QgsProject,QgsRasterLayer,QgsLayerTreeGroup
 
-from qgis.core import QgsProject
-from qgis.core import QgsRasterLayer,QgsCoordinateReferenceSystem,QgsLayerTreeGroup
-
-#from qgis.utils import iface
-
-#for profiling purposes
-def makeLayer(filepath,name,crs):
-    layer = QgsRasterLayer(filepath, name)
-   # layer = iface.addRasterLayer(filepath,name)#much slower
-
-    layer.setCrs(crs)
-    return layer
+import os
 
 
-    #load layer. expand expands group. show renders image.
-    
-    #groups []
-def loadImage(filepath,name,groups,expand=False,show=True,crs=QgsCoordinateReferenceSystem('EPSG:27700')):
+
+
+def loadImage(file,groups):
+    name = os.path.splitext(os.path.basename(file))[0]
    
-    layer = makeLayer(filepath,name,crs)
-    #layer = QgsRasterLayer(filepath, name)
-    #layer.setCrs(crs)
-        
-    group = getGroup(groups)
-    group.addLayer(layer)
-    group.setExpanded(expand)
     
- #   print(group)#QgsLayerTreeGroup
+
+    group = getGroup(groups)#QgsLayerTreeGroup
+    
+    layer = QgsRasterLayer(file,name)        
+
+    group.addLayer(layer)
+   # group.setExpanded(False)    
+        
+        #addLayer
+        
     QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
-            
     node = group.findLayer(layer)
-  #  node.setItemVisibilityChecked(show)
-    node.setExpanded(expand)
-    return layer
-
-
-
-
-
-
-'''
-functions for QgsLayerTreeGroup
-'''
-
+    node.setItemVisibilityChecked(True)
+    node.setExpanded(False)        
+    
+    
+            
+    
 '''
 returns new or existing QgsLayerTreeGroup with name child and parent
 #child:str
@@ -71,12 +55,3 @@ def getGroup(groups):
     for name in groups:
         parent = findOrMake(name,parent)
     return parent
-
-
-
-#remove direct child group from parent
-def removeChild(child,parent=QgsProject.instance().layerTreeRoot()):
-        for c in parent.children():
-            if c.name() == child and isinstance(c,QgsLayerTreeGroup):
-                parent.removeChildNode(c)
-

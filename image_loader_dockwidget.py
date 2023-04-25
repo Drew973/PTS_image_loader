@@ -34,8 +34,14 @@ from .functions.load_frame_data import loadFrameData
 from .functions.load_cracking import loadCracking
 from .widgets import set_layers_dialog
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QDataWidgetMapper,QProgressDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QDataWidgetMapper
 from PyQt5 import QtGui
+
+
+from image_loader.image_model import imageModel
+from image_loader.corrections_model import correctionsModel
+
+
 
 #from PyQt5.QtCore import QModelIndex
 #from PyQt5.QtCore import QSortFilterProxyModel
@@ -46,10 +52,9 @@ from PyQt5 import QtGui
 #import cProfile
 
 
-from image_loader import details_tree_model
+#from image_loader import details_tree_model
 from image_loader.load_gps import loadGpsLines
 
-from image_loader.corrections_dialog import correctionsDialog
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -64,86 +69,91 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
-        self.loadButton.clicked.connect(self.loadDetails)
-        self.remakeButton.clicked.connect(self.remake)
-        
-        
-        self.correctionsDialog = correctionsDialog()
-        self.correctionsButton.clicked.connect(self.correctionsDialog.show)#need non modal to click map
 
+       # self.correctionsDialog = correctionsDialog()
+     #   self.correctionsButton.clicked.connect(self.correctionsDialog.show)#need non modal to click map
         
         self.initTopMenu()
       
-        
-        self.model = details_tree_model.detailsTreeModel()
+        self.model = imageModel(parent=self)
         self.model.fields = self.layersDialog
         
-        self.mapper = QDataWidgetMapper()
-        self.mapper.setModel(self.model)
-        self.mapper.addMapping(self.chainageCorrection, details_tree_model.cols.chainageCorrection)
-        self.mapper.addMapping(self.offset, details_tree_model.cols.offsetCorrection)   
+        self.correctionsModel = correctionsModel()
+        self.correctionsView.setModel(self.correctionsModel)
         
-        self.runsView.setModel(self.model)
         
-        self.runBox.setModel(self.model)
-        self.runBox.currentIndexChanged.connect(self.runChange)
+        self.loadButton.clicked.connect(self.loadImages)
+        self.remakeButton.clicked.connect(self.remakeImages)
+        
+        
+    #    self.mapper = QDataWidgetMapper()
+    ##    self.mapper.setModel(self.model)
+     #   self.mapper.addMapping(self.chainageCorrection, details_tree_model.cols.chainageCorrection)
+      #  self.mapper.addMapping(self.offset, details_tree_model.cols.offsetCorrection)   
+                
+        self.runBox.setModel(self.model.runsModel)
  
-        self.setFile()
 
         self.imagesView.setModel(self.model)
-        self.imagesView.hideCols()
-        self.runChange()
+        self.setFile()
+
+        self.runBox.currentIndexChanged.connect(self.runChange)
+        self.addCorrectionButton.clicked.connect(self.addCorrection)
 
 
 
+    def addCorrection(self):
+        self.correctionsModel.addCorrection(run = self.runBox.itemText(self.runBox.currentIndex()),
+                                 startChainage = self.startChainage.value(),
+                                 endChainage = self.endChainage.value(),
+                                 startOffset = self.startOffset.value(),
+                                 endOffset = self.endOffset.value())
 
 
-    def runChange(self):        
-        index = self.runBox.currentIndex()#int
-        self.mapper.setCurrentIndex(index)
+
+    def loadImages(self):
+        self.model.loadImages(self.imagesView.selected())
         
-        i = self.model.index(index,self.runBox.modelColumn())
-       
-        self.correctionsDialog.setIndex(i) 
-       
-        #i = self.proxy.mapFromSource(i)
-        if i.isValid():
-            self.imagesView.setModel(i.model())
-            self.imagesView.setRootIndex(i)
-            self.imagesView.hideCols()
-        else:
-            self.imagesView.setModel(None)
-
-
-    '''
-#QItemSelection selected
-    def runChange(self,selected,deselected):
-        row = -1
-        runCol = details_tree_model.cols.run
-       
-        for i in selected.indexes():
-          
-            if i.column()==runCol:               
-               if i.row()>row:
-                   row = i.row()
-        
-        index = self.model.index(row,runCol)
-        if index.isValid():
-            self.imagesView.setModel(self.model)
-            self.imagesView.setRootIndex(index)
-            self.imagesView.setColumnHidden(details_tree_model.cols.run,True)
-        else:
-            self.imagesView.setModel(None)
-    '''
     
+    
+    def remakeImages(self):
+           self.model.remakeImages(self.imagesView.selected())     
+        
+        
+        
+    def runChange(self):
+        index = self.runBox.currentIndex()#int
+        run = self.runBox.itemText(index)
+        self.model.setRun(run)
+        self.correctionsModel.setRun(run)
+        
+        i = self.runBox.model().index(index,0)
+        
+        self.startChainage.setIndex(i)
+      #  i  = self.correctionsModel.index(0,0)
+       # print('model',i.model())
+       # if i.model():
+         #   print('range',i.model().allowedRange(i))
+        #
+      #  self.mapper.setCurrentIndex(index)
+      #  i = self.model.index(index,self.runBox.modelColumn())
+      #  self.correctionsDialog.setIndex(i) 
+        #i = self.proxy.mapFromSource(i)
+     #   if i.isValid():
+     #       self.imagesView.setModel(i.model())
+     #       self.imagesView.setRootIndex(i)
+      #      self.imagesView.hideCols()
+      ##  else:
+      #      self.imagesView.setModel(None)    
     
     
     #QFileDialog should return existing file or None.
     #handle actual opening
-    #set file to '' for new.
     def setFile(self,file='untitled'):
-        self.model.clear()
-        if file!='untitled':
+        if file == 'untitled':
+            self.model.clear()
+            self.correctionsModel.clear()
+        else:
             self.model.loadFile(file)
         self.runChange()
 
@@ -167,11 +177,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         fromFolderAct.triggered.connect(self.detailsFromFolder)
 
         #layersMenu = topMenu.addMenu("Load layers")
-        loadFramesAct = toolsMenu.addAction('Load Spatial Frame Data...')
+        loadFramesAct = toolsMenu.addAction('View Spatial Frame Data...')
         loadFramesAct.triggered.connect(self.loadFrames)
         
-        loadGpsAct = toolsMenu.addAction('Load GPS data...')
-        loadGpsAct.triggered.connect(self.loadGps)
+        loadGpsAct = toolsMenu.addAction('View GPS data...')
+        loadGpsAct.triggered.connect(self.viewGpsLayer)
         
       #  chainageAct = toolsMenu.addAction('Find chainage difference...')
        # chainageAct.triggered.connect(self.chainageDialog.exec_)
@@ -180,7 +190,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         setLayers = setupMenu.addAction('Set layers and fields...')
         setLayers.triggered.connect(self.layersDialog.exec_)
         
-        loadCracksAct = toolsMenu.addAction('Load Cracking Data...')
+        loadGpsAct = setupMenu.addAction('Load gps...')
+        loadGpsAct.triggered.connect(self.loadGps)
+        
+        
+        loadCracksAct = toolsMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
         
         helpMenu = topMenu.addMenu('Help')
@@ -208,45 +222,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         
 
-    #remake images where load==True
-    def remake(self):
-        self.model.remake()
-     #   profile = os.path.join(test.testFolder,'remake.prof')
-     #   pr = cProfile.Profile()
-        #####
-    #    pr.enable()  
-        
-        #    pr.disable()
-      #      pr.dump_stats(profile)#compatible with snakeviz
-##########snakeviz remake.prof
-
-
-
-       
-        
-        #almost all time spent in getFeatures. 20s for csv. 5s for geopackage with index.
-        #5s for gdal to remake 10 images.
-
-
-   #QgsTask is very buggy. QProgressDialog much simpler.
-    def loadDetails(self):
-        progress = QProgressDialog("Loading images...","Cancel", 0, 0)#QObjectwithout parent gets deleted like normal python object
-       # progress.setMinimumDuration(0)
-        progress.setWindowModality(Qt.WindowModal)
-                
-        images = [i for i in self.model.marked()]#image[]
-        progress.setMaximum(len(images))
-        
-        for i,im in enumerate(images):
-            if progress.wasCanceled():
-                return
-            im.load()
-            progress.setValue(i)
-        
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        del progress
-
-
     def loadFrames(self):
         f = QFileDialog.getOpenFileName(caption = 'Load Spatial Frame Data',filter = 'txt (*.txt)')
         if f:
@@ -255,13 +230,20 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
 
-    def loadGps(self):
+    def viewGpsLayer(self):
         f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)')
         if f:
             if f[0]:
                 loadGpsLines(f[0])
 
 
+
+
+    def loadGps(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)')
+        if f:
+            if f[0]:
+                self.model.loadGps(f[0])
 
     def loadCracks(self):
         f = QFileDialog.getOpenFileName(caption = 'Load Crack data Data',filter = 'txt (*.txt)')
@@ -296,22 +278,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.model.addFolder(f)
            # progress.deleteLater()
            
-            
-    #find extents for list of details. allows cancelling with progressDialog       
-    #def findExtents(self,details):
-     #   progress = QProgressDialog("finding image extents...","Cancel",0,len(details),self)
-    #    progress.setWindowModality(Qt.WindowModal)
-   ##     progress.setWindowTitle("finding image extents...")
-   #     progress.setMaximum(len(details))
-            
-    #    for i,d in enumerate(details):
-    #        progress.setValue(i)
-    # #       if progress.wasCanceled():
-    #            break
-     #       d.findExtents()
-            
-
-            
+           
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
