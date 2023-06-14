@@ -1,0 +1,96 @@
+<VRTDataset rasterXSize="1611" rasterYSize="1618" subClass="VRTWarpedDataset">
+  <SRS dataAxisToSRSAxisMapping="1,2">PROJCS["OSGB36 / British National Grid",GEOGCS["OSGB36",DATUM["Ordnance_Survey_of_Great_Britain_1936",SPHEROID["Airy 1830",6377563.396,299.3249646,AUTHORITY["EPSG","7001"]],AUTHORITY["EPSG","6277"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4277"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",49],PARAMETER["central_meridian",-2],PARAMETER["scale_factor",0.9996012717],PARAMETER["false_easting",400000],PARAMETER["false_northing",-100000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","27700"]]</SRS>
+  <GeoTransform>  3.5446566546986281e+05,  3.9416032075444262e-03,  0.0000000000000000e+00,  3.2190538256624970e+05,  0.0000000000000000e+00, -3.9416032075444262e-03</GeoTransform>
+  <Metadata>
+    <MDI key="EXIF_DateTime">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_DateTimeDigitized">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_DateTimeOriginal">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_GPSAltitude">(129.039)</MDI>
+    <MDI key="EXIF_GPSAltitudeRef">0x00</MDI>
+    <MDI key="EXIF_GPSLatitude">(52) (47) (34.1635)</MDI>
+    <MDI key="EXIF_GPSLatitudeRef">N</MDI>
+    <MDI key="EXIF_GPSLongitude">(2) (40) (36.1765)</MDI>
+    <MDI key="EXIF_GPSLongitudeRef">W</MDI>
+    <MDI key="EXIF_ImageDescription">Survey: MFV1_007,Image Type: IntensityWithoutOverlay</MDI>
+    <MDI key="EXIF_Software">Hawkeye Processing Toolkit v8.3.0.3999</MDI>
+  </Metadata>
+  <VRTRasterBand dataType="Byte" band="1" blockXSize="512" subClass="VRTWarpedRasterBand">
+    <Metadata>
+      <MDI key="STATISTICS_APPROXIMATE">YES</MDI>
+      <MDI key="STATISTICS_MAXIMUM">255</MDI>
+      <MDI key="STATISTICS_MEAN">175.09344973906</MDI>
+      <MDI key="STATISTICS_MINIMUM">6</MDI>
+      <MDI key="STATISTICS_STDDEV">95.813062534633</MDI>
+      <MDI key="STATISTICS_VALID_PERCENT">100</MDI>
+    </Metadata>
+    <NoDataValue>255</NoDataValue>
+    <ColorInterp>Gray</ColorInterp>
+  </VRTRasterBand>
+  <BlockXSize>512</BlockXSize>
+  <BlockYSize>128</BlockYSize>
+  <GDALWarpOptions>
+    <WarpMemoryLimit>6.71089e+07</WarpMemoryLimit>
+    <ResampleAlg>NearestNeighbour</ResampleAlg>
+    <WorkingDataType>Byte</WorkingDataType>
+    <Option name="SKIP_NOSOURCE">YES</Option>
+    <Option name="INIT_DEST">NO_DATA</Option>
+    <Option name="ERROR_OUT_IF_EMPTY_SOURCE_WINDOW">FALSE</Option>
+    <SourceDataset relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002703.jpg</SourceDataset>
+    <Transformer>
+      <ApproxTransformer>
+        <MaxError>0.125</MaxError>
+        <BaseTransformer>
+          <GenImgProjTransformer>
+            <SrcTPSTransformer>
+              <TPSTransformer>
+                <Reversed>0</Reversed>
+                <GCPList>
+                  <GCP Id="" Pixel="0.0000" Line="1250.0000" X="3.544691268001E+05" Y="3.218990047711E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="1087.1795" X="3.544686758471E+05" Y="3.218994750841E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="1019.3200" X="3.544684880323E+05" Y="3.218996712243E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="1018.9770" X="3.544684870830E+05" Y="3.218996722156E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="837.3123" X="3.544679842898E+05" Y="3.219001972973E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="662.5915" X="3.544675002289E+05" Y="3.219007018419E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="662.2287" X="3.544674992237E+05" Y="3.219007028896E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="587.6791" X="3.544672926849E+05" Y="3.219009181679E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="381.1382" X="3.544667208661E+05" Y="3.219015149827E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="381.0483" X="3.544667206172E+05" Y="3.219015152425E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="337.9222" X="3.544666012204E+05" Y="3.219016398589E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="298.9385" X="3.544664932497E+05" Y="3.219017524645E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="298.6950" X="3.544664925752E+05" Y="3.219017531678E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="87.7650" X="3.544659083772E+05" Y="3.219023624471E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="0.0000" X="3.544656654699E+05" Y="3.219026161218E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="0.0000" X="3.544685545501E+05" Y="3.219053825662E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="87.3104" X="3.544687960697E+05" Y="3.219051303402E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="298.0736" X="3.544693794933E+05" Y="3.219045218687E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="298.1847" X="3.544693798008E+05" Y="3.219045215479E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="337.5260" X="3.544694887038E+05" Y="3.219044079702E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="380.9585" X="3.544696088843E+05" Y="3.219042825360E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="381.4269" X="3.544696101805E+05" Y="3.219042811831E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="587.1961" X="3.544701795576E+05" Y="3.219036869160E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="661.7367" X="3.544703859608E+05" Y="3.219034717791E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="661.9816" X="3.544703866391E+05" Y="3.219034710721E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="837.0376" X="3.544708713691E+05" Y="3.219029658301E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1019.5229" X="3.544713761637E+05" Y="3.219024386597E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1019.7054" X="3.544713766686E+05" Y="3.219024381324E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1087.2598" X="3.544715635386E+05" Y="3.219022429783E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1250.0000" X="3.544720140279E+05" Y="3.219017731489E+05" />
+                </GCPList>
+              </TPSTransformer>
+            </SrcTPSTransformer>
+            <DstGeoTransform>354465.665469862812,0.00394160320754442621,0,321905.382566249697,0,-0.00394160320754442621</DstGeoTransform>
+            <DstInvGeoTransform>-89929312.2127051651,253.703873105732669,0,81668642.3306401372,0,-253.703873105732669</DstInvGeoTransform>
+          </GenImgProjTransformer>
+        </BaseTransformer>
+      </ApproxTransformer>
+    </Transformer>
+    <BandList>
+      <BandMapping src="1" dst="1">
+        <SrcNoDataReal>255</SrcNoDataReal>
+        <SrcNoDataImag>0</SrcNoDataImag>
+        <DstNoDataReal>255</DstNoDataReal>
+        <DstNoDataImag>0</DstNoDataImag>
+      </BandMapping>
+    </BandList>
+  </GDALWarpOptions>
+</VRTDataset>

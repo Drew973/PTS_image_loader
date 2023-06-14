@@ -1,60 +1,53 @@
 
 
-image georeferencing through subprocess. use gdal_edit in paralell to make world files
+constraints:
+	start of image should be end of last image.
 
-os.name. && runs mutiple commands in 1 line on windows. ; on linux.
-
-measure values in folder of xml files like
-	<SectionID>2</SectionID>
-	<DistanceBegin_m>10.000</DistanceBegin_m>
-	<DistanceEnd_m>14.995</DistanceEnd_m>
-	
-	
-gps points in csv.
-
-	eg D:\RAF Shawbury\Hawkeye Exported Data\MFV1_011-rutacd-1.csv
-	
-	Section,Enabled,Chainage (km),Sub Chainage (km),MPD1,MPD2,MPD3,MPD4,MPD5,Speed (km/h),Latitude (deg),Longitude (deg),Altitude (m),GPS position is calculated,Events,Survey Day,Survey Time,Survey Name,Vehicle Name,Operator Name,Device Sync Flag
-	LEADIN,Y,0.104,0.100,1.859955,2.097464,1.889833,1.880252,1.873706,0.0,52.80147817,-2.66229304,125.1,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
-	LEADIN,Y,0.204,0.200,1.64288,2.086893,1.587502,1.831523,1.723411,37.6,52.80073172,-2.66149196,124.5,False,,2023-01-21,11:51:29,MFV1_011,PG68 BCU,DI,Y
-	
-	
-	
-need efficient way to get linestring from m values.
-spatialite?
-	
-	
-	
-parsed frame data:
-	Path to XML Files: D:\RAF Shawbury\Data\2023-01-21\MFV1_011\Run 13\LCMS Module 1\Results\XML Files\
-	Survey length (m): 8145
-	Number of sections: 1629
-	Section length (m): 5
-	Number of profile points: 4160
-	fileName,sectionID,startChainage,endChainage
-	2023-01-21 11h51m29s Video Module 2 MFV1_011 ACD 001.xml,50,250,255
-	2023-01-21 11h51m29s Video Module 2 MFV1_011 ACD 001.xml,51,255,260
-	
-	
-	
-folder structure:
-	root folder like  D:\RAF Shawbury\
-	D:\RAF Shawbury\Parsed Distress Data\
-
-	origonal jpg file:
-	under root/data
-	D:\RAF Shawbury\Data\2023-01-21\MFV1_011\Run 13\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 11h51m29s LCMS Module 1 000991.jpg
-
-	geotifs added to
-	root\TIF images\(name)\(type)
-	eg 	D:\RAF Shawbury\TIF Images\MFV1_011\ImageInt\MFV1_011_ImageInt_000991.tif
-
-	RIL file produced at
-	root\Spatial Data\Text Files\(name) Raster Image Load File.txt
+	image width should be ~ constant (gradient effects?)
 
 
 
 
-interpolating corrections:
-s = coalense (last_value ,next_value , 0)
-e = coalense (next_value ,last_value , 0)
+need something to:
+	-align images with each other and google earth ie georeference images
+	-view many images without crashing QGIS for rating.
+	
+
+viewing:
+	QGIS rendering performance critical here. 
+	would be good to quickly display all images in area.
+	
+	display everything through VRT?
+	use gdal_warp to convert georeferenced images to something like cloud optimized geotif for faster rendering?
+	
+	gdalbuildvrt "D:\RAF Shawbury\TIF Images\MFV1_004\range\range.vrt" "D:\RAF Shawbury\TIF Images\MFV1_004\range\*.tif" -r average -overwrite 
+
+	vrt per run. avoid issue with missing parts of image and overlap.
+	
+	
+	
+
+way to select images from multiple runs.
+
+specify corrections:
+
+problems clicking near to adjacent runs.
+specify run to avoid.
+or specify image for correction.
+
+
+create overviews.
+for combined vrt or each file?
+both?
+both seems to perform best. use low resolution for whole vrt.
+
+intensity-range hybrid
+gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata "0 0 0 0" -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
+gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata 0 -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
+
+adding jpg compression to overviews massivly reduces file size. eg
+gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\2.vrt" 16 32 64 128 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
+gdaladdo "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\1_007\ImageInt\2023-01-21 10h08m11s LCMS Module 1 002703.jpg" 16 32 64 128 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
+ 
+gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\1.vrt" 32 64 128 256 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
+gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\6.vrt" 32 64 128 256 -ro --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL --config GDAL_NUM_THREADS ALL_CPUS

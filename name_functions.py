@@ -56,7 +56,7 @@ class types(IntEnum):
 
 
 #p:str -> types or None
-def imageType(p):
+def generateImageType(p):
     if 'IntensityWithoutOverlay' in p:
         return types.intensity
     
@@ -87,7 +87,7 @@ def findOrigonals(georeferenced,projectFolder):
     def key(f,mfv=None):
         if not mfv:
             mfv = generateMfv(f)
-        return str(imageType(f))+'_'+str(generateImageId(f))+'_'+mfv
+        return str(generateImageType(f))+'_'+str(generateImageId(f))+'_'+mfv
     
     
     mfvs = numpy.unique([generateMfv(g) for g in georeferenced])
@@ -110,16 +110,22 @@ def findOrigonals(georeferenced,projectFolder):
                 
     return results
 
-f = r"D:\RAF Shawbury\Data\2023-01-22\MFV1_020\Run 11\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-22 10h15m22s LCMS Module 1 000005.jpg"
 
-#r = generateMfv(f)
-#print(r)
+if __name__ == '__main__':
+    f = r"D:\RAF Shawbury\Data\2023-01-22\MFV1_020\Run 11\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-22 10h15m22s LCMS Module 1 000005.jpg"
+    
+    #r = generateMfv(f)
+    #print(r)
+    
+    
+    
+    f2 = r' D:\RAF Shawbury\TIF Images\MFV1_020\ImageInt\MFV1_020_ImageInt_000005.tif'
+    #r2 = generateMfv(f)
+    #print(r2)
+    
+    
+    jpg = r'D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 09h40m38s LCMS Module 1 000100.jpg'
+    print(generateImageId(jpg))
+    #print(findOrigonals([f2],r'D:\RAF Shawbury'))
+    
 
-
-
-f2 = r' D:\RAF Shawbury\TIF Images\MFV1_020\ImageInt\MFV1_020_ImageInt_000005.tif'
-#r2 = generateMfv(f)
-#print(r2)
-
-
-print(findOrigonals([f2],r'D:\RAF Shawbury'))

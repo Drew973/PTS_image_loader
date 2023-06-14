@@ -18,8 +18,8 @@ from osgeo import gdal
 #'GDAL translate command to add GCPS to raster'
 def GCPCommand(gcp):
     #-gcp <pixel> <line> <easting> <northing>
-    return '-gcp {pixel} {line} {x} {y}'.format(pixel = gcp.GCPPixel,
-        line = gcp.GCPLine,
+    return '-gcp {pixel} {line} {x} {y}'.format(pixel = int(gcp.GCPPixel),
+        line = int(gcp.GCPLine),
         x = gcp.GCPX,
         y = gcp.GCPY)
 
@@ -56,10 +56,35 @@ def _gcps(geom,offset):
     return r
     
     
+
     
+    #-a_ulurll ulx uly urx ury llx lly with edit or translate?
+    
+import os
+
+from image_loader import georeference
+
+noData = 0
+
+# georeference && warp && overview
+
     
 #(file:str,line:QgsGeometry) -> str
-def georeferenceCommand(file,geom,offset):
-    gcps = _gcps(geom=geom,offset=offset)
-    print('gcps',gcps)
-    
+def georeferenceCommand(file,geom,offset=0):
+ #   gcps = _gcps(geom=geom,offset=offset)
+  #  gcpCommands = [GCPCommand(gcp) for gcp in gcps]
+ #   dest = os.path.splitext(file)[0] + '.vrt'
+    return 'python "{script}" "{file}" "{geom}"'.format(script = georeference.__file__,file = file, geom = geom)
+   # return 'gdal_translate "{f}" "{dest}" -of VRT -if JPG -a_srs "EPSG:27700" -b 1 -colorinterp_1 gray -a_nodata {nd} {g}'.format(g=' '.join(gcpCommands),f=file,dest=dest,nd=noData)
+   # return c
+
+
+#'warp' into vrt
+def warpCommand(file):
+    dest = os.path.splitext(file)[0] + '.vrt'
+    return 'gdalwarp "{source}" "{dest}" -s_srs "EPSG:27700" -t_srs "EPSG:27700" -srcnodata {nd} -dstnodata {nd} -r bilinear -overwrite'.format(source=file,dest=dest,nd=noData)
+
+
+
+def overviewCommand(file):
+    return 'gdaladdo "{f}" --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(f = file)

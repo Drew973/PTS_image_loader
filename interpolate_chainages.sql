@@ -1,71 +1,42 @@
-drop view if exists im;
 
-create view IF NOT EXISTS im as
 
-select file
-,image_id*5 as ch
---,image_id*5+5 as e_ch
---,start_chainage
---,end_chainage
---,(select pk from corrections where start_chainage<=image_id*5 and corrections.run = images.run order by start_chainage desc limit 1) as left_correction
-
-,(select start_chainage from corrections where start_chainage<=image_id*5 and corrections.run = images.run order by start_chainage desc limit 1) as last_x
-,(select end_chainage-start_chainage from corrections where start_chainage<=image_id*5 and corrections.run = images.run order by start_chainage desc limit 1) as last_y
-,(select end_offset-start_offset from corrections where start_chainage<=image_id*5 and corrections.run = images.run order by start_chainage desc limit 1) as last_z
-
-,(select start_chainage from corrections where end_chainage>=image_id*5 and corrections.run = images.run order by start_chainage asc limit 1) as next_x
-,(select end_chainage-start_chainage from corrections where end_chainage>=image_id*5 and corrections.run = images.run order by start_chainage asc limit 1) as next_y
-,(select end_offset-start_offset from corrections where end_chainage>=image_id*5 and corrections.run = images.run order by start_chainage asc limit 1) as next_z
-
-from images;
+create view corrections_view as
+select corrections.original_chainage as last_original_chainage
+,corrections.new_chainage as last_new_chainage
+,corrections.new_offset as last_offset
+,next_correction.original_chainage as next_original_chainage
+,next_correction.new_chainage as next_new_chainage
+,next_correction.new_offset as next_offset
+from corrections inner join corrections as next_correction on (select pk from corrections as c where c.original_chainage>corrections.original_chainage) = next_correction.pk
 
 
 
+select *
+,last_new_chainage+(next_new_chainage-last_new_chainage) * (image_id*5 - last_original_chainage) / abs(next_original_chainage-last_original_chainage) as chainage
+,last_offset+(next_offset-last_offset) * (image_id*5 - last_original_chainage) / abs(next_original_chainage-last_original_chainage) as offset
+
+from images left join corrections_view on last_original_chainage <= image_id*5 and image_id*5 <= next_original_chainage
+order by image_id
 
 
 
+--select * from gps
 
-----f(x) = f(a) + (x - a) * ((f(b) - f(a))/(b-a))
-create view IF NOT EXISTS corrected as
+--set line = where start_chainage,end_chainage
 
-select file
+--select * from images;
+/*
+update images set end_chainage = last_new_chainage+(next_new_chainage-last_new_chainage) * (image_id*5+5 - last_original_chainage) / abs(next_original_chainage-last_original_chainage)
+    from corrections_view where last_original_chainage <= image_id*5+5 and image_id*5+5 <= next_original_chainage;
+	
+	
+update images set start_chainage = last_new_chainage+(next_new_chainage-last_new_chainage) * (image_id*5 - last_original_chainage) / abs(next_original_chainage-last_original_chainage),
+    offset = last_offset+(next_offset-last_offset) * (image_id*5 - last_original_chainage) / abs(next_original_chainage-last_original_chainage)
+    from corrections_view where last_original_chainage <= image_id*5 and image_id*5 <= next_original_chainage;
 
-,COALESCE(last_y + (ch-last_x) * (next_y-last_y)/(next_x-last_x)
-, last_y
-,next_y
-,0)
-as chainage_correction
-
-,COALESCE(last_z + (ch-last_x) * (next_z-last_z)/(next_x-last_x)
-, last_y
-,next_y
-,0)
-as offset_correction
-from im
-
+*/
+update images set line = ST_OffsetCurve(Line_Substring(ST_LineMerge(gps.line),(start_chainage-min(start_m))/(max(end_m)-min(start_m)),(end_chainage-min(start_m))/(max(end_m)-min(start_m))),offset)
+from gps where end_m >= start_chainage and start_m <= end_chainage;
 
 
-
-
-select image_id,run,file,start_chainage,end_chainage,MakeLine(pt),min(m),max(m)
-from images left join gps on start_chainage <= (select m from gps where pk = next) and end_chainage >= (select m from gps where pk = last)
-group by images.pk
-order by m
-
-
-
-
-
-
-
-
-select image_id,run,file,start_chainage,end_chainage,min(m),max(m)
-,st_asText(Line_Substring(MakeLine(pt),(start_chainage-min(m))/(max(m)-min(m)),(end_chainage-min(m))/(max(m)-min(m)))) as line
-from 
-images left join
-(select pt,m,lead(m) over (order by m) as next_m,lag(m) over (order by m) as last_m from gps)g
-on 
-start_chainage<=next_m and end_chainage >= last_m
-
-group by images.pk
-order by m
+select * from images

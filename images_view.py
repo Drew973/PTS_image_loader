@@ -27,7 +27,7 @@ class imagesView(QTableView):
     def setModel(self,model):
         super().setModel(model)
         
-        toShow = [model.fieldIndex('image_id'),model.fieldIndex('file')]
+        toShow = [model.fieldIndex('marked'),model.fieldIndex('image_id'),model.fieldIndex('original_file'),model.fieldIndex('image_type')]
         for c in range(model.columnCount()):
             self.setColumnHidden(c,not c in toShow)
         

@@ -6,42 +6,18 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>798</width>
-    <height>714</height>
+    <width>945</width>
+    <height>795</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>PTS image loader</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="QWidget" name="mainWidget" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_4">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QPushButton" name="loadButton">
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load all images where load is checked. Removes anything in image_loader group.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>Load Images</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="remakeButton">
-           <property name="toolTip">
-            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remake georeferenced images using corrections for run.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-           </property>
-           <property name="text">
-            <string>Remake Images</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
        <item>
         <widget class="QComboBox" name="runBox">
          <property name="toolTip">
@@ -50,23 +26,21 @@
         </widget>
        </item>
        <item>
-        <widget class="QToolBox" name="toolBox">
-         <property name="currentIndex">
-          <number>1</number>
+        <widget class="QTabWidget" name="tabWidget">
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
          </property>
-         <widget class="QWidget" name="page_2">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>754</width>
-            <height>516</height>
-           </rect>
-          </property>
-          <attribute name="label">
+         <property name="tabPosition">
+          <enum>QTabWidget::North</enum>
+         </property>
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
            <string>Images</string>
           </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_2">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
             <widget class="imagesView" name="imagesView">
              <property name="selectionBehavior">
@@ -82,19 +56,11 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="page_3">
-          <property name="geometry">
-           <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>754</width>
-            <height>516</height>
-           </rect>
-          </property>
-          <attribute name="label">
+         <widget class="QWidget" name="tab_2">
+          <attribute name="title">
            <string>Corrections</string>
           </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <layout class="QVBoxLayout" name="verticalLayout">
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>

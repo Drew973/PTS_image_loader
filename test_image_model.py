@@ -14,6 +14,9 @@ from image_loader import test
 
 import cProfile
 
+from image_loader import corrections_model
+import cProfile
+
 
 
 class testImageModel(unittest.TestCase):
@@ -56,19 +59,29 @@ class testImageModel(unittest.TestCase):
        # self.model.mark([self.model.index(0,0)],True)
     
     
-    def testRemake(self):
+    def testGeoreference(self):
+        pr = cProfile.Profile()
+        pr.enable()
         
-        self.model.addFolder(os.path.join(test.testFolder,'1_007'))
+        self.model.clear()
         gps = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv')
         self.model.loadGps(gps)
         
+        #file = os.path.join(test.testFolder,'1_007','MFV1_007 Raster Image Load File.txt')
+        #self.model.loadFile(file)
+        self.model.addFolder(os.path.join(test.testFolder,'1_007'))
         
-        indexes = [self.model.index(i,0) for i in range(10)]
-        self.model.remakeImages(indexes)
+        corrections = os.path.join(test.testFolder,'1_007','MFV1_007 Coordinate Corrections.csv')
+        correctionsModel = corrections_model.correctionsModel()
+        correctionsModel.clear()
+        correctionsModel.loadFile(corrections)
         
+        self.model.markAll()
         
-        
-    
+        #indexes = [self.model.index(i,0) for i in range(10)]
+        self.model.georeference()
+        pr.disable()    
+        pr.dump_stats(os.path.join(test.testFolder,'georeference.prof'))
     
     
     def tearDown(self):

@@ -11,7 +11,6 @@ create database and tables in db_functions.createDb().
 """
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
-from image_loader import db_functions
 
 import os
 import csv
@@ -24,19 +23,34 @@ from PyQt5.QtWidgets import QProgressDialog
 
 import glob
 
-import numpy
 
-from image_loader.name_functions import generateRun,generateImageId,findOrigonals,imageType
+from image_loader import db_functions
+from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType
 from image_loader.load_image import loadImage
 from image_loader import gdal_commands
+from image_loader import georeference
+from image_loader.run_commands import runCommands
 
 
-from qgis.core import QgsCoordinateReferenceSystem,QgsGeometry
+
+from qgis.core import QgsCoordinateReferenceSystem
+
+from osgeo import gdal
+
 
 class runsModel(QSqlQueryModel):
     
     def select(self):
-        self.setQuery(QSqlQuery("SELECT distinct run from images order by run",db = self.database()))
+        
+        q = '''
+        select run
+        ,min(image_id)
+        ,(select COALESCE(min(image_id),-1) from images where images.run=run and marked) as min_marked
+        ,max(image_id)
+        ,(select COALESCE(max(image_id),-1) from images where images.run=run and marked) as max_marked
+        from images group by run order by run
+        '''
+        self.setQuery(QSqlQuery(q,db = self.database()))
 
     def database(self):
         return QSqlDatabase.database('image_loader')
@@ -52,6 +66,58 @@ class runsModel(QSqlQueryModel):
 
 
 
+    def data(self,index,role):
+        if role == Qt.BackgroundColorRole:
+            if self.index(index.row(),self.fieldIndex('max_marked')).data(Qt.EditRole) > self.index(index.row(),self.fieldIndex('min_marked')).data(Qt.EditRole):
+                return QColor('yellow')
+            else:
+                return QColor('white')
+        return super().data(index,role)
+
+
+    def fieldIndex(self,name):
+        return self.record().indexOf(name)
+
+
+
+class _image():
+    
+    def __init__(self,imageId = None ,origonalFile = '',newFile = '',run = ''):
+        
+        f = ''
+        if origonalFile:
+            f = origonalFile
+        else:
+            if newFile:
+                f = newFile
+        
+        if imageId is None:
+            self.imageId = generateImageId(f)
+        else:
+            self.imageId = imageId
+            
+            
+        self.origonalFile = origonalFile
+        self.newFile = newFile
+        
+        if run:
+            self.run = run
+        else:
+            self.run = generateRun(f)
+
+        self.imageType = generateImageType(f)
+        
+
+
+
+def createProgressDialog(parent=None,labelText=''):
+        progress = QProgressDialog(labelText,"Cancel", 0, 0,parent=parent)#QObjectwithout parent gets deleted like normal python object
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setAutoClose(False)
+        progress.show()
+        progress.forceShow()    
+        return progress
+
 
 
 
@@ -59,7 +125,8 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        db_functions.createDb()
+     #   self._db = db
+        self.run = None
         self.runsModel = runsModel()
         self.runsModel.select()
         self.setRun('')
@@ -72,13 +139,27 @@ class imageModel(QSqlQueryModel):
     
     def data(self,index,role):
         if role == Qt.BackgroundColorRole:
-            if self.index(index.row(),self.fieldIndex('marked')).data():
+            if self.index(index.row(),self.fieldIndex('marked')).data(Qt.EditRole):
                 return QColor('yellow')
             else:
                 return QColor('white')
 
-        else:
-            return super().data(index,role)
+        #special handling for marked column
+        if index.column() == self.fieldIndex('marked'):
+        
+            if role == Qt.EditRole:
+                return bool(super().data(index,role))
+
+            if role == Qt.DisplayRole:
+                return None
+
+            if role == Qt.CheckStateRole:
+                if super().data(index,Qt.EditRole):
+                    return Qt.Checked
+                else:
+                    return Qt.Unchecked
+
+        return super().data(index,role)
         
     
     
@@ -90,8 +171,9 @@ class imageModel(QSqlQueryModel):
         t = self.query().lastQuery()
         self.setQuery(t,self.database())
        #self.setQuery(self.query()) query does not update model. bug in qt?
-        
+        self.runsModel.select()
        
+        
     def clear(self):
         q = QSqlQuery(self.database())
         if not q.exec('delete from images'):
@@ -105,160 +187,121 @@ class imageModel(QSqlQueryModel):
 
  
     def setRun(self,run):
-        if run:
-            filt = "where run = '{run}'".format(run=run)#"
-        else:
-            filt = ''
-        q = 'select pk,run,image_id,file,marked from images {filt} order by image_id,file'.format(filt=filt)
-        self.setQuery(q,self.database())
-
+        
+        if run != self.run:
+            
+            if run:
+                filt = "where run = '{run}'".format(run=run)#"
+            else:
+                filt = ''
+            q = 'select marked,pk,run,image_id,original_file,image_type from images {filt} order by image_id,original_file,image_type'.format(filt=filt)
+            self.setQuery(q,self.database())
+            self.run = run
         
     #load images into qgis
     def loadImages(self,indexes):
+        #try to open .vrt
+        #then jpg if not found
+        #don't open if no .wld file?
         
-       # print(indexes)
-        progress = QProgressDialog("Loading images...","Cancel", 0, 0,parent=self.parent())#QObjectwithout parent gets deleted like normal python object
-        progress.setMinimumDuration(0)
-        progress.setWindowModality(Qt.WindowModal)
-        
-       # print([index.row() for index in indexes])
-        rows = numpy.unique([index.row() for index in indexes])
-        fileCol = self.fieldIndex('file')
-        runCol = self.fieldIndex('run')
-
-        progress.setMaximum(len(rows))
-        for i,row in enumerate(rows):
-            if progress.wasCanceled():
-                return
-            
-            progress.setValue(i)
-            file = self.index(row,fileCol).data()
-            
-            groups = ['image_loader',
-                      imageType(file).name,
-                      self.index(row,runCol).data()]
-            
-            loadImage(file=file,groups=groups)
-            
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        progress.deleteLater()
-        del progress
-        
-        
-        
-    #load images into qgis
-    def remakeImages(self,indexes):
-        
-        progress = QProgressDialog("Calculating locations...","Cancel", 0, 0,parent=self.parent())#QObjectwithout parent gets deleted like normal python object
-        progress.setMinimumDuration(0)
-        progress.setWindowModality(Qt.WindowModal)
-        
-        col = self.fieldIndex('pk')
-        pks = [str(self.index(index.row(),col).data()) for index in indexes]
-        
-        db_functions.recalcChainages(pks)
-        
-        
-        progress.setLabelText('Georeferencing images...')
-        
-        q = '''
-        select file
-        ,st_asText(Line_Substring(MakeLine(pt),(start_chainage-min(m))/(max(m)-min(m)),(end_chainage-min(m))/(max(m)-min(m)))) as line
-        ,offset
-        from 
-        images left join
-        (select pt,m,lead(m) over (order by m) as next_m,lag(m) over (order by m) as last_m from gps)g
-        on 
-        start_chainage<=next_m and end_chainage >= last_m
-        and pk in (:pks)
-        group by images.pk
-        order by m
-        '''
-        
-        query = db_functions.runQuery(query = q,values = {':pks':','.join(pks)})
-        progress.setMaximum(len(pks))
-        
+        progress = createProgressDialog(parent=self.parent(),labelText = "Loading images...")
+        query = db_functions.runQuery('select original_file,run,image_type from images where marked and not original_file is null')
+     
+        progress.setRange(0,query.size())
         i = 0
+        
         while query.next():
             
             if progress.wasCanceled():
                 return
             progress.setValue(i)
             
-            file = query.value(0)#string
-            
-            if hasattr(file,'value'):
-                file = str(file.value())
-            
-            
-            line = query.value(1)#QVariant
-            
-            
-            if not isinstance(line,str):
-                line = str(line.value())
-            
-            
-            geom = QgsGeometry.fromWkt(line)
-            print('file',file,'line',line,'geom',geom)
-            
-            c = gdal_commands.georeferenceCommand(file=file,geom=geom,offset = query.value(2))
-            print(c)
+            origonalFile = query.value(0)#string      
+            warped = georeference.warpedFileName(origonalFile)
+
+            if os.path.exists(warped):
+                groups = ['image_loader',
+                          query.value(2),
+                          query.value(1)]
+                loadImage(file=warped,groups=groups)
             i += 1
             
-            if i>len(pks):
-                print('query returned more images whan expected')
-                return
-            
-              
+        progress.close()#close immediatly otherwise haunted by ghostly progressbar
+        progress.deleteLater()
+        del progress
+        
+    
+    def hasGps(self):
+        return db_functions.hasGps(self.database())
+                
+    #load images into qgis
+    def georeference(self,indexes=None):
+        #print('georeference')
+        progress = createProgressDialog(parent=self.parent(),labelText = "Calculating positions...")
+        georeferenceCommands = []
+        query = db_functions.runQuery('select original_file,st_asText(line) from images_view where not line is null')
+        
+        while query.next():
+            file = query.value(0)#string
+            line = query.value(1)#QVariant
+       
+            if os.path.exists(file):
+                georeferenceCommands.append(gdal_commands.georeferenceCommand(file,line))
+
+        if georeferenceCommands:
+            #print(georeferenceCommands)
+            progress.setLabelText('writing files...')       
+            runCommands(commands = georeferenceCommands,progress=progress)#running in paralell.
+        
         progress.close()#close immediatly otherwise haunted by ghostly progressbar
         progress.deleteLater()
         del progress    
-        
-     
-    
-    '''
-select 
-
-*
---lc.start_chainage
-,file
---,COALESCE(lc.end_offset-lc.start_offset,rc.end_offset-rc.start_offset,0)
-
-
-
---y  = c + mx
---x = start_chainage
---y = end_offset-start_offset
-,COALESCE(
-lc.end_offset-lc.start_offset + (a.ch-lc.start_chainage) * (rc.end_offset-rc.start_offset)/(rc.start_chainage-lc.end_chainage)
-,lc.end_offset-lc.start_offset
-,rc.end_offset-rc.start_offset
-,0
-)
-as offset
-
-
---lc.end_offset-lc.start_offset as ly
---rc.end_offset-rc.start_offset as ry
-
-from
-(
-select file
-,image_id*5 as ch
---,image_id*5+5 as e_ch
---,start_chainage
---,end_chainage
-,(select pk from corrections where start_chainage<=image_id*5 and corrections.run = images.run order by start_chainage desc limit 1) as left_correction
-,(select pk from corrections where end_chainage>=image_id*5 and corrections.run = images.run order by start_chainage asc limit 1) as right_correction
-
-from images
-) a
-
-left join corrections as lc on a.left_correction = lc.pk
-left join corrections as rc on a.right_correction = rc.pk
-    '''
     
    
+    def makeVrt(self):
+        progress = createProgressDialog(parent=self.parent(),labelText = "Making VRT files...")        
+        query = db_functions.runQuery("select group_concat(original_file,':'),run,image_type from images where marked group by run,image_type order by original_file")
+      #  commands = []
+        
+        progress.setMaximum(query.size())
+        
+        while query.next():
+                        
+            if progress.wasCanceled():
+                break
+            
+            
+            files = []
+            for f in query.value(0).split(':'):
+                warped = georeference.warpedFileName(f)
+                if os.path.isfile(warped):
+                    files.append(warped)
+                  
+            if files:
+                if os.path.isdir(self.fields['folder']):
+                    folder = os.path.join(self.fields['folder'],'Combined Images',query.value(2))
+                
+                else:
+                    folder = os.path.dirname(files[0])
+                
+                
+                if not os.path.isdir(folder):
+                    os.makedirs(folder)
+                 
+                vrtFile = os.path.join(folder,
+                                       '{tp}_{run}.vrt'.format(run = query.value(1),tp = query.value(2)))        
+                
+                print(vrtFile,files)
+
+                gdal.BuildVRT(vrtFile, files)
+                              
+            progress.setValue(progress.value()+1)
+            
+            
+        progress.close()#close immediatly otherwise haunted by ghostly progressbar
+        progress.deleteLater()
+        del progress    
+    
     
     def loadGps(self,file):
         db_functions.loadGps(file=file,db=self.database())
@@ -267,8 +310,7 @@ left join corrections as rc on a.right_correction = rc.pk
     
     def addFolder(self,folder):
         pattern = folder+'/**/*.jpg'
-        self._add( glob.glob(pattern,recursive=True))
-    
+        self._add([_image(origonalFile = f) for f in glob.glob(pattern,recursive=True)])
     
     
     def dropRows(self,indexes):
@@ -283,49 +325,72 @@ left join corrections as rc on a.right_correction = rc.pk
 
     
     def loadFile(self,file):
+        
+        def _find(d,k):
+            if k in d:
+                return d[k]
+        
+        
         ext = os.path.splitext(file)[-1]
         if ext in ['.csv','.txt']:
-                 #  self.addDetails([d for d in image_details.fromCsv(file)])
         
-            files = []
+            data = []
             
             with open(file,'r',encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 reader.fieldnames = [name.lower().replace('_','') for name in reader.fieldnames]#lower case keys/fieldnames                 
-                for d in reader:
-                    p = d['filepath']
+                for row in reader:
+                    
+        
+                    p = row['filepath']
                     if os.path.isabs(p):
                         filePath = p
                     else:
                         filePath = os.path.normpath(os.path.join(file,p))#from file not folder
-                                                
-                    files.append(filePath)
-                   # data.append([generateImageId(generateRun),generateRun(filePath),filePath])
-                    
-                   
-            if 'Raster Image Load File' in file and os.path.isdir(self.fields['folder']):                   
-                files = findOrigonals(files,projectFolder = self.fields['folder'])
+                          
+                    data.append(_image(newFile = filePath,
+                                run = _find(row,'runid'),
+                                imageId= _find(row,'frameid')
+                                ))
+
+            #    print('dat',data)
+
+            #find origonal files
+            if 'Raster Image Load File' in file and os.path.isdir(self.fields['folder']):
+                files = [im.newFile for im in data]
+                
+                origonalFiles = findOrigonals(files,projectFolder = self.fields['folder'])
+               
+                for i,f in enumerate(origonalFiles):
+                    data[i].origonalFile = f
+               
+            self._add(data)
+         
             
-            self._add(files)
+    def _add(self,data):
             
-            
-            
-    def _add(self,files):
+        self.database().transaction()
+        
         q = QSqlQuery(self.database())
-        if not q.prepare('insert into images(image_id,file,run) values(:i,:f,:run)'):
+        if not q.prepare('insert into images(image_id,original_file,new_file,run,image_type) values(:i,:origonal,:new,:run,:type)'):
             raise db_functions.queryError(q)
             
-        for file in files:
-            q.bindValue(':i',generateImageId(file))
-            q.bindValue(':f',file)
-            q.bindValue(':run',generateRun(file))
+            
+        for d in data:
+            
+            q.bindValue(':i',d.imageId)
+            q.bindValue(':origonal',d.origonalFile)
+            q.bindValue(':new',d.newFile)
+            q.bindValue(':run',d.run)
+            q.bindValue(':type',d.imageType.name)
 
             if not q.exec():
                     print(q.boundValues())
                     raise db_functions.queryError(q)
             
+        self.database().commit()
         self.select()
-        self._refreshRuns()
+        #self._refreshRuns()
 
 
 
@@ -344,12 +409,19 @@ left join corrections as rc on a.right_correction = rc.pk
         
         self.select()
        # print(pks)
+        #self._refreshRuns()
+      
+      
+    def markAll(self):
+        db_functions.runQuery(query = 'update images set marked=True')
+        self.select()
+        self._refreshRuns()
         
+    def unmarkAll(self):
+        db_functions.runQuery(query = 'update images set marked=False')
+        self.select()
+        #self._refreshRuns()
         
     def markBetween(self,runIndex,start,end):
         pass    
-    
-    
-
-    
     

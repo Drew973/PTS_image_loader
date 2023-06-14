@@ -25,7 +25,7 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal,QUrl,Qt
+from qgis.PyQt.QtCore import pyqtSignal,QUrl#,Qt
 from qgis.utils import iface
 from qgis.core import Qgis
 
@@ -34,7 +34,7 @@ from .functions.load_frame_data import loadFrameData
 from .functions.load_cracking import loadCracking
 from .widgets import set_layers_dialog
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QDataWidgetMapper
+from PyQt5.QtWidgets import QMenuBar,QFileDialog#,QDataWidgetMapper
 from PyQt5 import QtGui
 
 
@@ -60,6 +60,7 @@ from image_loader.load_gps import loadGpsLines
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
 
+from image_loader import db_functions
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
@@ -73,17 +74,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
        # self.correctionsDialog = correctionsDialog()
      #   self.correctionsButton.clicked.connect(self.correctionsDialog.show)#need non modal to click map
         
-        self.initTopMenu()
       
+        db_functions.createDb(file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\images.db')
         self.model = imageModel(parent=self)
         self.model.fields = self.layersDialog
-        
+        self.initTopMenu()
+
         self.correctionsModel = correctionsModel()
         self.correctionsView.setModel(self.correctionsModel)
         
         
-        self.loadButton.clicked.connect(self.loadImages)
-        self.remakeButton.clicked.connect(self.remakeImages)
+       # self.loadButton.clicked.connect(self.loadImages)
+      #  self.remakeButton.clicked.connect(self.remakeImages)
         
         
     #    self.mapper = QDataWidgetMapper()
@@ -95,7 +97,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
  
 
         self.imagesView.setModel(self.model)
-        self.setFile()
+       # self.setFile()
 
         self.runBox.currentIndexChanged.connect(self.runChange)
         self.addCorrectionButton.clicked.connect(self.addCorrection)
@@ -103,11 +105,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def addCorrection(self):
-        self.correctionsModel.addCorrection(run = self.runBox.itemText(self.runBox.currentIndex()),
-                                 startChainage = self.startChainage.value(),
-                                 endChainage = self.endChainage.value(),
-                                 startOffset = self.startOffset.value(),
-                                 endOffset = self.endOffset.value())
+        self.correctionsModel.addCorrections([{'run' : self.runBox.itemText(self.runBox.currentIndex()),
+                                 'original_chainage' : self.startChainage.value(),
+                                 'new_chainage' : self.endChainage.value(),
+                                 'original_offset' : self.startOffset.value(),
+                                 'new_offset' : self.endOffset.value()}])
 
 
 
@@ -115,10 +117,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model.loadImages(self.imagesView.selected())
         
     
-    
-    def remakeImages(self):
-           self.model.remakeImages(self.imagesView.selected())     
-        
+   
+    def georeferenceImages(self):
+        if self.model.hasGps():
+            self.model.georeference()
+        else:
+            iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
         
     def runChange(self):
@@ -127,35 +131,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model.setRun(run)
         self.correctionsModel.setRun(run)
         
-        i = self.runBox.model().index(index,0)
-        
-        self.startChainage.setIndex(i)
-      #  i  = self.correctionsModel.index(0,0)
-       # print('model',i.model())
-       # if i.model():
-         #   print('range',i.model().allowedRange(i))
-        #
-      #  self.mapper.setCurrentIndex(index)
-      #  i = self.model.index(index,self.runBox.modelColumn())
-      #  self.correctionsDialog.setIndex(i) 
-        #i = self.proxy.mapFromSource(i)
-     #   if i.isValid():
-     #       self.imagesView.setModel(i.model())
-     #       self.imagesView.setRootIndex(i)
-      #      self.imagesView.hideCols()
-      ##  else:
-      #      self.imagesView.setModel(None)    
     
-    
-    #QFileDialog should return existing file or None.
-    #handle actual opening
-    def setFile(self,file='untitled'):
-        if file == 'untitled':
-            self.model.clear()
-            self.correctionsModel.clear()
-        else:
-            self.model.loadFile(file)
-        self.runChange()
+    def new(self):
+        self.model.clear()
+        self.correctionsModel.clear()
 
 
     def initTopMenu(self):
@@ -163,13 +142,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
-        newAct.triggered.connect(lambda:self.setFile())
+        newAct.triggered.connect(self.new)
         
         openAct = fileMenu.addAction('Open...')
         openAct.triggered.connect(self.openFile)
         
         saveAsAct = fileMenu.addAction('Save as...')
         saveAsAct.triggered.connect(self.saveAs)
+        
+        openAct = fileMenu.addAction('Open corrections...')
+        openAct.triggered.connect(self.openCorrections)
+        
+        
         
         ######################load
         toolsMenu = topMenu.addMenu("Tools")
@@ -196,6 +180,26 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         loadCracksAct = toolsMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
+        
+        
+        selectMenu = topMenu.addMenu("Select")
+        markAllAct = selectMenu.addAction('Mark all images')
+        markAllAct.triggered.connect(self.model.markAll)
+
+        unmarkAllAct = selectMenu.addAction('Unmark all images')
+        unmarkAllAct.triggered.connect(self.model.unmarkAll)
+         
+        processMenu = topMenu.addMenu("Process")
+        
+        loadAct = processMenu.addAction('Load selected images')
+        loadAct.triggered.connect(self.loadImages)
+        
+        georeferenceAct = processMenu.addAction('Georeference selected images')
+        georeferenceAct.triggered.connect(self.georeferenceImages)
+        
+        vrtAct = processMenu.addAction('Make combined VRTs for selected images')
+        vrtAct.triggered.connect(self.makeVrt)
+        
         
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help (in your default web browser)')
@@ -237,10 +241,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 loadGpsLines(f[0])
 
 
-
+    def makeVrt(self):
+        self.model.makeVrt()
 
     def loadGps(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)')
+        
+        p = os.path.join(self.layersDialog['folder'],'Hawkeye Exported Data')
+        if os.path.isdir(p):
+            d = p
+        else:
+            d = ''
+        
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)',directory=d)
         if f:
             if f[0]:
                 self.model.loadGps(f[0])
@@ -256,9 +268,19 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def openFile(self):
         f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
         if f:
-            self.setFile(f)
-                
+           # self.setFile(f)
+            self.model.loadFile(f)    
             
+            
+    def openCorrections(self):
+        
+        f = getFile(folder = os.path.join(self.layersDialog['folder'],'Processed Data') , filt = '*;;*.csv')
+        
+       # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
+        if f:
+            self.correctionsModel.loadFile(f)
+        
+        
             
     #could save to sqlite database. Would confuse users and no real advantages.
     def saveAs(self):
@@ -283,3 +305,16 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+
+
+
+
+def getFile(folder,filt):
+        if os.path.isdir(folder):
+            d = folder
+        else:
+            d = ''
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = filt,directory=d)
+        if f:
+            return f[0]

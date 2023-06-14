@@ -8,7 +8,7 @@ Created on Mon Apr 24 09:42:07 2023
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 from image_loader import db_functions
-
+from qgis.core import QgsPointXY
 
 
 class correctionsModel(QSqlQueryModel):
@@ -17,14 +17,17 @@ class correctionsModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        db_functions.createDb()
+       # self._db = db
+        #db_functions.createDb()
         self.setRun('')
 
+
+    def fieldIndex(self,name):
+        return self.record().indexOf(name)
 
 
     def database(self):
         return QSqlDatabase.database('image_loader')
-
 
 
     def clear(self):
@@ -49,26 +52,47 @@ class correctionsModel(QSqlQueryModel):
     def setRun(self,run):
         self._run = run
         
-        if run:
-            filt = "where run = '{run}'".format(run=run)#"
-        else:
-            filt = ''
-        q = 'select pk,start_chainage,start_offset,end_chainage,end_offset from corrections {filt} order by start_chainage'.format(filt=filt)
+ #       if run:
+   #         filt = "where run = '{run}'".format(run=run)#"
+   #     else:
+    #        filt = ''
+            #original
+        filt = ''
+        q = 'select pk,original_chainage,original_offset,new_chainage,new_offset from corrections {filt} order by original_chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 
 
-
-    #set chainage/offset corrections from startPoint and endPoint
-    
-   # QgsPointXY,QgsPointXY,QModelIndex
-    def addCorrection(self,run,startChainage,endChainage,startOffset,endOffset):
-        db_functions.runQuery(query = 'insert into corrections(run,start_chainage,end_chainage,start_offset,end_offset) values(:run,:startChainage,:endChainage,:startOffset,:endOffset)',
-                             values = {':run':run,':startChainage':startChainage,':endChainage':endChainage,':startOffset':startOffset,':endOffset':endOffset} )
+        
+    def addCorrections(self,corrections):
+        db_functions.insertCorrections(corrections=corrections,db = self.database())
         self.select()
         
+    
         
+    def loadFile(self,file):
+        db_functions.loadCorrections(file)
+        self.select()
         
+
+
+#chainage:float,offset:float,index:QModelIndex -> QgsPointXY
+    def getPoint(self,chainage,offset,index=None):
+        return db_functions.getPoint(chainage=chainage,offset=offset,db=self.database())
+      
+    
+    
+    '''
+    find closest chainage & offset of closest point within run
+    '''
+    #index QModelIndex,point:QgsPointXY -> (chainage float,offset float)
+    def getChainage(self,point,index):
         
-       # q = db_functions.runQuery("select start_chainage,end_chainage,end_offset-start_offset from corrections where run = '':run")
-        
-        
+        run = self.index(index.row(),self.fieldIndex('run')).data()
+        if run is None:
+            run = ''
+            
+        return db_functions.getChainage(run = run,
+                                        x = point.x(),
+                                        y = point.y(),
+                                        db = self.database())
+    

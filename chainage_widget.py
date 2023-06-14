@@ -71,7 +71,7 @@ class chainageWidget(QDoubleSpinBox):
     '''
     def setIndex(self, index):
         
-        print('setIndex',index)
+      #  print('setIndex',index)
         self._index = index
         if hasattr(index.model(),'allowedRange'):
             r = index.model().allowedRange(index)

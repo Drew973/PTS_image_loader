@@ -1,0 +1,21 @@
+
+
+
+
+
+Tool to make .vrt file for each run in corrections csv from corresponding images in folder.
+Also makes overviews. Making overviews is time consuming but speeds up rendering in QGIS.
+
+
+may need to run
+py3_env if getting python not recognised as command...
+
+
+
+Intended to be used from OSGeo4W shell like
+python [vrt_from_corrections.py] [folder with images] [corrections csv] 
+Eg
+python "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\vrt_from_corrections.py" "D:\RAF Shawbury\TIF Images\MFV1_005\ImageRng" "D:\RAF Shawbury\Processed Data\MFV1_005 Coordinate Corrections.csv"
+
+vrt and overviews will be created in folder.
+VRT files can be loaded into QGIS in same way as other rasters.
