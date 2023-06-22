@@ -62,62 +62,9 @@
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout">
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="text">
-                <string>From</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="chainageWidget" name="startChainage">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Origonal chainage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="chainageWidget" name="startOffset">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Origonal offset&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label">
-               <property name="text">
-                <string>To</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="chainageWidget" name="endChainage">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desired chainage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="chainageWidget" name="endOffset">
-               <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Desired offset&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="addCorrectionButton">
-               <property name="text">
-                <string>Add</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="QTableView" name="correctionsView">
+            <widget class="correctionsView" name="correctionsView">
              <property name="selectionMode">
-              <enum>QAbstractItemView::SingleSelection</enum>
+              <enum>QAbstractItemView::ExtendedSelection</enum>
              </property>
              <property name="selectionBehavior">
               <enum>QAbstractItemView::SelectRows</enum>
@@ -144,9 +91,9 @@
    <header>image_loader.images_view</header>
   </customwidget>
   <customwidget>
-   <class>chainageWidget</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>image_loader.chainage_widget</header>
+   <class>correctionsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.corrections_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -8,6 +8,9 @@ constraints:
 
 
 
+gps as separate model?
+
+
 need something to:
 	-align images with each other and google earth ie georeference images
 	-view many images without crashing QGIS for rating.

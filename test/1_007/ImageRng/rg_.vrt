@@ -1,0 +1,176 @@
+<VRTDataset rasterXSize="7199" rasterYSize="24937">
+  <SRS dataAxisToSRSAxisMapping="1,2">PROJCS["OSGB36 / British National Grid",GEOGCS["OSGB36",DATUM["Ordnance_Survey_of_Great_Britain_1936",SPHEROID["Airy 1830",6377563.396,299.3249646,AUTHORITY["EPSG","7001"]],AUTHORITY["EPSG","6277"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4277"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",49],PARAMETER["central_meridian",-2],PARAMETER["scale_factor",0.9996012717],PARAMETER["false_easting",400000],PARAMETER["false_northing",-100000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","27700"]]</SRS>
+  <GeoTransform>  3.5445874082559056e+05,  3.9321623765383520e-03,  0.0000000000000000e+00,  3.2199938742600003e+05,  0.0000000000000000e+00, -3.9321623765383520e-03</GeoTransform>
+  <VRTRasterBand dataType="Byte" band="1">
+    <NoDataValue>255</NoDataValue>
+    <ColorInterp>Gray</ColorInterp>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002703_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1611" RasterYSize="1619" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1611" ySize="1618.83564256846" />
+      <DstRect xOff="2111.02966114598" yOff="23315.4247512902" xSize="1613.72634563861" ySize="1621.57524870982" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002704_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1609" RasterYSize="1618" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1609" ySize="1618" />
+      <DstRect xOff="1225.93294674089" yOff="22392.3415587581" xSize="1617.6805622506" ySize="1626.72911729116" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002705_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1585" RasterYSize="1570" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1585" ySize="1570" />
+      <DstRect xOff="373.417542011927" yOff="21510.7785234761" xSize="1596.46157221453" ySize="1581.35310307686" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002706_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1286" RasterYSize="1502" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1286" ySize="1502" />
+      <DstRect xOff="0" yOff="20559.1109430512" xSize="1272.67082812687" ySize="1486.43202476405" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002707_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1331" RasterYSize="1539" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1331" ySize="1539" />
+      <DstRect xOff="11.3073686019726" yOff="19126.9695393813" xSize="1384.25898324917" ySize="1600.58194982756" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002708_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1509" RasterYSize="1609" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1509" ySize="1609" />
+      <DstRect xOff="484.124058751034" yOff="17944.5537196276" xSize="1547.34904705639" ySize="1649.89040206344" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002709_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1529" RasterYSize="1602" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1529" ySize="1602" />
+      <DstRect xOff="1151.5992921454" yOff="16841.1870260156" xSize="1522.82107249953" ySize="1595.52606811265" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002710_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1489" RasterYSize="1582" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1489" ySize="1582" />
+      <DstRect xOff="1768.81464787326" yOff="15730.8704668428" xSize="1467.53946450939" ySize="1559.19908183603" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002711_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1462" RasterYSize="1572" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1462" ySize="1572" />
+      <DstRect xOff="2316.5623738676" yOff="14607.2507948238" xSize="1442.32477624369" ySize="1550.84442425108" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002712_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1452" RasterYSize="1566" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1452" ySize="1566" />
+      <DstRect xOff="2831.40021779304" yOff="13479.8502514165" xSize="1434.72414667199" ySize="1547.36777802227" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002713_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1425" RasterYSize="1553" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1425" ySize="1553" />
+      <DstRect xOff="3331.34091502047" yOff="12337.5187376323" xSize="1412.62569452981" ySize="1539.51417796828" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002714_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1399" RasterYSize="1537" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1399" ySize="1537" />
+      <DstRect xOff="3795.55368783222" yOff="11175.8968200789" xSize="1387.60362344452" ySize="1524.47946335542" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002715_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1360" RasterYSize="1516" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1360" ySize="1516" />
+      <DstRect xOff="4223.2295666559" yOff="9994.84971283325" xSize="1354.41639094085" ySize="1509.77591813701" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002716_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1327" RasterYSize="1490" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1327" ySize="1490" />
+      <DstRect xOff="4604.7138127969" yOff="8803.09628273893" xSize="1318.56648849068" ySize="1480.53057110106" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002717_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1266" RasterYSize="1456" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1266" ySize="1456" />
+      <DstRect xOff="4936.67263723431" yOff="7590.81012986811" xSize="1265.89580398282" ySize="1455.88016634991" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002718_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1225" RasterYSize="1421" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1225" ySize="1421" />
+      <DstRect xOff="5204.31367013467" yOff="6359.1003131502" xSize="1220.59010307612" ySize="1415.8845195683" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002719_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1192" RasterYSize="1397" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1192" ySize="1397" />
+      <DstRect xOff="5419.32793429482" yOff="5116.50005099264" xSize="1188.32137174248" ySize="1392.68872174853" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002720_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1158" RasterYSize="1374" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1158" ySize="1374" />
+      <DstRect xOff="5597.84624887518" yOff="3867.93182571383" xSize="1155.76586828312" ySize="1371.34913905096" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002721_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1126" RasterYSize="1357" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1126" ySize="1357" />
+      <DstRect xOff="5741.88404430146" yOff="2608.13059537005" xSize="1129.80095367441" ySize="1361.5807230339" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002722_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1123" RasterYSize="1356" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1123" ySize="1356" />
+      <DstRect xOff="5857.69284269968" yOff="1331.55081062924" xSize="1126.93437429803" ySize="1360.75067813725" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+    <ComplexSource>
+      <SourceFilename relativeToVRT="1">2023-01-21 10h08m11s LCMS Module 1 002723_warped.vrt</SourceFilename>
+      <SourceBand>1</SourceBand>
+      <SourceProperties RasterXSize="1222" RasterYSize="1445" DataType="Byte" BlockXSize="512" BlockYSize="128" />
+      <SrcRect xOff="0" yOff="0" xSize="1221.51196759395" ySize="1445" />
+      <DstRect xOff="5973.16721953567" yOff="0" xSize="1225.83278046433" ySize="1450.11134951056" />
+      <NODATA>255</NODATA>
+    </ComplexSource>
+  </VRTRasterBand>
+</VRTDataset>

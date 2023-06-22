@@ -14,12 +14,25 @@ from image_loader import test
 
 import cProfile
 
-from image_loader import corrections_model
+from image_loader import corrections_model,db_functions
 import cProfile
+from PyQt5.QtSql import QSqlDatabase
 
 
 
 class testImageModel(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        db_functions.createDb(file = os.path.join(test.testFolder,'test.db'))
+       # db_functions.createDb()
+   
+
+    @classmethod
+    def tearDownClass(cls):
+        QSqlDatabase.database('image_loader').close()    
+    
+        
     def setUp(self):
         self.model = imageModel()
         self.model.fields={'folder':os.path.join(test.testFolder,'1_007')}
@@ -80,7 +93,7 @@ class testImageModel(unittest.TestCase):
         
         #indexes = [self.model.index(i,0) for i in range(10)]
         self.model.georeference()
-        pr.disable()    
+        pr.disable()
         pr.dump_stats(os.path.join(test.testFolder,'georeference.prof'))
     
     
@@ -91,8 +104,10 @@ class testImageModel(unittest.TestCase):
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImageModel)
     unittest.TextTestRunner().run(suite)
-   
     #layer = m.loadLayer()
     #add virtual field with wkt for debugging.
     #field = QgsField('wkt', QVariant.String)
   #  layer.addExpressionField('geom_to_wkt($geometry)', field)
+  
+  
+  

@@ -27,7 +27,7 @@ import glob
 from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType
 from image_loader.load_image import loadImage
-from image_loader import gdal_commands
+#from image_loader import gdal_commands
 from image_loader import georeference
 from image_loader.run_commands import runCommands
 
@@ -239,20 +239,22 @@ class imageModel(QSqlQueryModel):
         #print('georeference')
         progress = createProgressDialog(parent=self.parent(),labelText = "Calculating positions...")
         georeferenceCommands = []
-        query = db_functions.runQuery('select original_file,st_asText(line) from images_view where not line is null')
+        query = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
         
         while query.next():
             file = query.value(0)#string
-            line = query.value(1)#QVariant
-       
+            left = query.value(1)#QVariant
+            right = query.value(2)#QVariant
+
             if os.path.exists(file):
-                georeferenceCommands.append(gdal_commands.georeferenceCommand(file,line))
+                c = 'python "{script}" "{file}" "{left}" "{right}"'.format(script = georeference.__file__,file = file, left = left,right=right)
+                georeferenceCommands.append(c)
 
         if georeferenceCommands:
             #print(georeferenceCommands)
             progress.setLabelText('writing files...')       
             runCommands(commands = georeferenceCommands,progress=progress)#running in paralell.
-        
+       # print(georeferenceCommands)
         progress.close()#close immediatly otherwise haunted by ghostly progressbar
         progress.deleteLater()
         del progress    

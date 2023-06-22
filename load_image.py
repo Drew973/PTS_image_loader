@@ -5,10 +5,9 @@ Created on Thu Apr 20 13:17:19 2023
 @author: Drew.Bennett
 """
 
-from qgis.core import QgsProject,QgsRasterLayer,QgsLayerTreeGroup
+from qgis.core import QgsProject,QgsRasterLayer,QgsLayerTreeGroup,QgsContrastEnhancement
 
 import os
-
 
 
 
@@ -20,7 +19,7 @@ def loadImage(file,groups):
     group = getGroup(groups)#QgsLayerTreeGroup
     
     layer = QgsRasterLayer(file,name)        
-
+    layer.setContrastEnhancement(QgsContrastEnhancement.NoEnhancement)#remove contrast enhancement. end up with same pixel value showing as different color.
     group.addLayer(layer)
    # group.setExpanded(False)    
         

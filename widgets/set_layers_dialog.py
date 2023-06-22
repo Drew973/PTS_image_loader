@@ -45,7 +45,7 @@ class setLayersDialog(QDialog):
         
         
         self.folder = QLineEdit()
-        self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
+       # self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
         
       #  self.useRectangle = QCheckBox()

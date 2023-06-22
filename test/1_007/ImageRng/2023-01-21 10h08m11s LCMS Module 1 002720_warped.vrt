@@ -1,0 +1,75 @@
+<VRTDataset rasterXSize="1158" rasterYSize="1374" subClass="VRTWarpedDataset">
+  <SRS dataAxisToSRSAxisMapping="1,2">PROJCS["OSGB36 / British National Grid",GEOGCS["OSGB36",DATUM["Ordnance_Survey_of_Great_Britain_1936",SPHEROID["Airy 1830",6377563.396,299.3249646,AUTHORITY["EPSG","7001"]],AUTHORITY["EPSG","6277"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4277"]],PROJECTION["Transverse_Mercator"],PARAMETER["latitude_of_origin",49],PARAMETER["central_meridian",-2],PARAMETER["scale_factor",0.9996012717],PARAMETER["false_easting",400000],PARAMETER["false_northing",-100000],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],AUTHORITY["EPSG","27700"]]</SRS>
+  <GeoTransform>  3.5448075246600003e+05,  3.9245760477979886e-03,  0.0000000000000000e+00,  3.2198417808999994e+05,  0.0000000000000000e+00, -3.9245760477979886e-03</GeoTransform>
+  <Metadata>
+    <MDI key="EXIF_DateTime">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_DateTimeDigitized">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_DateTimeOriginal">2023:01:21 10:08:11</MDI>
+    <MDI key="EXIF_GPSAltitude">(128.99)</MDI>
+    <MDI key="EXIF_GPSAltitudeRef">0x00</MDI>
+    <MDI key="EXIF_GPSLatitude">(52) (47) (36.7647)</MDI>
+    <MDI key="EXIF_GPSLatitudeRef">N</MDI>
+    <MDI key="EXIF_GPSLongitude">(2) (40) (35.2727)</MDI>
+    <MDI key="EXIF_GPSLongitudeRef">W</MDI>
+    <MDI key="EXIF_ImageDescription">Survey: MFV1_007,Image Type: RangeWithoutOverlay</MDI>
+    <MDI key="EXIF_Software">Hawkeye Processing Toolkit v8.3.0.3999</MDI>
+  </Metadata>
+  <VRTRasterBand dataType="Byte" band="1" blockXSize="512" subClass="VRTWarpedRasterBand">
+    <NoDataValue>255</NoDataValue>
+    <ColorInterp>Gray</ColorInterp>
+  </VRTRasterBand>
+  <BlockXSize>512</BlockXSize>
+  <BlockYSize>128</BlockYSize>
+  <GDALWarpOptions>
+    <WarpMemoryLimit>6.71089e+07</WarpMemoryLimit>
+    <ResampleAlg>NearestNeighbour</ResampleAlg>
+    <WorkingDataType>Byte</WorkingDataType>
+    <Option name="SKIP_NOSOURCE">YES</Option>
+    <Option name="INIT_DEST">NO_DATA</Option>
+    <Option name="ERROR_OUT_IF_EMPTY_SOURCE_WINDOW">FALSE</Option>
+    <SourceDataset relativeToVRT="0">C:/Users/drew.bennett/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/image_loader/test/1_007/ImageRng\2023-01-21 10h08m11s LCMS Module 1 002720.jpg</SourceDataset>
+    <Transformer>
+      <ApproxTransformer>
+        <MaxError>0.125</MaxError>
+        <BaseTransformer>
+          <GenImgProjTransformer>
+            <SrcTPSTransformer>
+              <TPSTransformer>
+                <Reversed>0</Reversed>
+                <GCPList>
+                  <GCP Id="" Pixel="0.0000" Line="1250.0000" X="3.544807524660E+05" Y="3.219792628720E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="1018.9127" X="3.544808615530E+05" Y="3.219801710500E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="769.2405" X="3.544809793540E+05" Y="3.219811522740E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="518.8971" X="3.544810977730E+05" Y="3.219821361000E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="269.2512" X="3.544812080070E+05" Y="3.219831180980E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="19.9588" X="3.544813108700E+05" Y="3.219840994890E+05" />
+                  <GCP Id="" Pixel="0.0000" Line="0.0000" X="3.544813188220E+05" Y="3.219841780900E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1250.0000" X="3.544847240380E+05" Y="3.219787868280E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="1021.9808" X="3.544848330330E+05" Y="3.219796942470E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="775.5611" X="3.544849507660E+05" Y="3.219806748990E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="528.2956" X="3.544850692040E+05" Y="3.219816588810E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="520.7085" X="3.544850727170E+05" Y="3.219816890880E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="273.7880" X="3.544851831230E+05" Y="3.219826726120E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="266.8154" X="3.544851861380E+05" Y="3.219827003960E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="20.3536" X="3.544852891160E+05" Y="3.219836828770E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="16.9361" X="3.544852905190E+05" Y="3.219836965030E+05" />
+                  <GCP Id="" Pixel="1038.0000" Line="0.0000" X="3.544852973520E+05" Y="3.219837640410E+05" />
+                </GCPList>
+              </TPSTransformer>
+            </SrcTPSTransformer>
+            <DstGeoTransform>354480.752466000034,0.00392457604779798859,0,321984.178089999943,0,-0.00392457604779798859</DstGeoTransform>
+            <DstInvGeoTransform>-90323323.6275018901,254.804592348537255,0,82043047.2409012616,0,-254.804592348537255</DstInvGeoTransform>
+          </GenImgProjTransformer>
+        </BaseTransformer>
+      </ApproxTransformer>
+    </Transformer>
+    <BandList>
+      <BandMapping src="1" dst="1">
+        <SrcNoDataReal>255</SrcNoDataReal>
+        <SrcNoDataImag>0</SrcNoDataImag>
+        <DstNoDataReal>255</DstNoDataReal>
+        <DstNoDataImag>0</DstNoDataImag>
+      </BandMapping>
+    </BandList>
+  </GDALWarpOptions>
+</VRTDataset>

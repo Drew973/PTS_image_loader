@@ -8,7 +8,7 @@ Created on Tue Apr 18 14:28:37 2023
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
 #ST_LineMerge(ST_Union(ST_Locate_Between_Measures))
 
-
+#from image_loader import lrs_functions
 
 
 
@@ -44,31 +44,15 @@ def runQuery(query,db = None,values = {}):
         
 
 def hasGps(db=None):
-    q = runQuery('select count(pk) from gps',db)
-    q.next()
-    return q.value(0) > 0
+    q = runQuery('select count(rowid) from points',db)
+    while q.next():
+        return q.value(0) > 0
     
         
 def initDb(db):
     db.transaction()
     
-    
     runQuery(db=db,query='SELECT InitSpatialMetaData();')
-    
-   # runQuery('drop table if exists gps;')
-
-    q = '''create table if not exists gps 
-            ( pk INTEGER PRIMARY KEY
-             ,start_m float NOT NULL
-             ,end_m float NOT NULL
-            )
-        '''
-    runQuery(db=db,query=q)    
-    
-    runQuery(db=db,query='CREATE INDEX IF NOT EXISTS start_m_index on gps(start_m)')
-    runQuery(db=db,query='CREATE INDEX IF NOT EXISTS end_m_index on gps(end_m)')    
-    runQuery(db=db,query="SELECT AddGeometryColumn('gps', 'line',27700, 'Linestring', 'XY')")
-
     
     q = '''create table if not exists images 
             ( 
@@ -81,9 +65,7 @@ def initDb(db):
                 ,marked bool default false
                 ,original_start_chainage float GENERATED ALWAYS AS (image_id*5) VIRTUAL
                 ,original_end_chainage float GENERATED ALWAYS AS (image_id*5+5) VIRTUAL
-                
              )
-            
         '''
     runQuery(db=db,query=q)
     
@@ -104,16 +86,29 @@ def initDb(db):
         '''
     runQuery(db=db,query=q)
     
+    q = '''
+    create table if not exists points(
+        m float not null unique
+        ,x float
+        ,y float
+        ,next_m float
+        ,next_pk int
+        ,last_m float
+        ,pt generated as (makePointM(x,y,m))
+        )    
+    '''
+    runQuery(db=db,query=q)
+    runQuery(db=db,query='CREATE INDEX IF NOT EXISTS m_index on points(m)')
+    runQuery(db=db,query='create index if not exists next_m_ind on points(next_m)')
     
     q = '''
-    
 create view if not exists corrections_view as
 select m
 ,a.run
 
 ,coalesce(
 --prev.y + (x-prev.x)*(next.y-prev.y)/(next.x - prev.x)
-prev.new_offset - prev.original_offset + (m-prev.original_chainage)*(next.offset_shift - prev.offset_shift)/(next.original_chainage-prev.original_chainage)
+prev.offset_shift + (m-prev.original_chainage)*(next.offset_shift - prev.offset_shift)/(next.original_chainage-prev.original_chainage)
 ,next.offset_shift
 ,prev.offset_shift
 ,0) as offset_diff
@@ -132,19 +127,19 @@ union select run,image_id*5+5 from images where marked
 ) a
 
 left join corrections as prev on prev.pk = (select pk from corrections where corrections.run=a.run and original_chainage<=m order by original_chainage desc limit 1)
-left join corrections as next on next.pk = (select pk from corrections where corrections.run=a.run and original_chainage>=m order by original_chainage asc limit 1)    
-
+left join corrections as next on next.pk = (select pk from corrections where corrections.run=a.run and original_chainage>=m order by original_chainage asc limit 1)
         '''
     runQuery(db=db,query=q)
     
     
     q = '''
-    create view if not exists images2 as
+create view if not exists images_with_correction as
 select original_file
 ,image_id*5
 ,image_id*5+s.chainage_diff as start_m
 ,image_id*5+5+e.chainage_diff as end_m
-,s.offset_diff as left_offset
+,s.offset_diff+2 as left_offset
+,s.offset_diff-2 as right_offset
  from images 
 inner join corrections_view as s
 on marked and images.run = s.run and image_id*5 = s.m
@@ -152,41 +147,44 @@ inner join corrections_view as e
 on marked and images.run = e.run and image_id*5+5 = e.m
     '''
     
-    runQuery(db=db,query=q)
+    runQuery(db=db,query=q)#half image width.
     
     
     q = '''    
-    create view if not exists images_view as
-select original_file,
-ST_OffsetCurve(ST_Line_Substring(ST_LineMerge(ST_Collect(line))
-,case when images2.start_m > min(gps.start_m) then 
-	(images2.start_m - min(gps.start_m))/abs(max(gps.end_m)-min(gps.start_m))
-else 0
+create view if not exists images_view as
+select original_file
+,left_offset
+,start_m
+,end_m
+,line_substring(
+case when left_offset<0 then 
+	st_reverse(st_offsetCurve(makeLine(pt),left_offset))
+else
+	st_offsetCurve(makeLine(pt),left_offset)
 end
+,abs(start_m-min(m))/abs(max(m)-min(m))
+,abs(end_m-min(m))/abs(max(m)-min(m))
+) as left_line
 
-,case when max(gps.end_m)>images2.end_m then 
-	(images2.end_m - min(gps.start_m))/abs(max(gps.end_m)-min(gps.start_m))
-else 1
+,line_substring(
+case when right_offset<0 then 
+	st_reverse(st_offsetCurve(makeLine(pt),right_offset))
+else
+	st_offsetCurve(makeLine(pt),right_offset)
 end
-),left_offset
-)
- as line
-from images2 left join gps on gps.end_m>images2.start_m and gps.start_m<images2.end_m group by original_file
+,abs(start_m-min(m))/abs(max(m)-min(m))
+,abs(end_m-min(m))/abs(max(m)-min(m))
+) as right_line
 
+from images_with_correction
+inner join points on next_m>=start_m and last_m<=end_m
+group by original_file
+order by m
     '''
     
     runQuery(db=db,query=q)
     
-    q = '''
-    create table if not exists points(
-        m float
-        ,x float
-        ,y float
-        )    
-    '''
-    runQuery(db=db,query=q)
-    
-    runQuery(db=db,query='CREATE INDEX IF NOT EXISTS m_index on points(m)')
+
 
     db.commit()
     
@@ -197,35 +195,16 @@ from qgis.core import QgsPointXY,QgsCoordinateTransform,QgsCoordinateReferenceSy
 
 
 #todo:
- #   make this more efficient. something like
-    #0.2 s to load into points via QSqlQuery.
-
-#could do something like this    
-  # sqlite3 "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\images.db" -cmd ".mode csv" ".import C:\\Users\\drew.bennett\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\image_loader\\test\\1_007\\MFV1_007-rutacd-1.csv test_gps"
- #in subprocess. probably not worthwhile
- #to group points use st_makeLine and group by floor(m/n)
-
-
-
-#
 #PRAGMA synchronous = OFF
 #PRAGMA journal_mode = MEMORY
 
 def loadGps(file,db):
-    
- #   s = '\\'[0] #making single '\' charactor shouldn't be this complicated
-  #  
-   # command = 'sqlite3 "{dbFile}" -cmd ".mode csv" ".import {f} temp_gps"'.format(dbFile = db.DatabaseName(),f = file.replace(s,s+s))
- #   subprocess.run(command)
-        
+
     #do tranform in QGIS. ST_TransformXY slow and buggy.
     transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem('EPSG:4326'),QgsCoordinateReferenceSystem('EPSG:27700'),QgsProject.instance())
     db.transaction()
         
-  #  return
-    runQuery(db=db,query='delete from gps')
-    
-   # runQuery(db=db,query='drop table if exists points')
+    #runQuery(db=db,query='delete from gps')
     runQuery(db=db,query='delete from points')
     
     q = QSqlQuery(db)
@@ -248,34 +227,40 @@ def loadGps(file,db):
                 print(q.boundValues())
                 raise queryError(q)
     
-    q = '''with a as (
-select 
-m
-,x
-,y
-,lead(rowid) over (order by m) as next_pk
-from points
-)
-insert into gps(start_m,end_m,line)
-select a.m,next.m,MakeLine(MakePoint(a.x,a.y,27700),MakePoint(next.x,next.y,27700)) from a inner join points as next on next_pk = next.rowid
-'''
-    runQuery(query=q,db=db)    
+
  
+    q = '''with a as (
+    select rowid,lead(rowid) over (order by m) as next from points
+    )
+    update points set next_pk = next from a where a.rowid = points.rowid
+    ;   
+    '''
+    runQuery(query=q,db=db)    
+
+    q = '''
+    with a as (
+        select rowid,lead(m) over (order by m) as next from points
+        )
+        update points set next_m = next from a where a.rowid = points.rowid
+    '''
+    runQuery(query=q,db=db)    
+
+    q = '''
+    with a as (
+    select rowid as pk,lead(m) over (order by m desc) as last from points
+    )
+    update points set last_m = last from a where a.pk = points.rowid
+	'''
+    runQuery(query=q,db=db)    
+
+
+
     db.commit()
 
-#MakePointM	
-
-import numpy
-
-
-def toVector(point):
-    return numpy.array([point.x(),point.y()])
-
-
 #start and end can be float,numpy array...
-def interpolate(start,startM,end,endM,m):
-    frac = (m-startM)/abs(endM-startM)
-    return start + frac*(end-start)
+#def interpolate(start,startM,end,endM,m):
+  #  frac = (m-startM)/abs(endM-startM)
+   # return start + frac*(end-start)
     
  #print(interpolate(0,0,100,10,2))#50   
 
@@ -297,71 +282,95 @@ def insertCorrections(corrections,db):
     else:
         raise queryPrepareError(q)
 
-
+#from image_loader import lrs_functions
 '''
-find closest chainage & offset of closest point within run
-Cases where point past end of line.
-define offset as perpendicular component of shortest line. usually same as length.
-
-perpendicular component = shortestline x geom / |geom|
---doesnt use spatial index. spatial index in spatialite is PITA...
+find closest gps point.
+linestring m from last,this,next
+offset = distance to line.
+find sign of offset by offseting line to left and right and finding nearest to (x,y)
 '''
 
 
 chainageQuery = '''
-select chainage
-,st_x(st_endPoint(v))-st_x(st_startPoint(v)) as x1
-,st_y(st_endPoint(v))-st_y(st_startPoint(v)) as y1
-,st_x(st_endPoint(line))-st_x(st_startPoint(line)) as x2
-,st_y(st_endPoint(line))-st_y(st_startPoint(line)) as y2
-
-from
-(select
-start_m+(end_m-start_m)*Line_Locate_Point(line,pt) as chainage
-,line
-,ST_ShortestLine(pt,line) as v
-from
-(select MakePoint({x},{y}) as pt) point
-inner join gps on
-start_m <= coalesce((select max(original_end_chainage) from images where run = '{run}'),(select max(end_m) from gps))
-and end_m>= coalesce((select min(original_start_chainage) from images where run = '{run}'),(select min(start_m) from gps))
-and ST_Distance(MakePoint({x},{y}),line)<50
-order by ST_Distance(pt,line)
+with nearest as
+(
+select rowid,next_pk,MakePoint(:x,:y) as p
+from points
+where ST_Distance(MakePoint(:x,:y),pt)<50
+and m >= coalesce((select min(original_start_chainage) from images where run = ':run'),(select min(m) from points))
+and m <= coalesce((select max(original_end_chainage) from images where run = ':run'),(select max(m) from points))
+order by ST_Distance(MakePoint(:x,:y),MakePoint(x,y))
 limit 1
 )
+
+,a as
+(
+select makeline(pt) as line,p from points inner join nearest
+on points.next_pk = nearest.rowid or points.rowid = nearest.rowid or points.rowid = nearest.next_pk
+order by m
+)
+
+, b as
+(
+select 
+p
+,line
+,round(st_distance(line,p),3) as d from a
+)
+
+select ST_InterpolatePoint(line,p) as m
+,case when st_distance(p,ST_OffsetCurve(line,d)) < st_distance(p,ST_OffsetCurve(line,-d)) then d else -d end as off
+ from b
+'''
+#->(chainage:float,offset:float) or None
+def getChainage(run,x,y,db):   
+    q = runQuery(query=chainageQuery,values={':x':x,':y':y,':run':run},db=db)
+    while q.next():
+        if isinstance(q.value(0),float) and isinstance(q.value(1),float):
+            return (q.value(0),q.value(1))
+    print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
+
+    
+    
+'''
+    chainage often at vertex of gps.
+    need to join lines and make offset curve here.
+    #strange behavior and bugs in spatialite ST_OffsetCurve.
+    low offsets != 0 produce empty linestring
+    #reverses direction for negative offsets
+    #left positive
+'''
+    
+pointQuery = '''
+with nearest as
+(
+select 
+rowid,
+next_pk
+,round(:off,3) as off
+from points
+order by abs(m-:m)
+limit 1
+)
+
+,a as
+(
+select case when off > 0 then ST_OffsetCurve(makeline(pt),off) when off = 0 then makeline(pt) else st_reverse(ST_OffsetCurve(makeline(pt),off)) end as line,
+(:m - min(m))/(max(m)-min(m)) as f
+from points inner join nearest
+on points.next_pk = nearest.rowid or points.rowid = nearest.rowid or points.rowid = nearest.next_pk
+order by m
+)
+select st_x(Line_Interpolate_Point(line,f)),st_y(Line_Interpolate_Point(line,f)) from a
 '''
 
 
-#->(chainage,offset) or None
-def getChainage(run,x,y,db):   
-    q = runQuery(query=chainageQuery.format(x=x,y=y,run=run),db=db)
-    while q.next():
-        shortest = numpy.array([q.value(1),q.value(2)])#shortest line as vector
-        geom = numpy.array([q.value(3),q.value(4)])#gps geometry as vector
-        geomLen = numpy.sqrt(numpy.sum(geom**2))
-        return (q.value(0),numpy.cross(shortest,geom)/geomLen)
-      
-        
-    
+# -> QgsPointXY
 def getPoint(chainage,offset,db):
-        
-        #bug in spatialite ST_OffsetCurve. low offsets != 0 produce empty linestring
-        #left positive
-        q = '''select st_x(Line_Interpolate_Point(ST_OffsetCurve(line,round(:off,6)),(:ch - start_m)/abs(end_m-start_m)))
-        ,st_y(Line_Interpolate_Point(ST_OffsetCurve(line,round(:off,6)),(:ch - start_m)/abs(end_m-start_m)))
-        from gps
-        where start_m <= :ch and end_m >= :ch
-        limit 1
-        '''
-        #print('getPoint',q)
-        
-        values = {':ch':float(chainage),':off':float(offset)}
-        
-        q = runQuery(query=q,db = db,values=values)
-        
-       # print('bv',q.boundValues())
+        q = runQuery(query=pointQuery,db = db,values= {':m':float(chainage),':off':float(offset)})
         while q.next():
-            return QgsPointXY(q.value(0),q.value(1))
+            if isinstance(q.value(0),float) and isinstance(q.value(1),float):
+                return QgsPointXY(q.value(0),q.value(1))
         print('no points')
         return QgsPointXY()
     
@@ -375,8 +384,6 @@ def loadCorrections(file):
     q = QSqlQuery(db)
     if not q.prepare('insert into corrections(original_chainage,original_offset,new_chainage,new_offset) values (:original_chainage,:origonal_offset,:new_chainage,:new_offset)'):
         raise queryError(q)
-
-
 
     with open(file,'r') as f:
         reader = csv.DictReader(f)
@@ -404,11 +411,17 @@ def loadCorrections(file):
                 raise queryError(q)
     
     db.commit()
+    
 
 
-
-def createDb(file = ':memory:'):    
+def createDb(file = None):
+    
+    if file is None:
+        #file = ':memory:'
+        file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\images.db'
+        
     db = QSqlDatabase.addDatabase("QSPATIALITE",'image_loader')
+    db.close()
     db.setDatabaseName(file)
     if not db.open():
         raise ValueError('could not open database')
@@ -416,37 +429,3 @@ def createDb(file = ':memory:'):
     return db
 
 
-
-import unittest
-import os
-from image_loader import test
-
-class testDbFunctions(unittest.TestCase):
-    
-    @classmethod
-    def setUpClass(cls):
-        createDb(file = os.path.join(test.testFolder,'test.db'))
-        
-        
-    def setUp(self):
-        pass        
-
-    @classmethod
-    def tearDownClass(cls):
-        QSqlDatabase.database('image_loader').close()
-    
-    
-    def testLoadCorrections(self):
-        file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs\MFV1_006 Coordinate Corrections.csv'
-        loadCorrections(file=file)
-
-
-    def testLoadGps(self):
-        loadGps(file = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv'),db = QSqlDatabase.database('image_loader'))
-        self.assertTrue(hasGps())
-
-
-if __name__ in ['__main__','__console__']:
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(testDbFunctions)
-    unittest.TextTestRunner().run(suite)
-    

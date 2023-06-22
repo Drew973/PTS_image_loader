@@ -11,7 +11,8 @@ from image_loader import test
 import os
 from PyQt5.QtSql import QSqlDatabase
 from qgis.core import QgsPointXY
-
+from qgis.gui import QgsVertexMarker
+from qgis.utils import iface
 
 class testCorrectionModel(unittest.TestCase):
     
@@ -22,9 +23,15 @@ class testCorrectionModel(unittest.TestCase):
 
         
     def testGetChainage(self):
+        
+        
         db_functions.loadGps(file = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv'),db = self.model.database())
         index = self.model.index(0,0)
-        p = QgsPointXY(354445.563,321924.132)
+        p = QgsPointXY(354447.624,321905.030)
+        self.marker1=QgsVertexMarker(iface.mapCanvas())
+        self.marker1.setCenter(p)
+
+        
         ch = self.model.getChainage(index = index,point = p)#offset wrong.should be ~14.4
         print('getChainage',ch)
         if ch:
@@ -32,6 +39,11 @@ class testCorrectionModel(unittest.TestCase):
             print(p2)
             d = p2.distance(p)
             print('d',d)
+            
+            self.marker=QgsVertexMarker(iface.mapCanvas())
+            self.marker.setCenter(p2)
+
+            
             self.assertTrue(d<0.001)#within 1cm
 
 

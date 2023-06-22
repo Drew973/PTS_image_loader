@@ -29,32 +29,17 @@ from qgis.PyQt.QtCore import pyqtSignal,QUrl#,Qt
 from qgis.utils import iface
 from qgis.core import Qgis
 
-
-from .functions.load_frame_data import loadFrameData
-from .functions.load_cracking import loadCracking
-from .widgets import set_layers_dialog
-
 from PyQt5.QtWidgets import QMenuBar,QFileDialog#,QDataWidgetMapper
 from PyQt5 import QtGui
-
+from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.image_model import imageModel
 from image_loader.corrections_model import correctionsModel
-
-
-
-#from PyQt5.QtCore import QModelIndex
-#from PyQt5.QtCore import QSortFilterProxyModel
-
-
-
-#from image_loader import test########################
-#import cProfile
-
-
-#from image_loader import details_tree_model
 from image_loader.load_gps import loadGpsLines
 
+from image_loader.functions.load_frame_data import loadFrameData
+from image_loader.functions.load_cracking import loadCracking
+from image_loader.widgets import set_layers_dialog
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -70,47 +55,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
+        db_functions.createDb()
 
-       # self.correctionsDialog = correctionsDialog()
-     #   self.correctionsButton.clicked.connect(self.correctionsDialog.show)#need non modal to click map
-        
-      
-        db_functions.createDb(file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\images.db')
         self.model = imageModel(parent=self)
         self.model.fields = self.layersDialog
         self.initTopMenu()
 
         self.correctionsModel = correctionsModel()
         self.correctionsView.setModel(self.correctionsModel)
-        
-        
-       # self.loadButton.clicked.connect(self.loadImages)
-      #  self.remakeButton.clicked.connect(self.remakeImages)
-        
-        
-    #    self.mapper = QDataWidgetMapper()
-    ##    self.mapper.setModel(self.model)
-     #   self.mapper.addMapping(self.chainageCorrection, details_tree_model.cols.chainageCorrection)
-      #  self.mapper.addMapping(self.offset, details_tree_model.cols.offsetCorrection)   
-                
         self.runBox.setModel(self.model.runsModel)
- 
 
         self.imagesView.setModel(self.model)
-       # self.setFile()
-
         self.runBox.currentIndexChanged.connect(self.runChange)
-        self.addCorrectionButton.clicked.connect(self.addCorrection)
-
-
-
-    def addCorrection(self):
-        self.correctionsModel.addCorrections([{'run' : self.runBox.itemText(self.runBox.currentIndex()),
-                                 'original_chainage' : self.startChainage.value(),
-                                 'new_chainage' : self.endChainage.value(),
-                                 'original_offset' : self.startOffset.value(),
-                                 'new_offset' : self.endOffset.value()}])
-
 
 
     def loadImages(self):
@@ -153,8 +109,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         openAct = fileMenu.addAction('Open corrections...')
         openAct.triggered.connect(self.openCorrections)
         
-        
-        
         ######################load
         toolsMenu = topMenu.addMenu("Tools")
         fromFolderAct = toolsMenu.addAction('Find details from folder...')
@@ -166,10 +120,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         loadGpsAct = toolsMenu.addAction('View GPS data...')
         loadGpsAct.triggered.connect(self.viewGpsLayer)
-        
-      #  chainageAct = toolsMenu.addAction('Find chainage difference...')
-       # chainageAct.triggered.connect(self.chainageDialog.exec_)
-        
+   
         setupMenu = topMenu.addMenu("Setup")
         setLayers = setupMenu.addAction('Set layers and fields...')
         setLayers.triggered.connect(self.layersDialog.exec_)
@@ -177,10 +128,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadGpsAct = setupMenu.addAction('Load gps...')
         loadGpsAct.triggered.connect(self.loadGps)
         
-        
         loadCracksAct = toolsMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
-        
         
         selectMenu = topMenu.addMenu("Select")
         markAllAct = selectMenu.addAction('Mark all images')
@@ -199,7 +148,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         vrtAct = processMenu.addAction('Make combined VRTs for selected images')
         vrtAct.triggered.connect(self.makeVrt)
-        
         
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help (in your default web browser)')
@@ -304,6 +252,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
+        QSqlDatabase.database('image_loader').close()
         event.accept()
 
 

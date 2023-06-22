@@ -34,14 +34,14 @@ translated has weird bits like repeated image. fine after warping.
 '''    
    
 #create warped vrt from file
-def georeferenceFile(file,geom):
+def georeferenceFile(file,left,right):
     
-    if isinstance(geom,str):
-        #geom = QgsGeometry.fromWkt(geom)
-        geom = wkt.loads(geom)
+    left = wkt.loads(left)
+    right = wkt.loads(right)
+
         
     if os.path.exists(file):
-        gcps = _gcps(geom)
+        gcps = _gcps(left,right)
         
       #  for p in gcps:
         #    print(GCPCommand(p))
@@ -51,7 +51,10 @@ def georeferenceFile(file,geom):
         srs = srs.ExportToWkt()
         
 
-        translatedFile = os.path.splitext(file)[0] + '_translated.vrt'
+
+        translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
+        
+       # translatedFile = os.path.splitext(file)[0] + '_translated.vrt'
         translated = gdal.Translate(translatedFile,
                                     file,
                                     GCPs = gcps,
@@ -83,7 +86,7 @@ def georeferenceFile(file,geom):
         
        #rewrite vrt replacing translated with original file. hacky but effective.
         with open(dest,'r') as f:
-            newText = f.read().replace(os.path.basename(translatedFile),os.path.basename(file))
+            newText = f.read().replace(translatedFile,file)
         with open(dest,'w') as f:
             f.write(newText)
             
@@ -100,17 +103,9 @@ PIXELS = 1038
 LINES = 1250
 
 #calculate list of gdal gcps from center line. shapely geometry.
-def _gcps(geom):
+def _gcps(left,right):
     r = []
-    
-    #vertices of left offset
-    #positive for left
-    left = geom.parallel_offset(WIDTH * 0.5,'left')
-   # print('left',left)
-    
-   # left = geom.offsetCurve(distance= offset-WIDTH * 0.5, segments = 64,joinStyle = QgsGeometry.JoinStyleRound, miterLimit=0.0)
     leftLength = left.length
-    #print('leftLength ',leftLength)
     d = 0
     last = None
     for c in left.coords:
@@ -119,16 +114,9 @@ def _gcps(geom):
         if last is not None:
             d += v.distance(last)    
         last = v        
-        line = LINES * ( 1 -d / leftLength )
+        line = LINES - (LINES * d / leftLength)
         r.append(gdal.GCP(v.x,v.y,0,0,line)) #pixel = 0
         
-        
-        
-    #vertices of left offset
-    #opposite direction. version dependent?
-    right = geom.parallel_offset(WIDTH * 0.5,'right')
- #   print(right)
-    #right = geom.offsetCurve(distance = offset+WIDTH * 0.5, segments = 64,joinStyle = QgsGeometry.JoinStyleRound, miterLimit=0.0)
     rightLength = right.length
     d = 0
     last = None
@@ -137,27 +125,19 @@ def _gcps(geom):
         if last is not None:
             d += v.distance(last)
         last = v        
-        line = LINES * d / rightLength
+        line = LINES - (LINES * d / rightLength)
         r.append(gdal.GCP(v.x,v.y,0,PIXELS,line)) #pixel = PIXELS for right of image
       
-        
-      
- #   e = geom.coords[-1]    
-   # r.append(gdal.GCP(e[0],e[1],0,PIXELS*0.5,LINES))
-  
-  #  s = geom.coords[0]    
-  #  r.append(gdal.GCP(s[0],s[1],0,PIXELS*0.5,0))      
-        
-    #print('left len:',left.length,'right len',right.length)
     return r
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file')
-    parser.add_argument('geom')
+    parser.add_argument('left')
+    parser.add_argument('right')
     args = parser.parse_args()    
-    georeferenceFile(args.file,args.geom)
+    georeferenceFile(args.file,args.left,args.right)
     
     
     #test

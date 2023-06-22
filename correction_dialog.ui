@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>575</width>
+    <width>530</width>
     <height>223</height>
    </rect>
   </property>
@@ -63,7 +63,10 @@
    <item row="2" column="3">
     <widget class="QPushButton" name="endFromMapButton">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial chainage &amp;amp; offset by clicking map&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set new chainage &amp;amp; offset by clicking map&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color:green;</string>
      </property>
      <property name="text">
       <string>From map...</string>
@@ -88,8 +91,17 @@
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set initial chainage &amp;amp; offset by clicking map&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color:pink;</string>
+     </property>
      <property name="text">
       <string>From map...</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
      </property>
     </widget>
    </item>
