@@ -1,4 +1,6 @@
 *.pyc
+*.vrt
+*.tif
 __pycache__/
 convert_folder_profile.txt
 test/outputs

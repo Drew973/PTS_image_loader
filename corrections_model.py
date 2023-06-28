@@ -60,12 +60,12 @@ class correctionsModel(QSqlQueryModel):
     def setRun(self,run):
         self._run = run
         
- #       if run:
-   #         filt = "where run = '{run}'".format(run=run)#"
-   #     else:
-    #        filt = ''
+        if run:
+            filt = "where run = '{run}'".format(run=run)#"
+        else:
+            filt = ''
             #original
-        filt = ''
+        #filt = ''
         q = 'select pk,original_chainage,original_offset,new_chainage,new_offset from corrections {filt} order by original_chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 

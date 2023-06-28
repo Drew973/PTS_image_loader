@@ -41,6 +41,10 @@ from image_loader.functions.load_frame_data import loadFrameData
 from image_loader.functions.load_cracking import loadCracking
 from image_loader.widgets import set_layers_dialog
 
+from image_loader.natural_sort import naturalSortProxy
+
+from PyQt5.QtCore import Qt
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -63,8 +67,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.correctionsModel = correctionsModel()
         self.correctionsView.setModel(self.correctionsModel)
-        self.runBox.setModel(self.model.runsModel)
-
+        
+        self.runBox.setModel(naturalSortProxy())
+        self.runBox.model().setSourceModel(self.model.runsModel)
+        
         self.imagesView.setModel(self.model)
         self.runBox.currentIndexChanged.connect(self.runChange)
 
@@ -73,6 +79,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model.loadImages(self.imagesView.selected())
         
     
+    def createOverviews(self):
+        self.model.createOverviews()
+        
    
     def georeferenceImages(self):
         if self.model.hasGps():
@@ -86,7 +95,15 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         run = self.runBox.itemText(index)
         self.model.setRun(run)
         self.correctionsModel.setRun(run)
+        #set combobox color
         
+        c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
+        if c is not None:
+            p = self.runBox.palette()
+            p.setColor(QtGui.QPalette.Button, c)
+            self.runBox.setPalette(p)
+        
+
     
     def new(self):
         self.model.clear()
@@ -99,15 +116,19 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
         newAct.triggered.connect(self.new)
-        
-        openAct = fileMenu.addAction('Open...')
-        openAct.triggered.connect(self.openFile)
-        
+                
         saveAsAct = fileMenu.addAction('Save as...')
         saveAsAct.triggered.connect(self.saveAs)
+      
+        openMenu = fileMenu.addMenu('Open')
+        openAct = openMenu.addAction('Open Raster image load file...')
+        openAct.triggered.connect(self.openFile)
         
-        openAct = fileMenu.addAction('Open corrections...')
-        openAct.triggered.connect(self.openCorrections)
+        openCorrectionsAct = openMenu.addAction('Open corrections...')
+        openCorrectionsAct.triggered.connect(self.openCorrections)
+        
+        loadGpsAct = openMenu.addAction('Open GPS...')
+        loadGpsAct.triggered.connect(self.loadGps)
         
         ######################load
         toolsMenu = topMenu.addMenu("Tools")
@@ -124,9 +145,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         setupMenu = topMenu.addMenu("Setup")
         setLayers = setupMenu.addAction('Set layers and fields...')
         setLayers.triggered.connect(self.layersDialog.exec_)
-        
-        loadGpsAct = setupMenu.addAction('Load gps...')
-        loadGpsAct.triggered.connect(self.loadGps)
         
         loadCracksAct = toolsMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)        
@@ -145,6 +163,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         georeferenceAct = processMenu.addAction('Georeference selected images')
         georeferenceAct.triggered.connect(self.georeferenceImages)
+        
+       # overviewsAct = processMenu.addAction('Create overviews for selected images')
+      #  overviewsAct.triggered.connect(self.createOverviews)
         
         vrtAct = processMenu.addAction('Make combined VRTs for selected images')
         vrtAct.triggered.connect(self.makeVrt)
@@ -227,6 +248,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
        # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
         if f:
             self.correctionsModel.loadFile(f)
+            self.model.runsModel.select()
         
         
             

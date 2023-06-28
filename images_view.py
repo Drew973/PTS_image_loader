@@ -22,7 +22,18 @@ class imagesView(QTableView):
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
         self.setWordWrap(False)        
-        
+        self.doubleClicked.connect(self.onDoubleClick)
+    
+    
+    
+    
+    def onDoubleClick(self,index):
+    #   print(index.row(),index.column())
+        if index.column() == self.model().fieldIndex('marked'):
+            marked = self.model().data(index)#bool
+        #    print('marked',marked)
+            self.model().setData(index,not marked)
+    
     
     def setModel(self,model):
         super().setModel(model)

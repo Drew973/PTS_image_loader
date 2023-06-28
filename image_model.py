@@ -33,50 +33,15 @@ from image_loader.run_commands import runCommands
 
 
 
-from qgis.core import QgsCoordinateReferenceSystem
+#from qgis.core import QgsCoordinateReferenceSystem
 
 from osgeo import gdal
 
-
-class runsModel(QSqlQueryModel):
-    
-    def select(self):
-        
-        q = '''
-        select run
-        ,min(image_id)
-        ,(select COALESCE(min(image_id),-1) from images where images.run=run and marked) as min_marked
-        ,max(image_id)
-        ,(select COALESCE(max(image_id),-1) from images where images.run=run and marked) as max_marked
-        from images group by run order by run
-        '''
-        self.setQuery(QSqlQuery(q,db = self.database()))
-
-    def database(self):
-        return QSqlDatabase.database('image_loader')
-    
-    def allowedRange(self,index):
-        return (0,999999)
-
-    def crs(self,index):
-        return QgsCoordinateReferenceSystem('EPSG:27700')
-
-    def floatToPoints(self,index):
-        pass
+#combobox current index changes. when rowCount changes...
 
 
+from image_loader.runs_model import runsModel
 
-    def data(self,index,role):
-        if role == Qt.BackgroundColorRole:
-            if self.index(index.row(),self.fieldIndex('max_marked')).data(Qt.EditRole) > self.index(index.row(),self.fieldIndex('min_marked')).data(Qt.EditRole):
-                return QColor('yellow')
-            else:
-                return QColor('white')
-        return super().data(index,role)
-
-
-    def fieldIndex(self,name):
-        return self.record().indexOf(name)
 
 
 
@@ -137,7 +102,7 @@ class imageModel(QSqlQueryModel):
         
     
     
-    def data(self,index,role):
+    def data(self,index,role = Qt.EditRole):
         if role == Qt.BackgroundColorRole:
             if self.index(index.row(),self.fieldIndex('marked')).data(Qt.EditRole):
                 return QColor('yellow')
@@ -162,6 +127,20 @@ class imageModel(QSqlQueryModel):
         return super().data(index,role)
         
     
+    def setData(self,index,value,role = Qt.EditRole):
+     #   print('role',role)#Qt.EditRole when editing through delegate
+   #     print('value',value)
+        if index.column() == self.fieldIndex('marked'):
+            if role == Qt.EditRole:
+            #    print(value)
+                self.mark([index],value)
+        return True
+    
+    #def flags(self,index):
+      #  if index.column() == self.fieldIndex('marked'):
+      #      return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
+     #   else:
+     #       return super().flags(index)
     
     def database(self):
         return QSqlDatabase.database('image_loader')
@@ -182,14 +161,12 @@ class imageModel(QSqlQueryModel):
         self.select()
 
     def _refreshRuns(self):
-        #self.runsModel.setQuery(QSqlQuery("SELECT distinct run from images order by run",db = self.database()))
+        oldRun = self.run
         self.runsModel.select()
-
+        self.setRun(oldRun)
  
     def setRun(self,run):
-        
-        if run != self.run:
-            
+        if str(run) != str(self.run):
             if run:
                 filt = "where run = '{run}'".format(run=run)#"
             else:
@@ -198,15 +175,11 @@ class imageModel(QSqlQueryModel):
             self.setQuery(q,self.database())
             self.run = run
         
+        
     #load images into qgis
     def loadImages(self,indexes):
-        #try to open .vrt
-        #then jpg if not found
-        #don't open if no .wld file?
-        
         progress = createProgressDialog(parent=self.parent(),labelText = "Loading images...")
         query = db_functions.runQuery('select original_file,run,image_type from images where marked and not original_file is null')
-     
         progress.setRange(0,query.size())
         i = 0
         
@@ -234,6 +207,7 @@ class imageModel(QSqlQueryModel):
     def hasGps(self):
         return db_functions.hasGps(self.database())
                 
+    
     #load images into qgis
     def georeference(self,indexes=None):
         #print('georeference')
@@ -260,18 +234,40 @@ class imageModel(QSqlQueryModel):
         del progress    
     
    
+    '''
+    unused. probabaly unnecessary. Strange behavior creating overviews for vrt. No external file created but line like 
+    <OverviewList>2 4 8 16 32 64 </OverviewList>
+    added to band.
+    overview exists in memory?
+    
+    '''
+    def createOverviews(self):
+        progress = createProgressDialog(parent=self.parent(),labelText = "Creating overviews...")
+        query = db_functions.runQuery('select original_file from images where marked')
+        files = []
+        while query.next():
+            f = georeference.warpedFileName(query.value(0))
+            if os.path.isfile(f):
+                files.append(f)
+        #print(files)
+        #warpedFileName()
+        template = 'gdaladdo "{file}" 2 4 8 16 32 64 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'
+        commands = [template.format(file = f) for f in files]
+        print(commands)
+        runCommands(commands = commands,progress=progress)#running in paralell.
+        progress.close()#close immediatly otherwise haunted by ghostly progressbar
+        progress.deleteLater()
+        del progress    
+
+
     def makeVrt(self):
         progress = createProgressDialog(parent=self.parent(),labelText = "Making VRT files...")        
         query = db_functions.runQuery("select group_concat(original_file,':'),run,image_type from images where marked group by run,image_type order by original_file")
-      #  commands = []
-        
         progress.setMaximum(query.size())
-        
         while query.next():
                         
             if progress.wasCanceled():
                 break
-            
             
             files = []
             for f in query.value(0).split(':'):
@@ -293,10 +289,22 @@ class imageModel(QSqlQueryModel):
                 vrtFile = os.path.join(folder,
                                        '{tp}_{run}.vrt'.format(run = query.value(1),tp = query.value(2)))        
                 
-                print(vrtFile,files)
+                #print(vrtFile,files)
 
-                gdal.BuildVRT(vrtFile, files)
-                              
+                dest = gdal.BuildVRT(vrtFile, files)
+                
+                #build overview for vrt.
+                gdal.SetConfigOption("COMPRESS_OVERVIEW", "jpg")
+                dest.BuildOverviews("AVERAGE", [32,64,128,256])
+                dest.flushCache()
+                dest = None
+                
+                groups = ['image_loader',
+                          'combined VRT',
+                          query.value(2),
+                          query.value(1)]
+                loadImage(file = vrtFile,groups=groups)              
+                
             progress.setValue(progress.value()+1)
             
             

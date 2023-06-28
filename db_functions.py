@@ -3,13 +3,14 @@
 Created on Tue Apr 18 14:28:37 2023
 
 @author: Drew.Bennett
+
+geopackage for easier debugging?
+filelocks?
+
+
 """
-
+import os
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
-#ST_LineMerge(ST_Union(ST_Locate_Between_Measures))
-
-#from image_loader import lrs_functions
-
 
 
 class queryError(Exception):
@@ -52,8 +53,13 @@ def hasGps(db=None):
 def initDb(db):
     db.transaction()
     
-    runQuery(db=db,query='SELECT InitSpatialMetaData();')
-    
+    runQuery(db=db,query='SELECT InitSpatialMetaData()')
+  #  runQuery(db=db,query='SELECT EnableGpkgMode()')
+   # runQuery(db=db,query='SELECT case when CheckGeoPackageMetaData() then Null else gpkgCreateBaseTables() + gpkgInsertEpsgSRID(27700) end')
+    #runQuery(db=db,query="SELECT gpkgInsertEpsgSRID(27700)")
+
+
+#CheckGeoPackageMetaData	
     q = '''create table if not exists images 
             ( 
                 pk INTEGER PRIMARY KEY
@@ -68,9 +74,7 @@ def initDb(db):
              )
         '''
     runQuery(db=db,query=q)
-    
-    runQuery(db=db,query="SELECT AddGeometryColumn('images', 'line',27700, 'Linestring', 'XY')")
-
+       
     
     q = '''create table if not exists corrections
             ( 
@@ -100,6 +104,11 @@ def initDb(db):
     runQuery(db=db,query=q)
     runQuery(db=db,query='CREATE INDEX IF NOT EXISTS m_index on points(m)')
     runQuery(db=db,query='create index if not exists next_m_ind on points(next_m)')
+    
+  #  runQuery(db=db,query="SELECT gpkgAddGeometryColumn('points', 'point','POINT', 0, 0,27700)")
+  #  runQuery(db=db,query="SELECT gpkgAddGeometryTriggers('points', 'point')")
+
+	
     
     q = '''
 create view if not exists corrections_view as
@@ -230,18 +239,18 @@ def loadGps(file,db):
 
  
     q = '''with a as (
-    select rowid,lead(rowid) over (order by m) as next from points
+    select rowid as pk,lead(rowid) over (order by m) as next from points
     )
-    update points set next_pk = next from a where a.rowid = points.rowid
+    update points set next_pk = next from a where a.pk = points.rowid
     ;   
     '''
     runQuery(query=q,db=db)    
 
     q = '''
     with a as (
-        select rowid,lead(m) over (order by m) as next from points
+        select rowid as pk,lead(m) over (order by m) as next from points
         )
-        update points set next_m = next from a where a.rowid = points.rowid
+        update points set next_m = next from a where a.pk = points.rowid
     '''
     runQuery(query=q,db=db)    
 
@@ -253,6 +262,7 @@ def loadGps(file,db):
 	'''
     runQuery(query=q,db=db)    
 
+   # runQuery(db=db,query="update points set point = gpkgMakePoint(x,y,27700)")
 
 
     db.commit()
@@ -382,16 +392,17 @@ def loadCorrections(file):
     db.transaction()
 
     q = QSqlQuery(db)
-    if not q.prepare('insert into corrections(original_chainage,original_offset,new_chainage,new_offset) values (:original_chainage,:origonal_offset,:new_chainage,:new_offset)'):
+    if not q.prepare('insert into corrections(run,original_chainage,original_offset,new_chainage,new_offset) values (:run,:original_chainage,:origonal_offset,:new_chainage,:new_offset)'):
         raise queryError(q)
 
     with open(file,'r') as f:
         reader = csv.DictReader(f)
         reader.fieldnames = [name.lower().replace('_','') for name in reader.fieldnames]#lower case keys/fieldnames                 
 
-        #correction at start and end of each run
+        #correction at start of each run
         for r in reader:
             #print(r)
+            q.bindValue(':run',r['runid'])
             q.bindValue(':original_chainage',int(r['fromframe'])*5)
             q.bindValue(':new_chainage',int(r['fromframe'])*5 + float(r['chainage']))
             q.bindValue(':origonal_offset',0)
@@ -400,26 +411,34 @@ def loadCorrections(file):
             if not q.exec():
                 print(q.boundValues())
                 raise queryError(q)
-    
-            q.bindValue(':original_chainage',int(r['toframe'])*5)
-            q.bindValue(':new_chainage',int(r['toframe'])*5 + float(r['chainage']))
-            q.bindValue(':origonal_offset',0)
-            q.bindValue(':new_offset',r['offset'])
+       #correction at end of each run
+       #     q.bindValue(':run',r['runid'])
+       #     q.bindValue(':original_chainage',int(r['toframe'])*5)
+       #     q.bindValue(':new_chainage',int(r['toframe'])*5 + float(r['chainage']))
+       #     q.bindValue(':origonal_offset',0)
+      #      q.bindValue(':new_offset',r['offset'])
 
-            if not q.exec():
-                print(q.boundValues())
-                raise queryError(q)
+       #     if not q.exec():
+       #         print(q.boundValues())
+          #      raise queryError(q)
     
     db.commit()
     
-
-
-def createDb(file = None):
     
-    if file is None:
-        #file = ':memory:'
-        file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\images.db'
-        
+
+def hasMarked(run):
+    q = runQuery(query = "select max(marked) = 1 from images where run = ':run'",values = {':run':run})
+    while q.next():
+        return bool(q.value(1))
+
+
+    
+def dbFile():
+  #  return ':memory:'        
+    return os.path.join(os.path.dirname(__file__),'images.image_loader_db')
+
+
+def createDb(file = dbFile()):
     db = QSqlDatabase.addDatabase("QSPATIALITE",'image_loader')
     db.close()
     db.setDatabaseName(file)
