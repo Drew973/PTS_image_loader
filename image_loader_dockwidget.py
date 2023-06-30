@@ -70,7 +70,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         self.runBox.setModel(naturalSortProxy())
         self.runBox.model().setSourceModel(self.model.runsModel)
-        
+        self.runBox.model().sort(Qt.AscendingOrder)
+
         self.imagesView.setModel(self.model)
         self.runBox.currentIndexChanged.connect(self.runChange)
 
@@ -110,6 +111,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.correctionsModel.clear()
 
 
+    def load(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';image loader database (*.image_loader_db)')
+        if f:
+            if f[0]:
+                self.model.load(f[0])
+        
+        
+
     def initTopMenu(self):
         topMenu = QMenuBar(self.mainWidget)    
         
@@ -121,8 +130,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         saveAsAct.triggered.connect(self.saveAs)
       
         openMenu = fileMenu.addMenu('Open')
-        openAct = openMenu.addAction('Open Raster image load file...')
-        openAct.triggered.connect(self.openFile)
+        
+        
+        openAct = openMenu.addAction('Open...')
+        openAct.triggered.connect(self.load)
+        
+        openRilAct = openMenu.addAction('Open Raster image load file...')
+        openRilAct.triggered.connect(self.openRilFile)
         
         openCorrectionsAct = openMenu.addAction('Open corrections...')
         openCorrectionsAct.triggered.connect(self.openCorrections)
@@ -141,13 +155,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         loadGpsAct = toolsMenu.addAction('View GPS data...')
         loadGpsAct.triggered.connect(self.viewGpsLayer)
-   
-        setupMenu = topMenu.addMenu("Setup")
-        setLayers = setupMenu.addAction('Set layers and fields...')
-        setLayers.triggered.connect(self.layersDialog.exec_)
         
         loadCracksAct = toolsMenu.addAction('View Cracking Data...')
-        loadCracksAct.triggered.connect(self.loadCracks)        
+        loadCracksAct.triggered.connect(self.loadCracks)     
+        
+        setLayers = toolsMenu.addAction('Settings...')
+        setLayers.triggered.connect(self.layersDialog.exec_)
         
         selectMenu = topMenu.addMenu("Select")
         markAllAct = selectMenu.addAction('Mark all images')
@@ -156,6 +169,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         unmarkAllAct = selectMenu.addAction('Unmark all images')
         unmarkAllAct.triggered.connect(self.model.unmarkAll)
          
+        markRunAct = selectMenu.addAction('Mark all images in run')
+        markRunAct.triggered.connect(self.model.markRun)
+
+        unmarkRunAct = selectMenu.addAction('Unmark all images in run')
+        unmarkRunAct.triggered.connect(self.model.unmarkRun)
+        
         processMenu = topMenu.addMenu("Process")
         
         loadAct = processMenu.addAction('Load selected images')
@@ -234,7 +253,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 
 
     #open dialog and load csv/sqlite file
-    def openFile(self):
+    def openRilFile(self):
         f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
         if f:
            # self.setFile(f)
@@ -252,12 +271,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         
             
-    #could save to sqlite database. Would confuse users and no real advantages.
+    #save all tables to sqlite database.
     def saveAs(self):
-        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'csv (*.csv);;txt (*.txt)')[0]
+        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = ';image loader database (*.image_loader_db)')[0]
         if f:
             self.model.save(f)
-            iface.messageBar().pushMessage("Image_loader", "Saved to csv", level=Qgis.Info)
+            iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
 
 
 

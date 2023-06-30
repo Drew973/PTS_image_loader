@@ -16,7 +16,6 @@ import os
 import csv
 #import re
 
-
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QProgressDialog
@@ -29,20 +28,21 @@ from image_loader.name_functions import generateRun,generateImageId,findOrigonal
 from image_loader.load_image import loadImage
 #from image_loader import gdal_commands
 from image_loader import georeference
-from image_loader.run_commands import runCommands
-
+from image_loader import run_commands
+from image_loader import layer_functions
 
 
 #from qgis.core import QgsCoordinateReferenceSystem
 
-from osgeo import gdal
 
 #combobox current index changes. when rowCount changes...
 
 
 from image_loader.runs_model import runsModel
+from image_loader.gps_model import gpsModel
 
 
+from collections import namedtuple
 
 
 class _image():
@@ -86,7 +86,7 @@ def createProgressDialog(parent=None,labelText=''):
 
 
 
-class imageModel(QSqlQueryModel):
+class imageModel(QSqlQueryModel,gpsModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
@@ -94,12 +94,21 @@ class imageModel(QSqlQueryModel):
         self.run = None
         self.runsModel = runsModel()
         self.runsModel.select()
+        #self.gpsModel = gpsModel()
         self.setRun('')
         
     
+    def save(self,file):
+        db_functions.saveToFile(file)
+        
+        
+    def load(self,file):
+        db_functions.loadFile(file)
+        self.select()
+    
+    
     def fieldIndex(self,name):
         return self.record().indexOf(name)
-        
     
     
     def data(self,index,role = Qt.EditRole):
@@ -136,18 +145,21 @@ class imageModel(QSqlQueryModel):
                 self.mark([index],value)
         return True
     
+    
     #def flags(self,index):
       #  if index.column() == self.fieldIndex('marked'):
       #      return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
      #   else:
      #       return super().flags(index)
     
+    
     def database(self):
         return QSqlDatabase.database('image_loader')
 
 
     def select(self):
-        t = self.query().lastQuery()
+        t = self.query().lastQuery()#str
+      #  print(t)
         self.setQuery(t,self.database())
        #self.setQuery(self.query()) query does not update model. bug in qt?
         self.runsModel.select()
@@ -157,14 +169,18 @@ class imageModel(QSqlQueryModel):
         q = QSqlQuery(self.database())
         if not q.exec('delete from images'):
             raise db_functions.queryError(q)
+            
+        gpsModel.clear(self)
         self._refreshRuns()
         self.select()
+
 
     def _refreshRuns(self):
         oldRun = self.run
         self.runsModel.select()
         self.setRun(oldRun)
  
+    
     def setRun(self,run):
         if str(run) != str(self.run):
             if run:
@@ -173,7 +189,7 @@ class imageModel(QSqlQueryModel):
                 filt = ''
             q = 'select marked,pk,run,image_id,original_file,image_type from images {filt} order by image_id,original_file,image_type'.format(filt=filt)
             self.setQuery(q,self.database())
-            self.run = run
+        self.run = run
         
         
     #load images into qgis
@@ -182,56 +198,71 @@ class imageModel(QSqlQueryModel):
         query = db_functions.runQuery('select original_file,run,image_type from images where marked and not original_file is null')
         progress.setRange(0,query.size())
         i = 0
-        
         while query.next():
-            
             if progress.wasCanceled():
                 return
             progress.setValue(i)
-            
-            origonalFile = query.value(0)#string      
+            origonalFile = query.value(0)#string
             warped = georeference.warpedFileName(origonalFile)
-
             if os.path.exists(warped):
                 groups = ['image_loader',
                           query.value(2),
                           query.value(1)]
                 loadImage(file=warped,groups=groups)
             i += 1
-            
         progress.close()#close immediatly otherwise haunted by ghostly progressbar
         progress.deleteLater()
         del progress
         
-    
-    def hasGps(self):
-        return db_functions.hasGps(self.database())
                 
-    
+    '''
+    some inaccuracy
+    offsetCurve
+    '''
     #load images into qgis
     def georeference(self,indexes=None):
         #print('georeference')
-        progress = createProgressDialog(parent=self.parent(),labelText = "Calculating positions...")
-        georeferenceCommands = []
-        query = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
+       # progress = createProgressDialog(parent=self.parent(),labelText = "Calculating positions...")
         
-        while query.next():
-            file = query.value(0)#string
-            left = query.value(1)#QVariant
-            right = query.value(2)#QVariant
+        progress = run_commands.commandRunner(parent=self.parent(),labelText = "Calculating positions...")
+        progress.setAutoClose(False)
+        progress.show()
+        
+        georeferenceCommands = []
+        sources = []
+        q = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
+      #  q = db_functions.runQuery('select original_file,start_m,end_m,left_offset,right_offset from images_with_correction')
+        while q.next():
+            file = q.value(0)#string
+          #  left = query.value(1)#QVariant
+          #  right = query.value(2)#QVariant
 
             if os.path.exists(file):
+                #left = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(3))               
+                #right = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(4))
+                sources.append(georeference.warpedFileName(file))
+                left = q.value(1)
+                right = q.value(2)
+               # print('left',left)
+              #  print('right',right)
                 c = 'python "{script}" "{file}" "{left}" "{right}"'.format(script = georeference.__file__,file = file, left = left,right=right)
                 georeferenceCommands.append(c)
 
         if georeferenceCommands:
-            #print(georeferenceCommands)
-            progress.setLabelText('writing files...')       
-            runCommands(commands = georeferenceCommands,progress=progress)#running in paralell.
+            progress.setLabelText('removing layers...')
+            layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+            
+           # print(georeferenceCommands[0])
+            progress.setLabelText('writing files...')
+            progress.setAutoClose(True)
+            progress.runCommands(commands = georeferenceCommands)#running in paralell.
+            progress.exec()
+
+            
        # print(georeferenceCommands)
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        progress.deleteLater()
-        del progress    
+       # progress.close()#close immediatly otherwise haunted by ghostly progressbar
+    ##    progress.deleteLater()
+     #   del progress    
     
    
     '''
@@ -242,7 +273,10 @@ class imageModel(QSqlQueryModel):
     
     '''
     def createOverviews(self):
-        progress = createProgressDialog(parent=self.parent(),labelText = "Creating overviews...")
+        progress = run_commands.commandRunner(parent=self.parent(),labelText = "Calculating positions...")
+        progress.setAutoClose(False)
+        progress.show()
+        
         query = db_functions.runQuery('select original_file from images where marked')
         files = []
         while query.next():
@@ -253,70 +287,94 @@ class imageModel(QSqlQueryModel):
         #warpedFileName()
         template = 'gdaladdo "{file}" 2 4 8 16 32 64 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'
         commands = [template.format(file = f) for f in files]
-        print(commands)
-        runCommands(commands = commands,progress=progress)#running in paralell.
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        progress.deleteLater()
-        del progress    
+       # print(commands)
+        progress.setAutoClose(True)
+        progress.runCommands(commands = commands)#running in paralell.
+        progress.exec()
 
 
     def makeVrt(self):
-        progress = createProgressDialog(parent=self.parent(),labelText = "Making VRT files...")        
-        query = db_functions.runQuery("select group_concat(original_file,':'),run,image_type from images where marked group by run,image_type order by original_file")
-        progress.setMaximum(query.size())
+        vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
+        
+        progress = run_commands.commandRunner(parent=self.parent(),labelText = "fetching data...")
+        progress.setAutoClose(False)
+        progress.show()
+        
+        #use something unlikey to be in file name as seperator.
+        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images where marked group by run,image_type order by original_file")
+        data = []
         while query.next():
-                        
-            if progress.wasCanceled():
-                break
-            
-            files = []
-            for f in query.value(0).split(':'):
-                warped = georeference.warpedFileName(f)
-                if os.path.isfile(warped):
-                    files.append(warped)
-                  
+            files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
+           # print(files)        
             if files:
                 if os.path.isdir(self.fields['folder']):
-                    folder = os.path.join(self.fields['folder'],'Combined Images',query.value(2))
-                
+                    destFolder = os.path.join(self.fields['folder'],'Combined Images',query.value(2))
                 else:
-                    folder = os.path.dirname(files[0])
+                    destFolder = os.path.commonpath(files) 
+                vrtFile = os.path.join(destFolder,
+                                       '{tp}_{run}.vrt'.format(run = query.value(1),tp = query.value(2)))
+                tempFile = vrtFile + '.txt'
+                data.append(vrtData(files,vrtFile,tempFile,query.value(2),query.value(1)))
                 
+        progress.setLabelText('removing layers')
+     #   print([v.vrtFile for v in data])
+        layer_functions.removeSources([v.vrtFile for v in data])                
                 
-                if not os.path.isdir(folder):
-                    os.makedirs(folder)
-                 
-                vrtFile = os.path.join(folder,
-                                       '{tp}_{run}.vrt'.format(run = query.value(1),tp = query.value(2)))        
+        progress.setLabelText('preparing...')        
+        progress.setRange(0,len(data))
+        
+        buildCommands = []
+        overviewCommands = []
+        
+        for i,v in enumerate(data):
+            if progress.wasCanceled():
+                return
+            
+            progress.setValue(i)
+            
+            vrtFile = v.vrtFile
+           #create directory for vrt file if necessary
+           
+            if not os.path.isdir(os.path.dirname(v.vrtFile)):
+                os.makedirs(os.path.dirname(v.vrtFile))
+            
+            with open(v.tempFile,'w') as tf:                
+                tf.write('\n'.join(['{f}'.format(f=file) for file in v.files]))
+            
+            #remove overview if exists
+            overview = v.vrtFile+'.ovr'
+            if os.path.isfile(overview):
+                os.remove(overview)
                 
-                #print(vrtFile,files)
+            buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = v.tempFile,f=v.vrtFile))
+            c = 'gdaladdo -ro "{vrtFile}" 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = v.vrtFile)
+            
+            overviewCommands.append(c)
 
-                dest = gdal.BuildVRT(vrtFile, files)
-                
-                #build overview for vrt.
-                gdal.SetConfigOption("COMPRESS_OVERVIEW", "jpg")
-                dest.BuildOverviews("AVERAGE", [32,64,128,256])
-                dest.flushCache()
-                dest = None
-                
-                groups = ['image_loader',
-                          'combined VRT',
-                          query.value(2),
-                          query.value(1)]
-                loadImage(file = vrtFile,groups=groups)              
-                
-            progress.setValue(progress.value()+1)
+        #print(buildCommands)
+        progress.setLabelText('Writing VRT files...')
+        progress.setAutoClose(True)
+        progress.runCommands(commands = buildCommands)#running in paralell.
+        progress.exec()
+
+        progress.setLabelText('Creating overviews...')
+     #   print(overviewCommands)
+        progress.runCommands(commands=overviewCommands)   
+        progress.exec()
+
+        progress.show()
+        progress.setLabelText('Loading results...')
+        for v in data:
+            #os.remove(data[vrtFile][0])
             
-            
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        progress.deleteLater()
-        del progress    
+            groups = ['image_loader',
+                       'combined VRT',
+                       v.imageType,
+                       v.run
+                       ]
+            loadImage(file = v.vrtFile,groups=groups)
+            os.remove(v.tempFile)
     
-    
-    def loadGps(self,file):
-        db_functions.loadGps(file=file,db=self.database())
-        
-        
     
     def addFolder(self,folder):
         pattern = folder+'/**/*.jpg'
@@ -425,13 +483,26 @@ class imageModel(QSqlQueryModel):
     def markAll(self):
         db_functions.runQuery(query = 'update images set marked=True')
         self.select()
-        self._refreshRuns()
+        
         
     def unmarkAll(self):
         db_functions.runQuery(query = 'update images set marked=False')
         self.select()
-        #self._refreshRuns()
         
+        
+    def markRun(self):
+        #print('run',self.run)
+        #db_functions.runQuery(query = "update images set marked = True where run = ':run'".replace(':run',self.run))#error when binding value?
+        db_functions.runQuery(query = "update images set marked = True where run = :run",values = {':run':self.run})#not run when binding value. why?
+        self.select()
+
+
+    def unmarkRun(self):
+       # print(self.run)
+        db_functions.runQuery(query = "update images set marked = False where run = ':run'".replace(':run',self.run))#error when binding value?
+        self.select()
+
+
     def markBetween(self,runIndex,start,end):
         pass    
     

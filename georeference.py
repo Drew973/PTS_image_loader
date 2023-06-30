@@ -17,7 +17,6 @@ from osgeo import gdal,osr,gdalconst
 
 
 
-
 def warpedFileName(origonalFile):
     return os.path.splitext(origonalFile)[0] + '_warped.vrt'
 
@@ -29,7 +28,6 @@ noData = 255
 '''
 dataset should have gcps OR geotransform , not both
 use GCPs. geotransform is affine. Doesn't curve rectangle as it should.
-
 translated has weird bits like repeated image. fine after warping.
 '''    
    
@@ -129,6 +127,28 @@ def _gcps(left,right):
         r.append(gdal.GCP(v.x,v.y,0,PIXELS,line)) #pixel = PIXELS for right of image
       
     return r
+
+
+#calculate list of gdal gcps from center line. shapely geometry.
+#4 gcps only.
+def _gcps4point(left,right):
+    r = []
+   
+    tl = left.coords[0]
+    r.append(gdal.GCP(tl[0],tl[1],0,0,0))
+    
+    bl = left.coords[-1]
+    r.append(gdal.GCP(bl[0],bl[1],0,0,LINES))
+    
+    tr = right.coords[0]
+    r.append(gdal.GCP(tr[0],tr[1],0,PIXELS,0))
+
+    br = right.coords[-1]
+    r.append(gdal.GCP(br[0],br[1],0,PIXELS,LINES))
+    return r
+
+
+
 
 
 if __name__ == '__main__':

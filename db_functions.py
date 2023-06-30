@@ -24,10 +24,14 @@ class queryPrepareError(Exception):
         
         
         
+def defaultDb():
+    return QSqlDatabase.database('image_loader')        
+        
+        
 def runQuery(query,db = None,values = {}):
     
     if db is None:
-        db = QSqlDatabase.database('image_loader')
+        db = defaultDb()
         
     q = QSqlQuery(db)
     if not q.prepare(query):
@@ -43,16 +47,36 @@ def runQuery(query,db = None,values = {}):
         
     return q
         
+#save to file.
+#"vacuum main into 'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\saved.db'"
+def saveToFile(file):
+    runQuery(query = "vacuum main into ':file'".replace(':file',file))
 
+
+def loadFile(dbFile):
+    try:
+        runQuery("DETACH DATABASE if exists db2".replace(':file',dbFile))
+    except Exception:
+        pass
+    
+    runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile))
+    runQuery("delete from images")
+    runQuery('insert into images(image_id,run,original_file,image_type,marked) select image_id,run,original_file,image_type,marked from db2.images')
+    runQuery("delete from corrections")
+    runQuery('insert into corrections(run,original_chainage,new_chainage,original_offset,new_offset) select run,original_chainage,new_chainage,original_offset,new_offset from db2.corrections')
+    runQuery("delete from points")
+    runQuery('insert into points(m,x,y,next_m,last_m) select m,x,y,next_m,last_m from db2.points')
+
+
+    
 def hasGps(db=None):
-    q = runQuery('select count(rowid) from points',db)
+    q = runQuery('select count(m) from points',db)
     while q.next():
         return q.value(0) > 0
     
         
 def initDb(db):
     db.transaction()
-    
     runQuery(db=db,query='SELECT InitSpatialMetaData()')
   #  runQuery(db=db,query='SELECT EnableGpkgMode()')
    # runQuery(db=db,query='SELECT case when CheckGeoPackageMetaData() then Null else gpkgCreateBaseTables() + gpkgInsertEpsgSRID(27700) end')
@@ -207,7 +231,9 @@ from qgis.core import QgsPointXY,QgsCoordinateTransform,QgsCoordinateReferenceSy
 #PRAGMA synchronous = OFF
 #PRAGMA journal_mode = MEMORY
 
-def loadGps(file,db):
+def loadGps(file,db=None):
+    if db is None:
+        db = defaultDb()
 
     #do tranform in QGIS. ST_TransformXY slow and buggy.
     transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem('EPSG:4326'),QgsCoordinateReferenceSystem('EPSG:27700'),QgsProject.instance())
@@ -292,7 +318,6 @@ def insertCorrections(corrections,db):
     else:
         raise queryPrepareError(q)
 
-#from image_loader import lrs_functions
 '''
 find closest gps point.
 linestring m from last,this,next
