@@ -27,20 +27,54 @@ class queryPrepareError(Exception):
 def defaultDb():
     return QSqlDatabase.database('image_loader')        
         
-        
+
+
+
+#from PyQt5.QtSql import QSqlDriver
+   #print('has named placeholders',db.driver().hasFeature(QSqlDriver.NamedPlaceholders))#False
+   #named placeholders buggy because not properly supported for QSPATIALITE driver.
+   #use positional instead?
+   #fuck sql injection risk. just use replace.
+
+
+
+
+
 def runQuery(query,db = None,values = {}):
     
     if db is None:
         db = defaultDb()
         
-    q = QSqlQuery(db)
+
+    if isinstance(values,dict):
+        for k in values:
+            query = query.replace(k,str(values[k]))
+            #q.bindValue(k,values[k])
+            #print(values)
+            #print(q.boundValues())
+            
+    #    for v in values:
+         #   i = query.index(v)
+         #   print('index',i)
+          #  query=query.replace()
+
+#    print(query)
+
+    q = QSqlQuery(db)    
     if not q.prepare(query):
         raise queryError(q)
+        
+        
+
+        
+        
+  #  if isinstance(values,list):
+     #   for i,v in enumerate(values):
+            #q.bindValue(i,v)
+        #    q.addBindValue(v)
     
-    for k in values:
-        q.bindValue(k,values[k])
-      
-    
+
+        
     if not q.exec():
         print(q.boundValues())
         raise queryError(q)

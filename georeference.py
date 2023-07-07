@@ -18,7 +18,7 @@ from osgeo import gdal,osr,gdalconst
 
 
 def warpedFileName(origonalFile):
-    return os.path.splitext(origonalFile)[0] + '_warped.vrt'
+    return os.path.splitext(origonalFile)[0] + '_warped.tif'
 
 
 
@@ -29,6 +29,7 @@ noData = 255
 dataset should have gcps OR geotransform , not both
 use GCPs. geotransform is affine. Doesn't curve rectangle as it should.
 translated has weird bits like repeated image. fine after warping.
+rendering of vrt seems buggy with random crashes. COG seems to take about as long to write. use this.
 '''    
    
 #create warped vrt from file
@@ -40,18 +41,12 @@ def georeferenceFile(file,left,right):
         
     if os.path.exists(file):
         gcps = _gcps(left,right)
-        
       #  for p in gcps:
         #    print(GCPCommand(p))
-        
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(27700)
         srs = srs.ExportToWkt()
-        
-
-
         translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
-        
        # translatedFile = os.path.splitext(file)[0] + '_translated.vrt'
         translated = gdal.Translate(translatedFile,
                                     file,
@@ -63,34 +58,36 @@ def georeferenceFile(file,left,right):
         band = translated.GetRasterBand(1)
         band.SetColorInterpretation(gdalconst.GCI_GrayIndex)
         translated.FlushCache()
-
         dest = warpedFileName(file)
+        ext = os.path.splitext(dest)[1]
 
-        #-b works in osgeo4w shell.
-        gdal.Warp(destNameOrDestDS = dest,
+        if ext == '.vrt':
+        #VRT -b works in osgeo4w shell.
+            gdal.Warp(destNameOrDestDS = dest,
                  srcDSOrSrcDSTab = translated,
                  resampleAlg = 'near',
                  tps = True,
                  warpOptions = ['SKIP_NOSOURCE=YES']
         )
+            
+            #rewrite vrt replacing translated with original file. hacky but effective.
+            with open(dest,'r') as f:
+                newText = f.read().replace(translatedFile,file)
+            with open(dest,'w') as f:
+                 f.write(newText)
         
-     #   gdal.Warp(destNameOrDestDS = dest,
-      #            srcDSOrSrcDSTab = source,
-     #             format = 'COG',
-      #            creationOptions = ['QUALITY=70','COMPRESS=JPEG','OVERVIEWS=IGNORE_EXISTING','SPARSE_OK=TRUE'])
-        
-        #-of COG -co COMPRESS=JPEG -co OVERVIEWS=IGNORE_EXISTING -co QUALITY=70 -co SPARSE_OK=TRUE
+        if ext == '.tif':
+            #-b works in osgeo4w shell.
+            gdal.Warp(destNameOrDestDS = dest,
+                     srcDSOrSrcDSTab = translated,
+                     format = 'COG',
+                     tps = True,
+                     creationOptions = ['QUALITY=60','COMPRESS=JPEG','OVERVIEWS=IGNORE_EXISTING','SPARSE_OK=TRUE'],
+                     warpOptions = ['SKIP_NOSOURCE=YES']
+            )
+            #overviews are included in these. 
         translated = None
-        
-       #rewrite vrt replacing translated with original file. hacky but effective.
-        with open(dest,'r') as f:
-            newText = f.read().replace(translatedFile,file)
-        with open(dest,'w') as f:
-            f.write(newText)
-            
         os.remove(translatedFile)
-
-            
     else:
         raise ValueError('{file} not found'.format(file=file))
        

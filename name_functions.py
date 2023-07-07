@@ -111,6 +111,18 @@ def findOrigonals(georeferenced,projectFolder):
     return results
 
 
+def projectFolderFromRIL(file):
+    #file = 'D:\RAF Shawbury\Spatial Data\Text Files\MFV1_002 Raster Image Load File'
+    f = file
+    for i in file:
+        f  = os.path.dirname(f)    
+        if 'spatial data' in file.lower() and not 'spatial data' in f.lower():
+            return f
+    return ''
+
+print(projectFolderFromRIL(r'D:\RAF Shawbury\Spatial Data\Text Files\MFV1_002 Raster Image Load File'))
+
+
 if __name__ == '__main__':
     f = r"D:\RAF Shawbury\Data\2023-01-22\MFV1_020\Run 11\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-22 10h15m22s LCMS Module 1 000005.jpg"
     

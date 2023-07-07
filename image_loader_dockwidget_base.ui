@@ -23,6 +23,9 @@
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select run. Background is yellow for runs with marked images.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
+         <property name="editable">
+          <bool>false</bool>
+         </property>
         </widget>
        </item>
        <item>
@@ -43,6 +46,9 @@
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
             <widget class="imagesView" name="imagesView">
+             <property name="selectionMode">
+              <enum>QAbstractItemView::ExtendedSelection</enum>
+             </property>
              <property name="selectionBehavior">
               <enum>QAbstractItemView::SelectRows</enum>
              </property>

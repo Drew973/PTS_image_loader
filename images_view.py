@@ -5,9 +5,38 @@ Created on Mon Mar 13 12:16:57 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QTableView,QMenu
+from PyQt5.QtWidgets import QTableView,QMenu,QDialog,QVBoxLayout,QComboBox,QDialogButtonBox
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtCore import QItemSelectionModel
+
+
+
+
+class setRunDialog(QDialog):
+    
+    def __init__(self,runsModel,imagesModel,parent=None):
+        super().__init__(parent)
+        self.setLayout(QVBoxLayout())
+        self.runBox = QComboBox(self)
+        self.layout().addWidget(self.runBox)
+        self.runBox.setModel(runsModel)
+        self.runBox.setEditable(True)
+        self.imagesModel = imagesModel
+        self.indexes = []
+        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel)
+        self.layout().addWidget(self.buttons)
+        self.buttons.rejected.connect(self.reject)
+        self.buttons.accepted.connect(self.accept)
+
+
+    def setIndexes(self,indexes):
+        self.indexes = indexes
+        
+        
+    def accept(self):
+        self.imagesModel.setRunForItems(self.indexes,self.runBox.currentText())
+        return super().accept()
+
 
 
 class imagesView(QTableView):
@@ -21,11 +50,20 @@ class imagesView(QTableView):
         unmarkAct.triggered.connect(self.unmark)
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
+        dropAct = self.menu.addAction('Set run for selected rows...')
+        dropAct.triggered.connect(self.setRunForSelected)
         self.setWordWrap(False)        
         self.doubleClicked.connect(self.onDoubleClick)
     
     
-    
+    def setRunForSelected(self):
+        inds = self.selected()
+        if inds:
+            d = setRunDialog(parent = self,imagesModel=self.detailsModel(),runsModel = self.detailsModel().runsModel)
+            d.setIndexes(inds)
+            d.exec()
+        
+        
     
     def onDoubleClick(self,index):
     #   print(index.row(),index.column())
@@ -43,11 +81,17 @@ class imagesView(QTableView):
             self.setColumnHidden(c,not c in toShow)
         
 
-         
+
+        #selected indexes of source model. pk col.
     def selected(self):
-        return self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))
+        selected = self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))
         
-       
+        if isinstance(self.model(),QSortFilterProxyModel):
+            selected = [self.model().mapToSource(i) for i in selected]
+        
+        return selected
+        
+        
     #triggered emits bool
     def _mark(self,value=True):
         if self.detailsModel():

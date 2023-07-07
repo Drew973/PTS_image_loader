@@ -149,14 +149,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         fromFolderAct = toolsMenu.addAction('Find details from folder...')
         fromFolderAct.triggered.connect(self.detailsFromFolder)
 
+
+        viewMenu = toolsMenu.addMenu('View')
+
         #layersMenu = topMenu.addMenu("Load layers")
-        loadFramesAct = toolsMenu.addAction('View Spatial Frame Data...')
+        loadFramesAct = viewMenu.addAction('View Spatial Frame Data...')
         loadFramesAct.triggered.connect(self.loadFrames)
         
-        loadGpsAct = toolsMenu.addAction('View GPS data...')
+        loadGpsAct = viewMenu.addAction('View GPS data...')
         loadGpsAct.triggered.connect(self.viewGpsLayer)
         
-        loadCracksAct = toolsMenu.addAction('View Cracking Data...')
+        loadCracksAct = viewMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)     
         
         setLayers = toolsMenu.addAction('Settings...')
@@ -244,6 +247,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
             if f[0]:
                 self.model.loadGps(f[0])
+                iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
+
+
 
     def loadCracks(self):
         f = QFileDialog.getOpenFileName(caption = 'Load Crack data Data',filter = 'txt (*.txt)')
@@ -257,7 +263,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
         if f:
            # self.setFile(f)
-            self.model.loadFile(f)    
+            self.model.loadRIL(f)    
             
             
     def openCorrections(self):

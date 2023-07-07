@@ -79,6 +79,10 @@ class gpsModel:
     def getPoint(self,m,run='',offset = 0):
         pass
     
+        #get line between nearest 2 points to m.
+        #offset it and use st_lineInterpolatePoint
+    
+    
     #(self,pt:QgsPointXY,run:str)->(m:float,offset:float)
     def getM(self,pt,run=''):
         pass

@@ -24,14 +24,14 @@ import glob
 
 
 from image_loader import db_functions
-from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType
+from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
 from image_loader.load_image import loadImage
 #from image_loader import gdal_commands
 from image_loader import georeference
 from image_loader import run_commands
 from image_loader import layer_functions
 
-
+import numpy
 #from qgis.core import QgsCoordinateReferenceSystem
 
 
@@ -78,9 +78,9 @@ class _image():
 def createProgressDialog(parent=None,labelText=''):
         progress = QProgressDialog(labelText,"Cancel", 0, 0,parent=parent)#QObjectwithout parent gets deleted like normal python object
         progress.setWindowModality(Qt.WindowModal)
-        progress.setAutoClose(False)
+        #progress.setAutoClose(False)
         progress.show()
-        progress.forceShow()    
+     #   progress.forceShow()    
         return progress
 
 
@@ -93,7 +93,7 @@ class imageModel(QSqlQueryModel,gpsModel):
      #   self._db = db
         self.run = None
         self.runsModel = runsModel()
-        self.runsModel.select()
+      #  self.runsModel.select()
         #self.gpsModel = gpsModel()
         self.setRun('')
         
@@ -170,20 +170,19 @@ class imageModel(QSqlQueryModel,gpsModel):
         if not q.exec('delete from images'):
             raise db_functions.queryError(q)
             
-        gpsModel.clear(self)
-        self._refreshRuns()
+        gpsModel.clear(self)#method of parent class
+        self.runsModel.clear()
         self.select()
 
 
-    def _refreshRuns(self):
-        oldRun = self.run
-        self.runsModel.select()
-        self.setRun(oldRun)
- 
+   # def _refreshRuns(self):
+       # self.runsModel.select()
+        
+    
     
     def setRun(self,run):
         if str(run) != str(self.run):
-            if run:
+            if run is not None:
                 filt = "where run = '{run}'".format(run=run)#"
             else:
                 filt = ''
@@ -221,18 +220,19 @@ class imageModel(QSqlQueryModel,gpsModel):
     '''
     #load images into qgis
     def georeference(self,indexes=None):
-        #print('georeference')
-       # progress = createProgressDialog(parent=self.parent(),labelText = "Calculating positions...")
-        
-        progress = run_commands.commandRunner(parent=self.parent(),labelText = "Calculating positions...")
-        progress.setAutoClose(False)
-        progress.show()
         
         georeferenceCommands = []
         sources = []
+        i = 1
         q = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
-      #  q = db_functions.runQuery('select original_file,start_m,end_m,left_offset,right_offset from images_with_correction')
+        
+        progress = QProgressDialog("Calculating positions...","Cancel", 0, q.size(),parent = self.parent())#QObjectwithout parent gets deleted like normal python object
+       # progress.show()
         while q.next():
+            progress.setValue(i)
+            i += 1
+            if progress.wasCanceled():
+                return
             file = q.value(0)#string
           #  left = query.value(1)#QVariant
           #  right = query.value(2)#QVariant
@@ -243,28 +243,17 @@ class imageModel(QSqlQueryModel,gpsModel):
                 sources.append(georeference.warpedFileName(file))
                 left = q.value(1)
                 right = q.value(2)
-               # print('left',left)
-              #  print('right',right)
                 c = 'python "{script}" "{file}" "{left}" "{right}"'.format(script = georeference.__file__,file = file, left = left,right=right)
                 georeferenceCommands.append(c)
-
+            
+        progress.setValue(progress.maximum())
+        progress.close()
+        
         if georeferenceCommands:
-            progress.setLabelText('removing layers...')
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-            
-           # print(georeferenceCommands[0])
-            progress.setLabelText('writing files...')
-            progress.setAutoClose(True)
-            progress.runCommands(commands = georeferenceCommands)#running in paralell.
-            progress.exec()
+            run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
 
-            
-       # print(georeferenceCommands)
-       # progress.close()#close immediatly otherwise haunted by ghostly progressbar
-    ##    progress.deleteLater()
-     #   del progress    
-    
-   
+     
     '''
     unused. probabaly unnecessary. Strange behavior creating overviews for vrt. No external file created but line like 
     <OverviewList>2 4 8 16 32 64 </OverviewList>
@@ -295,11 +284,8 @@ class imageModel(QSqlQueryModel,gpsModel):
 
     def makeVrt(self):
         vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
-        
-        progress = run_commands.commandRunner(parent=self.parent(),labelText = "fetching data...")
-        progress.setAutoClose(False)
-        progress.show()
-        
+        progress = QProgressDialog("Preparing...","Cancel", 0, 1,parent = self.parent())#QObjectwithout parent gets deleted like normal python object
+
         #use something unlikey to be in file name as seperator.
         query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images where marked group by run,image_type order by original_file")
         data = []
@@ -319,22 +305,14 @@ class imageModel(QSqlQueryModel,gpsModel):
         progress.setLabelText('removing layers')
      #   print([v.vrtFile for v in data])
         layer_functions.removeSources([v.vrtFile for v in data])                
-                
-        progress.setLabelText('preparing...')        
-        progress.setRange(0,len(data))
-        
+        progress.close()
+      
         buildCommands = []
         overviewCommands = []
         
-        for i,v in enumerate(data):
-            if progress.wasCanceled():
-                return
-            
-            progress.setValue(i)
-            
+        for v in run_commands.updateProgress(listLike = data , labelText = 'Preparing...'):
             vrtFile = v.vrtFile
            #create directory for vrt file if necessary
-           
             if not os.path.isdir(os.path.dirname(v.vrtFile)):
                 os.makedirs(os.path.dirname(v.vrtFile))
             
@@ -347,24 +325,14 @@ class imageModel(QSqlQueryModel,gpsModel):
                 os.remove(overview)
                 
             buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = v.tempFile,f=v.vrtFile))
-            c = 'gdaladdo -ro "{vrtFile}" 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = v.vrtFile)
+            c = 'gdaladdo -ro "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = v.vrtFile)
             
             overviewCommands.append(c)
 
-        #print(buildCommands)
-        progress.setLabelText('Writing VRT files...')
-        progress.setAutoClose(True)
-        progress.runCommands(commands = buildCommands)#running in paralell.
-        progress.exec()
+        run_commands.runCommands(commands = buildCommands , labelText = 'Writing VRT files...')
+        run_commands.runCommands(commands = overviewCommands , labelText = 'Creating overviews...')
 
-        progress.setLabelText('Creating overviews...')
-     #   print(overviewCommands)
-        progress.runCommands(commands=overviewCommands)   
-        progress.exec()
-
-        progress.show()
-        progress.setLabelText('Loading results...')
-        for v in data:
+        for v in run_commands.updateProgress(listLike = data , labelText = 'Loading layers...'):
             #os.remove(data[vrtFile][0])
             
             groups = ['image_loader',
@@ -389,58 +357,64 @@ class imageModel(QSqlQueryModel,gpsModel):
         db_functions.runQuery(q)
         self.select()    
         self._refreshRuns()
-    
-
-    
-    def loadFile(self,file):
         
+    
+   # def imageCount(self,run):
+        
+
+    def setRunForItems(self,indexes,run):
+       col = self.fieldIndex('pk')
+       pks = [str(self.index(index.row(),col).data()) for index in indexes]
+       q = "update images set run = ':run' where pk in ({pks})".format(pks = ','.join(pks))
+       db_functions.runQuery(query = q,values={':run':run})
+       self.select()
+    
+    
+    
+    def loadRIL(self,file):
         def _find(d,k):
             if k in d:
                 return d[k]
-        
-        
         ext = os.path.splitext(file)[-1]
         if ext in ['.csv','.txt']:
-        
             data = []
-            
             with open(file,'r',encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 reader.fieldnames = [name.lower().replace('_','') for name in reader.fieldnames]#lower case keys/fieldnames                 
                 for row in reader:
-                    
-        
                     p = row['filepath']
                     if os.path.isabs(p):
                         filePath = p
                     else:
                         filePath = os.path.normpath(os.path.join(file,p))#from file not folder
-                          
                     data.append(_image(newFile = filePath,
                                 run = _find(row,'runid'),
                                 imageId= _find(row,'frameid')
                                 ))
-
-            #    print('dat',data)
-
             #find origonal files
-            if 'Raster Image Load File' in file and os.path.isdir(self.fields['folder']):
-                files = [im.newFile for im in data]
-                
-                origonalFiles = findOrigonals(files,projectFolder = self.fields['folder'])
-               
-                for i,f in enumerate(origonalFiles):
-                    data[i].origonalFile = f
-               
+            if 'Raster Image Load File' in file:
+                if os.path.isdir(self.fields['folder']):
+                    projectFolder = self.fields['folder']
+                else:
+                    projectFolder = projectFolderFromRIL(file)
+                if os.path.isdir(projectFolder):
+                    files = [im.newFile for im in data]
+                    origonalFiles = findOrigonals(files,projectFolder = projectFolder)
+                    for i,f in enumerate(origonalFiles):
+                        data[i].origonalFile = f
             self._add(data)
          
             
     def _add(self,data):
-            
-        self.database().transaction()
         
-        q = QSqlQuery(self.database())
-        if not q.prepare('insert into images(image_id,original_file,new_file,run,image_type) values(:i,:origonal,:new,:run,:type)'):
+       # print(data[0].run)
+        db = self.database()
+        db.transaction()
+           
+        #self.runsModel.addRuns([str(d.run) for d in data])
+        
+        q = QSqlQuery(db)
+        if not q.prepare('insert into images(image_id,original_file,run,image_type) values(:i,:origonal,:run,:type)'):
             raise db_functions.queryError(q)
             
             
@@ -448,7 +422,7 @@ class imageModel(QSqlQueryModel,gpsModel):
             
             q.bindValue(':i',d.imageId)
             q.bindValue(':origonal',d.origonalFile)
-            q.bindValue(':new',d.newFile)
+         #   q.bindValue(':new',d.newFile)
             q.bindValue(':run',d.run)
             q.bindValue(':type',d.imageType.name)
 
@@ -456,9 +430,9 @@ class imageModel(QSqlQueryModel,gpsModel):
                     print(q.boundValues())
                     raise db_functions.queryError(q)
             
-        self.database().commit()
+        db.commit()
         self.select()
-        #self._refreshRuns()
+      #  self._refreshRuns()
 
 
 

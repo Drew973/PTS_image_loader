@@ -43,6 +43,15 @@ georeferencing:
 warping:
 	warp to warped_vrt or COG through gdal_warp
 	
+	vrt = 7Kb/image. Buggy rendering. Random Crashes.
+	
+	COG = 350KB.
+	jpg compressed
+	1160 LZW compressed
+	
+	
+	
+	
 	
 merging:
 	vrt per run.
@@ -50,7 +59,10 @@ merging:
 
 
 
-georeferencer plugin does this:
+georeferencer plugin does this and gives good results:
+
+
+
 gdal_translate -of GTiff -gcp -2.56914 -4.01576 354457 321917 -gcp 1039.1 -0.810636 354461 321917 -gcp -5.77427 1252.39 354459 321911 -gcp 1032.69 1252.39 354463 321913 -gcp -2.56914 569.702 354458 321914 -gcp 1035.89 604.959 354461 321915 "C:/Users/drew.bennett/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/image_loader/test/1_007/ImageInt/2023-01-21 10h08m11s LCMS Module 1 002709.jpg" "C:/Users/drew.bennett/AppData/Local/Temp/2023-01-21 10h08m11s LCMS Module 1 002709.jpg"
 gdalwarp -r near -tps -co COMPRESS=LZW  -t_srs EPSG:27700 "C:/Users/drew.bennett/AppData/Local/Temp/2023-01-21 10h08m11s LCMS Module 1 002709.jpg" "C:/Users/drew.bennett/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/image_loader/test/1_007/ImageInt/2023-01-21 10h08m11s LCMS Module 1 002709_modified.tif"
 

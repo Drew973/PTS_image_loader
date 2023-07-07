@@ -5,7 +5,7 @@ Created on Thu Jun 22 15:18:48 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt,QModelIndex
 from PyQt5.QtGui import QColor
 from PyQt5.QtGui import QStandardItemModel
 from image_loader import db_functions
@@ -30,7 +30,7 @@ def color(marked):
     else:
         return QColor('white')   
     
-    
+import numpy
 
     
     
@@ -43,7 +43,36 @@ class runsModel(QStandardItemModel):
         self.setColumnCount(1)
 
 
+    def clear(self):
+        super().clear()
+        self.setColumnCount(1)
+
+
+   # def addRun(self,run):
+    #    existing = [self.index(row,0).data() for row in range(self.rowCount())]        
+     #   if not run in existing:
+       #     self.appendRow()
+        
+        
+
+    def addRuns(self,runs):
+        runs = numpy.unique(numpy.array([str(run) for run in runs]))
+        existing = [self.index(row,0).data() for row in range(self.rowCount())]        
+        toAdd = [run for run in runs if not run in existing]        
+        if toAdd:
+            rc = self.rowCount()            
+            self.insertRows(rc,len(toAdd),QModelIndex())#row,count,parent #True
+            for i,run in enumerate(toAdd):
+                index = self.index(i+rc,0,QModelIndex())
+                self.setData(index,str(run))
+       
+        
+        
+     #sych with database... 
     def select(self):
+        
+        print('select')
+
         q = '''
        select run
         ,max(marked) = 1 as has_marked
@@ -76,7 +105,7 @@ class runsModel(QStandardItemModel):
             self.setData(index,run)
             self.setData(index,color(data[run]),Qt.BackgroundColorRole)
 
-        self.sort(0)# todo: natural sort
+       # self.sort(0)# todo: natural sort
             
 
             
@@ -84,15 +113,18 @@ class runsModel(QStandardItemModel):
 def test():
     from PyQt5.QtWidgets import QComboBox
     
-    db_functions.createDb()
+   # db_functions.createDb()
     m = runsModel()
-    m.select()
+   # m.select()
     
     #m.setStringList(['a','b','c'])
     #m.setData(m.index(1,0),QColor('yellow'),Qt.EditRole)
     
     b = QComboBox()
     b.setModel(m)
+    m.addRuns(['a','b'])
+    m.addRuns(['b','c'])
+
     b.show()
     return b
     
