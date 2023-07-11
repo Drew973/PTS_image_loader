@@ -267,14 +267,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             
             
     def openCorrections(self):
-        
         f = getFile(folder = os.path.join(self.layersDialog['folder'],'Processed Data') , filt = '*;;*.csv')
-        
        # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
         if f:
             self.correctionsModel.loadFile(f)
             self.model.runsModel.select()
-        
         
             
     #save all tables to sqlite database.
@@ -285,7 +282,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
 
 
-
     #load all tif files in folder and consider showing progress bar
     def detailsFromFolder(self):
         f = QFileDialog.getExistingDirectory(self,'Folder with images')
@@ -293,17 +289,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
            # progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
          #   progress.setWindowModality(Qt.WindowModal)
             self.model.addFolder(f)
-           # progress.deleteLater()
-           
-           
+           # progress.deleteLater()           
+
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         QSqlDatabase.database('image_loader').close()
         event.accept()
-
-
-
 
 
 def getFile(folder,filt):
