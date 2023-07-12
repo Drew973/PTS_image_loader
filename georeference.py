@@ -12,7 +12,7 @@ import argparse
 #from shapely import from_wkb, from_wkt
 
 from shapely import wkt
-from shapely.geometry import Point
+from shapely.geometry import Point,LineString
 from osgeo import gdal,osr,gdalconst
 
 
@@ -33,14 +33,12 @@ rendering of vrt seems buggy with random crashes. COG seems to take about as lon
 '''    
    
 #create warped vrt from file
-def georeferenceFile(file,left,right):
+def georeferenceFile(file,centerLine):
     
-    left = wkt.loads(left)
-    right = wkt.loads(right)
+    cl = wkt.loads(centerLine)
 
-        
     if os.path.exists(file):
-        gcps = _gcps(left,right)
+        gcps = _gcps(cl)
       #  for p in gcps:
         #    print(GCPCommand(p))
         srs = osr.SpatialReference()
@@ -87,7 +85,7 @@ def georeferenceFile(file,left,right):
             )
             #overviews are included in these. 
         translated = None
-        os.remove(translatedFile)
+       # os.remove(translatedFile)
     else:
         raise ValueError('{file} not found'.format(file=file))
        
@@ -98,7 +96,13 @@ PIXELS = 1038
 LINES = 1250
 
 #calculate list of gdal gcps from center line. shapely geometry.
-def _gcps(left,right):
+def _gcps(centerLine):
+    #shapely version too old for offset_curve
+    left = centerLine.parallel_offset(0.5*WIDTH, side='left', resolution=64)   
+    right = centerLine.parallel_offset(0.5*WIDTH, side='right', resolution=64)
+
+    right = LineString(reversed(right.coords))#offset curve inverts direction for negative distances.
+    
     r = []
     leftLength = left.length
     d = 0
@@ -126,24 +130,6 @@ def _gcps(left,right):
     return r
 
 
-#calculate list of gdal gcps from center line. shapely geometry.
-#4 gcps only.
-def _gcps4point(left,right):
-    r = []
-   
-    tl = left.coords[0]
-    r.append(gdal.GCP(tl[0],tl[1],0,0,0))
-    
-    bl = left.coords[-1]
-    r.append(gdal.GCP(bl[0],bl[1],0,0,LINES))
-    
-    tr = right.coords[0]
-    r.append(gdal.GCP(tr[0],tr[1],0,PIXELS,0))
-
-    br = right.coords[-1]
-    r.append(gdal.GCP(br[0],br[1],0,PIXELS,LINES))
-    return r
-
 
 
 
@@ -151,10 +137,9 @@ def _gcps4point(left,right):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file')
-    parser.add_argument('left')
-    parser.add_argument('right')
+    parser.add_argument('centerLine')
     args = parser.parse_args()    
-    georeferenceFile(args.file,args.left,args.right)
+    georeferenceFile(args.file,args.centerLine)
     
     
     #test

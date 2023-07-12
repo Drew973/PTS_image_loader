@@ -35,13 +35,13 @@ from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.image_model import imageModel
 from image_loader.corrections_model import correctionsModel
-from image_loader.load_gps import loadGpsLines
 
 from image_loader.functions.load_frame_data import loadFrameData
 from image_loader.functions.load_cracking import loadCracking
 from image_loader.widgets import set_layers_dialog
 
 from image_loader.natural_sort import naturalSortProxy
+from image_loader import view_gps_layer
 
 from PyQt5.QtCore import Qt
 
@@ -159,7 +159,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct.triggered.connect(self.loadFrames)
         
         loadGpsAct = viewMenu.addAction('View GPS data...')
-        loadGpsAct.triggered.connect(self.viewGpsLayer)
+        loadGpsAct.triggered.connect(view_gps_layer.loadGpsLayer)
+        
+        
         
         loadCracksAct = viewMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)     
@@ -225,13 +227,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if f[0]:
                 loadFrameData(f[0])
 
-
-
-    def viewGpsLayer(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)')
-        if f:
-            if f[0]:
-                loadGpsLines(f[0])
 
 
     def makeVrt(self):

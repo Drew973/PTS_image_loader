@@ -114,7 +114,7 @@ class correctionsModel(QSqlQueryModel):
     
     
     '''
-    find closest chainage & offset of closest point within run
+    find closest chainage
     index unused
     '''
     #index QModelIndex,point:QgsPointXY -> (chainage float,offset float)

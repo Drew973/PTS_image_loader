@@ -160,6 +160,7 @@ def initDb(db):
         ,next_pk int
         ,last_m float
         ,pt generated as (makePointM(x,y,m))
+        ,corrected_pt generated as (makePointM(corrected_x,corrected_y,m))
         )    
     '''
     runQuery(db=db,query=q)
@@ -329,7 +330,7 @@ find sign of offset by offseting line to left and right and finding nearest to (
 '''
 
 
-chainageQuery = '''
+'''
 with nearest as
 (
 select rowid,next_pk,MakePoint(:x,:y) as p
@@ -360,14 +361,27 @@ select ST_InterpolatePoint(line,p) as m
 ,case when st_distance(p,ST_OffsetCurve(line,d)) < st_distance(p,ST_OffsetCurve(line,-d)) then d else -d end as off
  from b
 '''
+
+
+chainageQuery = '''
+with p as (select MakePoint(:x,:y) as poi)
+,nearest as(
+select m,last_m,next_m from points inner join p on 
+m >= coalesce((select min(original_start_chainage) from images where run = ':run'),(select min(m) from points))
+and m <= coalesce((select max(original_end_chainage) from images where run = ':run'),(select max(m) from points))
+and ST_Distance(pt,poi)<50
+order by ST_Distance(pt,poi) limit 1)
+select ST_InterpolatePoint(makeLine(pt),MakePoint(:x,:y)) 
+from nearest inner join points on points.m = nearest.m or points.m = nearest.next_m or points.m = nearest.last_m order by points.m
+'''
 #->(chainage:float,offset:float) or None
 def getChainage(run,x,y,db):   
     q = runQuery(query=chainageQuery,values={':x':x,':y':y,':run':run},db=db)
     while q.next():
-        if isinstance(q.value(0),float) and isinstance(q.value(1),float):
-            return (q.value(0),q.value(1))
+        if isinstance(q.value(0),float):
+            return q.value(0)
     print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
-
+    return -1
     
     
 '''

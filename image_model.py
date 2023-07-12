@@ -218,7 +218,7 @@ class imageModel(QSqlQueryModel,gpsModel):
         sources = []
         i = 1
         
-        q = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
+        q = db_functions.runQuery('select original_file,st_asText(center_line) from images_view')
         
         progress = QProgressDialog("Calculating positions...","Cancel", 0, q.size(),parent = self.parent())#QObjectwithout parent gets deleted like normal python object
        # progress.show()
@@ -235,9 +235,7 @@ class imageModel(QSqlQueryModel,gpsModel):
                 #left = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(3))               
                 #right = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(4))
                 sources.append(georeference.warpedFileName(file))
-                left = q.value(1)
-                right = q.value(2)
-                c = 'python "{script}" "{file}" "{left}" "{right}"'.format(script = georeference.__file__,file = file, left = left,right=right)
+                c = 'python "{script}" "{file}" "{cl}"'.format(script = georeference.__file__,file = file, cl = q.value(1))
                 georeferenceCommands.append(c)
             
         progress.setValue(progress.maximum())

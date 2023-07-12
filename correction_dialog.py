@@ -85,11 +85,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.startY.setValue(pt.y())
             
         if self.model() is not None:
-            co = self.model().getChainage(point=pt,index=self.index)
-        #    print('co',co)
-            if co is not None:
-                chainage,offset = co
-                self.chainage.setValue(chainage)
+            self.chainage.setValue(self.model().getChainage(point=pt,index=self.index))
         else:
             print('startToolClicked. no model set...')
        
