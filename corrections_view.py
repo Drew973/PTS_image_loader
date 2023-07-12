@@ -16,6 +16,7 @@ class correctionsView(QTableView):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.correctionDialog = correctionDialog(parent=self)
+        self.correctionDialog.hide()
         self.menu = QMenu(self)
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
@@ -24,14 +25,18 @@ class correctionsView(QTableView):
         #self.setWordWrap(False)        
         self.doubleClicked.connect(self.editSelected)
         
+        
+    def close(self):
+        self.correctionDialog.close()
+        return super().close()
     
     def setModel(self,model):
         super().setModel(model)
         self.correctionDialog.setModel(model)
-        toShow = [model.fieldIndex('original_chainage'),model.fieldIndex('original_offset'),model.fieldIndex('new_chainage'),model.fieldIndex('new_offset')]
+        toShow = [model.fieldIndex('chainage'),model.fieldIndex('original_x'),model.fieldIndex('original_y'),model.fieldIndex('new_x'),model.fieldIndex('new_y')]
         for c in range(model.columnCount()):
             self.setColumnHidden(c,not c in toShow)
-        
+   #     
 
     def editSelected(self,index=None):
         self.correctionDialog.setIndex(index)

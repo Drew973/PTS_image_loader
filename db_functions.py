@@ -138,12 +138,13 @@ def initDb(db):
             ( 
                  pk INTEGER PRIMARY KEY
                  ,run text default ''
-                 ,original_chainage float
-                 ,original_offset float
-                 ,new_chainage float
-                 ,new_offset float
-				 ,chainage_shift float GENERATED ALWAYS AS (new_chainage - original_chainage) VIRTUAL
-				 ,offset_shift float GENERATED ALWAYS AS (new_offset - original_offset) VIRTUAL
+                 ,chainage DECIMAL(9,3)
+                 ,original_x float
+                 ,original_y float
+                 ,new_x float
+                 ,new_y float
+				 ,x_shift float GENERATED ALWAYS AS (new_x - original_x) VIRTUAL
+				 ,y_shift float GENERATED ALWAYS AS (new_y - original_y) VIRTUAL
              )
         '''
     runQuery(db=db,query=q)
@@ -153,6 +154,8 @@ def initDb(db):
         m float not null unique
         ,x float
         ,y float
+        ,corrected_x float
+        ,corrected_y float        
         ,next_m float
         ,next_pk int
         ,last_m float
@@ -165,94 +168,31 @@ def initDb(db):
     
   #  runQuery(db=db,query="SELECT gpkgAddGeometryColumn('points', 'point','POINT', 0, 0,27700)")
   #  runQuery(db=db,query="SELECT gpkgAddGeometryTriggers('points', 'point')")
-
-	
-    
-    q = '''
-create view if not exists corrections_view as
-select m
-,a.run
-
-,coalesce(
---prev.y + (x-prev.x)*(next.y-prev.y)/(next.x - prev.x)
-prev.offset_shift + (m-prev.original_chainage)*(next.offset_shift - prev.offset_shift)/(next.original_chainage-prev.original_chainage)
-,next.offset_shift
-,prev.offset_shift
-,0) as offset_diff
-
-,coalesce(
---prev.y + (x-prev.x)*(next.y-prev.y)/(next.x - prev.x)
-prev.chainage_shift + (m-prev.original_chainage)*(next.chainage_shift - prev.chainage_shift)/(next.original_chainage-prev.original_chainage)
-,next.chainage_shift
-,prev.chainage_shift
-,0) as chainage_diff
-
-from
-(
-select run,image_id*5 as m from images where marked
-union select run,image_id*5+5 from images where marked
-) a
-
-left join corrections as prev on prev.pk = (select pk from corrections where corrections.run=a.run and original_chainage<=m order by original_chainage desc limit 1)
-left join corrections as next on next.pk = (select pk from corrections where corrections.run=a.run and original_chainage>=m order by original_chainage asc limit 1)
-        '''
     runQuery(db=db,query=q)
     
-    
     q = '''
-create view if not exists images_with_correction as
-select original_file
-,image_id*5
-,image_id*5+s.chainage_diff as start_m
-,image_id*5+5+e.chainage_diff as end_m
-,s.offset_diff+2 as left_offset
-,s.offset_diff-2 as right_offset
- from images 
-inner join corrections_view as s
-on marked and images.run = s.run and image_id*5 = s.m
-inner join corrections_view as e
-on marked and images.run = e.run and image_id*5+5 = e.m
+    create view if not exists images_view as
+select original_file,
+Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
+(image_id*5-min(m))/(max(m)-min(m)),
+(image_id*5+5-min(m))/(max(m)-min(m))) as center_line
+,st_offsetCurve(
+Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
+(image_id*5-min(m))/(max(m)-min(m)),
+(image_id*5+5-min(m))/(max(m)-min(m)))
+,2) as left_line
+,
+st_reverse(st_offsetCurve(
+Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
+(image_id*5-min(m))/(max(m)-min(m)),
+(image_id*5+5-min(m))/(max(m)-min(m)))
+,-2)) as right_line
+from images
+inner join points on marked and last_m<image_id*5+5 and next_m>image_id*5
+group by original_file   
     '''
-    
-    runQuery(db=db,query=q)#half image width.
-    
-    
-    q = '''    
-create view if not exists images_view as
-select original_file
-,left_offset
-,start_m
-,end_m
-,line_substring(
-case when left_offset<0 then 
-	st_reverse(st_offsetCurve(makeLine(pt),left_offset))
-else
-	st_offsetCurve(makeLine(pt),left_offset)
-end
-,abs(start_m-min(m))/abs(max(m)-min(m))
-,abs(end_m-min(m))/abs(max(m)-min(m))
-) as left_line
-
-,line_substring(
-case when right_offset<0 then 
-	st_reverse(st_offsetCurve(makeLine(pt),right_offset))
-else
-	st_offsetCurve(makeLine(pt),right_offset)
-end
-,abs(start_m-min(m))/abs(max(m)-min(m))
-,abs(end_m-min(m))/abs(max(m)-min(m))
-) as right_line
-
-from images_with_correction
-inner join points on next_m>=start_m and last_m<=end_m
-group by original_file
-order by m
-    '''
-    
     runQuery(db=db,query=q)
     
-
-
     db.commit()
     
     
@@ -327,6 +267,51 @@ def loadGps(file,db=None):
 
     db.commit()
 
+
+
+
+
+def viewGps():
+    q = runQuery('select m,corrected_x,corrected_y from points')
+    while q.next():
+        q.value(0)
+        q.value(1)
+        q.value(3)
+    
+
+
+
+#update corrected_x and corrected_y columns of points using corrections.
+def correctGps():
+    s = '''
+    update points set corrected_x = null,corrected_y = null;
+
+    with a as
+    (select x_shift,y_shift,chainage,lead(chainage) over (order by chainage) as next_chain 
+    ,lead(x_shift) over (order by chainage) as next_x_shift
+    ,lead(y_shift) over (order by chainage) as next_y_shift
+    from corrections
+    )
+    update points set corrected_x = x+x_shift+(next_x_shift-x_shift)*(m-chainage)/(next_chain-chainage)
+    ,corrected_y = y+y_shift+(next_y_shift-y_shift)*(m-chainage)/(next_chain-chainage)
+    from a where chainage<=m and m<=next_chain;
+
+with first_corr as (select chainage,x_shift,y_shift from corrections order by chainage asc limit 1)
+update points set corrected_x = x+x_shift, corrected_y = y + y_shift from first_corr where m<=chainage;
+
+with last_corr as (select chainage,x_shift,y_shift from corrections order by chainage desc limit 1)
+update points set corrected_x = x+x_shift, corrected_y = y + y_shift from last_corr where m>=chainage;
+    
+update points set corrected_x = x where corrected_x is NULL;
+update points set corrected_y = y where corrected_y is NULL;
+'''
+   
+    for q in s.split(';'):
+        q = q.strip()
+        if q:
+     #       print('query',q)
+            runQuery(query = q)
+
 #start and end can be float,numpy array...
 #def interpolate(start,startM,end,endM,m):
   #  frac = (m-startM)/abs(endM-startM)
@@ -335,22 +320,6 @@ def loadGps(file,db=None):
  #print(interpolate(0,0,100,10,2))#50   
 
 
-def insertCorrections(corrections,db):
-    q = QSqlQuery(db)
-    if q.prepare('insert into corrections(run,original_chainage,original_offset,new_chainage,new_offset) values (:run,:original_chainage,:original_offset,:new_chainage,:new_offset)'):
-        
-        for r in corrections:
-            q.bindValue(':run',r['run'])
-            q.bindValue(':original_chainage',r['original_chainage'])
-            q.bindValue(':new_chainage',r['new_chainage'])
-            q.bindValue(':original_offset',r['original_offset'])
-            q.bindValue(':new_offset',r['new_offset'])
-
-            if not q.exec():
-                print(q.boundValues())
-                raise queryError(q)
-    else:
-        raise queryPrepareError(q)
 
 '''
 find closest gps point.

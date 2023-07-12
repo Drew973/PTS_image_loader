@@ -8,12 +8,9 @@ Created on Mon Apr 24 09:42:07 2023
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 from image_loader import db_functions
-from qgis.core import QgsPointXY
 
 
 class correctionsModel(QSqlQueryModel):
-    
-    
     
     def __init__(self,parent=None):
         super().__init__(parent)
@@ -66,37 +63,49 @@ class correctionsModel(QSqlQueryModel):
             filt = ''
             #original
         #filt = ''
-        q = 'select pk,original_chainage,original_offset,new_chainage,new_offset from corrections {filt} order by original_chainage'.format(filt=filt)
+        q = 'select pk,chainage,original_x,original_y,new_x,new_y from corrections {filt} order by chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 
 
         
     def addCorrections(self,corrections):
-        db_functions.insertCorrections(corrections=corrections,db = self.database())
+        q = QSqlQuery(self.database())
+        if q.prepare('insert into corrections(run,chainage,original_x,original_y,new_x,new_y) values (:run,:chainage,:original_x,:original_y,:new_x,:new_y)'):
+            for r in corrections:
+                q.bindValue(':run',r['run'])
+                q.bindValue(':chainage',r['chainage'])
+                q.bindValue(':new_x',r['new_x'])
+                q.bindValue(':new_y',r['new_y'])
+                q.bindValue(':original_x',r['original_x'])
+                q.bindValue(':original_y',r['original_y'])
+    
+                if not q.exec():
+                    print(q.boundValues())
+                    raise db_functions.queryError(q)
+        else:
+            raise db_functions.queryPrepareError(q)
         self.select()
         
     
-    def editCorrection(self,index,originalChainage,newChainage,originalOffset,newOffset):
+    def editCorrection(self,index,chainage,startX,startY,endX,endY):
         if not index.isValid():
-            self.addCorrections([{'run':self._run,'original_chainage':originalChainage,'original_offset':originalOffset,'new_chainage':newChainage,'new_offset':newOffset}])
+            self.addCorrections([{'run':self._run,'chainage':chainage,'original_x':startX,'original_y':startY,'new_x':endX,'new_y':endY}])
             return
-        
         pk = self.index(index.row(),self.fieldIndex('pk')).data()
       #  print(pk)
-        updateQuery = 'update corrections set original_chainage = {sch} , new_chainage = {ech},original_offset = {soff} , new_offset = {noff} where pk = {pk}'
-        t = updateQuery.format(sch = originalChainage ,ech = newChainage,soff = originalOffset,noff = newOffset,pk=pk)
-        db_functions.runQuery(db = self.database(),query = t)
+        updateQuery = "update corrections set run = ':run',chainage=:ch,original_x = :sx,original_y = :sy,new_x=:ex,new_y=:ey where pk = :pk"
+        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':sx':startX,':sy':startY,':ex':endX,':ey':endY,':pk':pk})
         self.select()
         
         
     def hasGps(self):
         return db_functions.hasGps()
         
+    
     def loadFile(self,file):
         db_functions.loadCorrections(file)
         self.select()
         
-
 
 #chainage:float,offset:float,index:QModelIndex -> QgsPointXY
     def getPoint(self,chainage,offset,index=None):

@@ -67,6 +67,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.correctionsModel = correctionsModel()
         self.correctionsView.setModel(self.correctionsModel)
+      #  self.correctionsView.setParent(self)
+        
         
         self.runBox.setModel(naturalSortProxy())
         self.runBox.model().setSourceModel(self.model.runsModel)

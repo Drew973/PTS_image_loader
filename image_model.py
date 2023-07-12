@@ -22,22 +22,12 @@ from PyQt5.QtWidgets import QProgressDialog
 
 import glob
 
-
 from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
 from image_loader.load_image import loadImage
-#from image_loader import gdal_commands
 from image_loader import georeference
 from image_loader import run_commands
 from image_loader import layer_functions
-
-import numpy
-#from qgis.core import QgsCoordinateReferenceSystem
-
-
-#combobox current index changes. when rowCount changes...
-
-
 from image_loader.runs_model import runsModel
 from image_loader.gps_model import gpsModel
 
@@ -221,9 +211,13 @@ class imageModel(QSqlQueryModel,gpsModel):
     #load images into qgis
     def georeference(self,indexes=None):
         
+        db_functions.correctGps()
+
+
         georeferenceCommands = []
         sources = []
         i = 1
+        
         q = db_functions.runQuery('select original_file,st_asText(left_line),st_asText(right_line) from images_view')
         
         progress = QProgressDialog("Calculating positions...","Cancel", 0, q.size(),parent = self.parent())#QObjectwithout parent gets deleted like normal python object
