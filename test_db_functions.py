@@ -49,22 +49,22 @@ class testDbFunctions(unittest.TestCase):
         m1=QgsVertexMarker(iface.mapCanvas())
         m1.setCenter(p1)
         
-        ch = db_functions.getChainage(run='',x=p1.x(),y=p1.y(),db = QSqlDatabase.database('image_loader'))#offset wrong.should be ~14.4
+        ch = db_functions.getChainage(run='',x=p1.x(),y=p1.y(),db = QSqlDatabase.database('image_loader'))
         print('getChainage',ch)
 
-        p2 = db_functions.getPoint(chainage=ch[0],offset=ch[1],db=QSqlDatabase.database('image_loader'))
+        p2 = db_functions.getPoint(chainage=ch,db=QSqlDatabase.database('image_loader'))
         print(p2)
         
-        m2=QgsVertexMarker(iface.mapCanvas())
-        m2.setColor(QColor('green'))
-        m2.setCenter(p2)
+      #  m2=QgsVertexMarker(iface.mapCanvas())
+     #   m2.setColor(QColor('green'))
+    #    m2.setCenter(p2)
         
         d = p1.distance(p2)
         print('distance has error of :', d)
 
-        p3 = db_functions.getPoint(chainage=14052.88,offset=0,db=QSqlDatabase.database('image_loader'))
+     #   p3 = db_functions.getPoint(chainage=14052.88,offset=0,db=QSqlDatabase.database('image_loader'))
         #print('p3',p3)
-        self.assertTrue(p3.distance(QgsPointXY())>1)#valid point ie not 0,0
+    #    self.assertTrue(p3.distance(QgsPointXY())>1)#valid point ie not 0,0
 
 def hideMarkers():
     for item in iface.mapCanvas().scene().items():

@@ -111,14 +111,11 @@ def hasGps(db=None):
         
 def initDb(db):
     db.transaction()
-    runQuery(db=db,query='SELECT InitSpatialMetaData()')
-  #  runQuery(db=db,query='SELECT EnableGpkgMode()')
-   # runQuery(db=db,query='SELECT case when CheckGeoPackageMetaData() then Null else gpkgCreateBaseTables() + gpkgInsertEpsgSRID(27700) end')
-    #runQuery(db=db,query="SELECT gpkgInsertEpsgSRID(27700)")
-
-
-#CheckGeoPackageMetaData	
-    q = '''create table if not exists images 
+    
+    script = '''
+    SELECT InitSpatialMetaData();
+    
+   create table if not exists images 
             ( 
                 pk INTEGER PRIMARY KEY
                 ,image_id INTEGER
@@ -129,27 +126,17 @@ def initDb(db):
                 ,marked bool default false
                 ,original_start_chainage float GENERATED ALWAYS AS (image_id*5) VIRTUAL
                 ,original_end_chainage float GENERATED ALWAYS AS (image_id*5+5) VIRTUAL
-             )
-        '''
-    runQuery(db=db,query=q)
-       
-    
-    q = '''create table if not exists corrections
+             );
+      
+   create table if not exists corrections
             ( 
                  pk INTEGER PRIMARY KEY
                  ,run text default ''
-                 ,chainage DECIMAL(9,3)
-                 ,original_x float
-                 ,original_y float
-                 ,new_x float
-                 ,new_y float
-				 ,x_shift float GENERATED ALWAYS AS (new_x - original_x) VIRTUAL
-				 ,y_shift float GENERATED ALWAYS AS (new_y - original_y) VIRTUAL
-             )
-        '''
-    runQuery(db=db,query=q)
-    
-    q = '''
+                 ,chainage DECIMAL(9,3) unique not null
+                 ,x float
+                 ,y float
+             );
+  
     create table if not exists points(
         m float not null unique
         ,x float
@@ -161,41 +148,59 @@ def initDb(db):
         ,last_m float
         ,pt generated as (makePointM(x,y,m))
         ,corrected_pt generated as (makePointM(corrected_x,corrected_y,m))
-        )    
-    '''
-    runQuery(db=db,query=q)
-    runQuery(db=db,query='CREATE INDEX IF NOT EXISTS m_index on points(m)')
-    runQuery(db=db,query='create index if not exists next_m_ind on points(next_m)')
-    
-  #  runQuery(db=db,query="SELECT gpkgAddGeometryColumn('points', 'point','POINT', 0, 0,27700)")
-  #  runQuery(db=db,query="SELECT gpkgAddGeometryTriggers('points', 'point')")
-    runQuery(db=db,query=q)
-    
-    q = '''
+        );    
+  
+   CREATE INDEX IF NOT EXISTS m_index on points(m);
+   create index if not exists next_m_ind on points(next_m);
+  
     create view if not exists images_view as
 select original_file,
 Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
 (image_id*5-min(m))/(max(m)-min(m)),
 (image_id*5+5-min(m))/(max(m)-min(m))) as center_line
-,st_offsetCurve(
-Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
-(image_id*5-min(m))/(max(m)-min(m)),
-(image_id*5+5-min(m))/(max(m)-min(m)))
-,2) as left_line
-,
-st_reverse(st_offsetCurve(
-Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
-(image_id*5-min(m))/(max(m)-min(m)),
-(image_id*5+5-min(m))/(max(m)-min(m)))
-,-2)) as right_line
 from images
 inner join points on marked and last_m<image_id*5+5 and next_m>image_id*5
-group by original_file   
+group by original_file;
+ 
+
+create view if not exists lines_view as
+select points.m,points.next_m,makeline(points.pt,points2.pt) as line from points inner join points as points2
+on points2.m = points.next_m;
+
+create view if not exists corrections_view as
+with a as(
+select chainage,x,y,corrections.pk,m,next_m,Line_Interpolate_Point(line,(chainage-m)/(next_m-m)) as pt
+from corrections
+inner join lines_view on m <=chainage and chainage <= next_m 
+)
+select chainage,x-st_x(pt) as x_shift,y-st_y(pt) as y_shift from a;
+
+create view if not exists cv as
+select chainage,x_shift,y_shift 
+,lead(chainage) over (order by chainage) as next_ch
+,lag(chainage) over (order by chainage) as last_ch
+,lead(x_shift) over (order by chainage)	as next_xs
+,lead(y_shift) over (order by chainage) as next_ys
+from corrections_view;
+
+
+create view if not exists points_view as
+select m
+,COALESCE(x+x_shift+(next_xs-x_shift)*(m-chainage)/(next_ch-chainage),x+x_shift,x) as corrected_x
+,COALESCE(y+y_shift+(next_ys-y_shift)*(m-chainage)/(next_ch-chainage),y+y_shift,y) as corrected_y
+from points left join cv on chainage<=m and m<next_ch
+or next_ch is null and m>chainage
+or last_ch is null and m<chainage
+;
+
     '''
-    runQuery(db=db,query=q)
     
+    for q in script.split(';'):
+        q = q.strip()
+        if q:
+            runQuery(query = q,db = db)
     db.commit()
-    
+
     
 import csv
 from qgis.core import QgsPointXY,QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject
@@ -262,49 +267,16 @@ def loadGps(file,db=None):
     update points set last_m = last from a where a.pk = points.rowid
 	'''
     runQuery(query=q,db=db)    
-
    # runQuery(db=db,query="update points set point = gpkgMakePoint(x,y,27700)")
-
-
     db.commit()
-
-
-
-
-
-def viewGps():
-    q = runQuery('select m,corrected_x,corrected_y from points')
-    while q.next():
-        q.value(0)
-        q.value(1)
-        q.value(3)
-    
 
 
 
 #update corrected_x and corrected_y columns of points using corrections.
 def correctGps():
     s = '''
-    update points set corrected_x = null,corrected_y = null;
-
-    with a as
-    (select x_shift,y_shift,chainage,lead(chainage) over (order by chainage) as next_chain 
-    ,lead(x_shift) over (order by chainage) as next_x_shift
-    ,lead(y_shift) over (order by chainage) as next_y_shift
-    from corrections
-    )
-    update points set corrected_x = x+x_shift+(next_x_shift-x_shift)*(m-chainage)/(next_chain-chainage)
-    ,corrected_y = y+y_shift+(next_y_shift-y_shift)*(m-chainage)/(next_chain-chainage)
-    from a where chainage<=m and m<=next_chain;
-
-with first_corr as (select chainage,x_shift,y_shift from corrections order by chainage asc limit 1)
-update points set corrected_x = x+x_shift, corrected_y = y + y_shift from first_corr where m<=chainage;
-
-with last_corr as (select chainage,x_shift,y_shift from corrections order by chainage desc limit 1)
-update points set corrected_x = x+x_shift, corrected_y = y + y_shift from last_corr where m>=chainage;
-    
-update points set corrected_x = x where corrected_x is NULL;
-update points set corrected_y = y where corrected_y is NULL;
+update points set corrected_x = x,corrected_y=y;
+update points set corrected_x = points_view.corrected_x,corrected_y=points_view.corrected_y from points_view where points_view.m=points.m;
 '''
    
     for q in s.split(';'):
@@ -321,109 +293,49 @@ update points set corrected_y = y where corrected_y is NULL;
  #print(interpolate(0,0,100,10,2))#50   
 
 
-
-'''
-find closest gps point.
-linestring m from last,this,next
-offset = distance to line.
-find sign of offset by offseting line to left and right and finding nearest to (x,y)
-'''
-
-
-'''
-with nearest as
-(
-select rowid,next_pk,MakePoint(:x,:y) as p
-from points
-where ST_Distance(MakePoint(:x,:y),pt)<50
-and m >= coalesce((select min(original_start_chainage) from images where run = ':run'),(select min(m) from points))
-and m <= coalesce((select max(original_end_chainage) from images where run = ':run'),(select max(m) from points))
-order by ST_Distance(MakePoint(:x,:y),MakePoint(x,y))
+chainageQuery = '''
+with nearest as (
+select m,pt,next_m,last_m from points where
+m >= coalesce((select min(original_start_chainage)-200 from images where run = ':run'),(select min(m) from points))
+and m <= coalesce((select max(original_end_chainage)+200 from images where run = ':run'),(select max(m) from points))
+and abs(x-:x) < 50
+and abs(y-:y) < 50
+order by st_distance(pt,makePoint(:x,:y))
 limit 1
 )
-
-,a as
-(
-select makeline(pt) as line,p from points inner join nearest
-on points.next_pk = nearest.rowid or points.rowid = nearest.rowid or points.rowid = nearest.next_pk
-order by m
-)
-
-, b as
-(
-select 
-p
-,line
-,round(st_distance(line,p),3) as d from a
-)
-
-select ST_InterpolatePoint(line,p) as m
-,case when st_distance(p,ST_OffsetCurve(line,d)) < st_distance(p,ST_OffsetCurve(line,-d)) then d else -d end as off
- from b
-'''
-
-
-chainageQuery = '''
-with p as (select MakePoint(:x,:y) as poi)
-,nearest as(
-select m,last_m,next_m from points inner join p on 
-m >= coalesce((select min(original_start_chainage) from images where run = ':run'),(select min(m) from points))
-and m <= coalesce((select max(original_end_chainage) from images where run = ':run'),(select max(m) from points))
-and ST_Distance(pt,poi)<50
-order by ST_Distance(pt,poi) limit 1)
-select ST_InterpolatePoint(makeLine(pt),MakePoint(:x,:y)) 
-from nearest inner join points on points.m = nearest.m or points.m = nearest.next_m or points.m = nearest.last_m order by points.m
+select min(points.m)+Line_Locate_Point(MakeLine(points.pt),makePoint(:x,:y))*(max(points.m)-min(points.m)) from nearest
+inner join points on points.m = nearest.m or points.m = nearest.next_m or points.m=nearest.last_m
+order by points.m
 '''
 #->(chainage:float,offset:float) or None
 def getChainage(run,x,y,db):   
-    q = runQuery(query=chainageQuery,values={':x':x,':y':y,':run':run},db=db)
+    q = runQuery(query=chainageQuery,values={':x':x,':y':y,':run':run,':dist':50},db=db)
     while q.next():
         if isinstance(q.value(0),float):
             return q.value(0)
     print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
     return -1
     
-    
-'''
-    chainage often at vertex of gps.
-    need to join lines and make offset curve here.
-    #strange behavior and bugs in spatialite ST_OffsetCurve.
-    low offsets != 0 produce empty linestring
-    #reverses direction for negative offsets
-    #left positive
-'''
-    
 pointQuery = '''
-with nearest as
-(
-select 
-rowid,
-next_pk
-,round(:off,3) as off
-from points
-order by abs(m-:m)
+with nearest as(
+select m,next_m,(:m-m)/(next_m-m) as frac
+ from points where
+m <= :m and :m<=next_m
 limit 1
 )
-
-,a as
-(
-select case when off > 0 then ST_OffsetCurve(makeline(pt),off) when off = 0 then makeline(pt) else st_reverse(ST_OffsetCurve(makeline(pt),off)) end as line,
-(:m - min(m))/(max(m)-min(m)) as f
-from points inner join nearest
-on points.next_pk = nearest.rowid or points.rowid = nearest.rowid or points.rowid = nearest.next_pk
-order by m
-)
-select st_x(Line_Interpolate_Point(line,f)),st_y(Line_Interpolate_Point(line,f)) from a
+select st_x(Line_Interpolate_Point(makeLine(pt),frac)),
+st_y(Line_Interpolate_Point(makeLine(pt),frac))
+ from points inner join nearest on points.m = nearest.m or points.m = nearest.next_m
 '''
 
 
 # -> QgsPointXY
-def getPoint(chainage,offset,db):
-        q = runQuery(query=pointQuery,db = db,values= {':m':float(chainage),':off':float(offset)})
+def getPoint(chainage,db):
+        q = runQuery(query=pointQuery,db = db,values= {':m':float(chainage)})
         while q.next():
             if isinstance(q.value(0),float) and isinstance(q.value(1),float):
                 return QgsPointXY(q.value(0),q.value(1))
-        print('no points')
+     #   print('no points')
         return QgsPointXY()
     
     

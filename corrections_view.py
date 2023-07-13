@@ -30,25 +30,27 @@ class correctionsView(QTableView):
         self.correctionDialog.close()
         return super().close()
     
+    
     def setModel(self,model):
         super().setModel(model)
         self.correctionDialog.setModel(model)
-        toShow = [model.fieldIndex('chainage'),model.fieldIndex('original_x'),model.fieldIndex('original_y'),model.fieldIndex('new_x'),model.fieldIndex('new_y')]
+        toShow = [model.fieldIndex('chainage'),model.fieldIndex('x'),model.fieldIndex('y')]
         for c in range(model.columnCount()):
             self.setColumnHidden(c,not c in toShow)
-   #     
-
+    
+    
     def editSelected(self,index=None):
         self.correctionDialog.setIndex(index)
         self.correctionDialog.setWindowTitle('Edit correction')
         self.correctionDialog.show()
+      #  self.correctionDialog.showMarkers()
         
         
     def add(self):
         self.correctionDialog.setIndex(QModelIndex())
         self.correctionDialog.setWindowTitle('Add correction')
         self.correctionDialog.show()
-        
+   #     self.correctionDialog.showMarkers()
         
     def selected(self):
         return self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))

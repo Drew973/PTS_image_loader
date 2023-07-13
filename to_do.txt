@@ -2,13 +2,7 @@
 
 constraints:
 	start of image should be end of last image.
-
 	image width should be ~ constant (gradient effects?)
-
-
-
-
-gps as separate model?
 
 
 need something to:
@@ -16,33 +10,10 @@ need something to:
 	-view many images without crashing QGIS for rating.
 	
 
-viewing:
-	QGIS rendering performance critical here. 
-	would be good to quickly display all images in area.
-	
-	display everything through VRT?
-	use gdal_warp to convert georeferenced images to something like cloud optimized geotif for faster rendering?
-	
-	gdalbuildvrt "D:\RAF Shawbury\TIF Images\MFV1_004\range\range.vrt" "D:\RAF Shawbury\TIF Images\MFV1_004\range\*.tif" -r average -overwrite 
-
-	vrt per run. avoid issue with missing parts of image and overlap.
-	
-	
-	
-
-way to select images from multiple runs.
-
-specify corrections:
-
 problems clicking near to adjacent runs.
 specify run to avoid.
 or specify image for correction.
 
-
-create overviews.
-for combined vrt or each file?
-both?
-both seems to perform best. use low resolution for whole vrt.
 
 intensity-range hybrid
 gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata "0 0 0 0" -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
