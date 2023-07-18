@@ -56,42 +56,49 @@ class correctionsModel(QSqlQueryModel):
 
     def setRun(self,run):
         self._run = run
-        
         if run:
             filt = "where run = '{run}'".format(run=run)#"
         else:
             filt = ''
             #original
         #filt = ''
-        q = 'select pk,chainage,x,y from corrections {filt} order by chainage'.format(filt=filt)
+        q = 'select run,pk,chainage,new_x,new_y,current_x,current_y from corrections_view {filt} order by chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 
 
         
-    def addCorrections(self,corrections):
-        q = QSqlQuery(self.database())
-        if q.prepare('insert into corrections(run,chainage,x,y) values (:run,:chainage,:x,:y)'):
-            for r in corrections:
-                q.bindValue(':run',r['run'])
-                q.bindValue(':chainage',r['chainage'])
-                q.bindValue(':x',r['x'])
-                q.bindValue(':y',r['y'])
-                if not q.exec():
-                    print(q.boundValues())
-                    raise db_functions.queryError(q)
-        else:
-            raise db_functions.queryPrepareError(q)
-        self.select()
+#    def addCorrections(self,corrections):
+#        q = QSqlQuery(self.database())
+#        if q.prepare('insert into corrections(run,chainage,x,y) values (:run,:chainage,:x,:y)'):
+#            for r in corrections:
+#                q.bindValue(':run',r['run'])
+#                q.bindValue(':chainage',r['chainage'])
+ #               q.bindValue(':x',r['x'])
+ #               q.bindValue(':y',r['y'])
+#                if not q.exec():
+ #                   print(q.boundValues())
+#                    raise db_functions.queryError(q)
+   #     else:
+ #          raise db_functions.queryPrepareError(q)
+  #     self.select()
         
     
-    def editCorrection(self,index,chainage,x,y):
-        if not index.isValid():
-            self.addCorrections([{'run':self._run,'chainage':chainage,'x':x,'y':y}])
-            return
-        pk = self.index(index.row(),self.fieldIndex('pk')).data()
-      #  print(pk)
-        updateQuery = "update corrections set run = ':run',chainage=:ch,x = :x,y = :y where pk = :pk"
-        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':x':x,':y':y,':pk':pk})
+    
+    #x_offset is x difference between point & corrected chainage.
+    def setCorrection(self,chainage,currentPosition,newPosition):
+        #select Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m)) from lines_view where m <= :ch and :ch <=next_m
+        
+       # pt = db_functions.getPoint(chainage=chainage,db=self.database())
+        
+        correctedPt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
+        xo = currentPosition[0]-correctedPt.x()#x offset from chainage to currentPosition
+        yo = currentPosition[1]-correctedPt.y()#y offset from chainage to currentPosition
+      #  print('xo',xo,'yo',yo)
+        updateQuery = """
+        insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (':run',:ch,:new_x,:new_y,:xo,:yo)
+        ON CONFLICT DO UPDATE SET run = ':run',chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo
+        """
+        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':new_x':newPosition[0],':new_y':newPosition[1],':xo':xo,':yo':yo})
         self.select()
         
         
@@ -108,7 +115,6 @@ class correctionsModel(QSqlQueryModel):
     def getPoint(self,chainage,index=None):
         return db_functions.getPoint(chainage=chainage,db=self.database())
       
-    
     
     '''
     find closest chainage

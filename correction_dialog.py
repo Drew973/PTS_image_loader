@@ -32,6 +32,19 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
 
+def fromCanvasCrs(point):
+   # print('point',point)
+    transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
+    return transform.transform(point)
+
+
+def toCanvasCrs(point):
+   # print('point',point)
+    transform = QgsCoordinateTransform(crs,QgsProject.instance().crs(),QgsProject.instance())
+    return transform.transform(point)
+
+
+
 class correctionDialog(QDialog,FORM_CLASS):
     
     def __init__(self,parent=None):
@@ -58,6 +71,14 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.endMarker.setColor(QColor('green'))
         self.endMarker.setIconType(QgsVertexMarker.ICON_X)
 
+        self.chainageMarker = QgsVertexMarker(self.canvas)
+        self.chainageMarker.setIconSize(20)
+        self.chainageMarker.setPenWidth(5)
+        self.chainageMarker.setColor(QColor('blue'))
+        self.chainageMarker.setIconType(QgsVertexMarker.ICON_X)
+
+        self.chainageTool = QgsMapToolEmitPoint(self.canvas)
+        self.chainageTool.canvasClicked.connect(self.chainageToolClicked)
 
         self.startTool = QgsMapToolEmitPoint(self.canvas)
         self.startTool.canvasClicked.connect(self.startToolClicked)
@@ -65,22 +86,30 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.endTool = QgsMapToolEmitPoint(self.canvas)
         self.endTool.canvasClicked.connect(self.endToolClicked)
         
-        self.chainageButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.startTool))
-        self.endFromMapButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.endTool))
+        self.chainageButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.chainageTool))
+        self.currentButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.startTool))
+        self.endButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.endTool))
 
+        self.chainage.valueChanged.connect(self.updateChainageMarker)
+        self.currentX.valueChanged.connect(self.updateStartMarker)
+        self.currentY.valueChanged.connect(self.updateStartMarker)
         self.x.valueChanged.connect(self.updateEndMarker)
         self.y.valueChanged.connect(self.updateEndMarker)
-
-        self.chainage.valueChanged.connect(self.updateStartMarker)
-
-
-    def startToolClicked(self,point):
-        transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
-        pt = transform.transform(point)            
+        
+        
+    def chainageToolClicked(self,point):   
+        pt = fromCanvasCrs(point)       
         if self.model() is not None:
             self.chainage.setValue(self.model().getChainage(point=pt,index=self.index))
         else:
-            print('startToolClicked. no model set...')
+            print('chainage tool clicked but no model set...')
+
+
+    def startToolClicked(self,point):
+      #  transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
+        pt = fromCanvasCrs(point)            
+        self.currentX.setValue(pt.x())
+        self.currentY.setValue(pt.y())
        
         
     def model(self):
@@ -92,26 +121,38 @@ class correctionDialog(QDialog,FORM_CLASS):
     
     
     def endToolClicked(self,point):
-        transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
-        pt = transform.transform(point)
+        pt = fromCanvasCrs(point)
         self.x.setValue(pt.x())
         self.y.setValue(pt.y())
 
         
        #QModelIndex
     def setIndex(self,index):
+        
+        def setValue(spinbox,index):
+            try:
+                spinbox.setValue(float(index.data()))
+            except Exception:
+                pass
+        
         self.index = index
         if index.isValid() and self.model() is not None:
             m = self.model()
             r = index.row()
-            self.chainage.setValue(m.index(r,m.fieldIndex('chainage')).data())
-            self.x.setValue(m.index(r,m.fieldIndex('x')).data())
-            self.y.setValue(m.index(r,m.fieldIndex('y')).data())
+            
+            setValue(self.chainage,m.index(r,m.fieldIndex('chainage')))
+            setValue(self.x,m.index(r,m.fieldIndex('new_x')))
+            setValue(self.y,m.index(r,m.fieldIndex('new_y')))
+            setValue(self.currentX,m.index(r,m.fieldIndex('current_x')))
+            setValue(self.currentY,m.index(r,m.fieldIndex('current_y')))
+
         else:
             self.chainage.setValue(0)
             self.x.setValue(0)
             self.y.setValue(0)
-        
+            self.currentX.setValue(0)
+            self.currentY.setValue(0)
+
         
     def show(self):
         self.showMarkers()
@@ -124,44 +165,43 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     def accept(self):
         if self.model():
-            self.model().editCorrection(index = self.index,
+            self.model().setCorrection(
                                         chainage = self.chainage.value(),
-                                        x = self.x.value(),
-                                        y = self.y.value()
+                                        currentPosition = (self.currentX.value(),self.currentY.value()),
+                                        newPosition = (self.x.value(),self.y.value())
                                         )
-            
-            
-            
         self.hideMarkers()
         return super().accept()
         #set model values...
+        
         
     def reject(self):
         self.hideMarkers()
         return super().reject()
         
         
-        
-    def updateStartMarker(self):
-        self.showMarkers()
+    def updateChainageMarker(self):
         if self.model() is not None:
             pt = self.model().getPoint(chainage = self.chainage.value(),index = self.index)
-            print(pt)
-            self.startMarker.setCenter(pt)
-            self.canvas.refresh()
-            
+            print('found chainage',pt)
+            self.chainageMarker.setCenter(toCanvasCrs(pt))
+            self.showMarkers()
+
             
     def updateEndMarker(self):
+        pt = QgsPointXY(self.x.value(),self.y.value())
+        self.endMarker.setCenter(toCanvasCrs(pt))
         self.showMarkers()
-        transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
-        pt = transform.transform(QgsPointXY(self.x.value(),self.y.value()))
-        self.endMarker.setCenter(pt)
-        self.endMarker.show()
-        self.canvas.refresh()
+
             
+    def updateStartMarker(self):
+        pt = QgsPointXY(self.currentX.value(),self.currentY.value())
+        self.startMarker.setCenter(toCanvasCrs(pt))
+        self.showMarkers()        
+        
         
     def hide(self):
-        print('hide')
+      #  print('hide')
         self.hideMarkers()
         return super().hide()
         #hide on map.
@@ -171,6 +211,7 @@ class correctionDialog(QDialog,FORM_CLASS):
     def hideMarkers(self):
         self.startMarker.hide()
         self.endMarker.hide()
+        self.chainageMarker.hide()
         self.canvas.refresh()
         
         
@@ -178,15 +219,17 @@ class correctionDialog(QDialog,FORM_CLASS):
      #   print('showMarkers')
         self.startMarker.show()
         self.endMarker.show()
+        self.chainageMarker.show()
         self.canvas.refresh()
         
         
     def removeMarkers(self):
-        print('removeMarkers')
+      #  print('removeMarkers')
         self.canvas.scene().removeItem(self.startMarker)
-        #iface.mapCanvas().scene().removeItem(self.endMarker)
         self.canvas.scene().removeItem(self.endMarker)
+        self.canvas.scene().removeItem(self.chainageMarker)
         self.canvas.refresh()
+        
         
         #not called by accept or reject or close button...
     #def close(self):
@@ -194,6 +237,7 @@ class correctionDialog(QDialog,FORM_CLASS):
    #     self.removeMarkers()
        # return super().close()
         
+       
     #QCloseEvent. called by close button.
     def closeEvent(self,event):
         self.hideMarkers()

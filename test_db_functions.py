@@ -35,12 +35,6 @@ class testDbFunctions(unittest.TestCase):
     def tearDownClass(cls):
         QSqlDatabase.database('image_loader').close()
     
-    
-    def testLoadCorrections(self):
-        file = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\inputs\MFV1_006 Coordinate Corrections.csv'
-        db_functions.loadCorrections(file=file)
-
-
     def testLoadGps(self):
         db_functions.loadGps(file = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv'),db = QSqlDatabase.database('image_loader'))
         self.assertTrue(db_functions.hasGps())

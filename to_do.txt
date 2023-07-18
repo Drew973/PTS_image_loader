@@ -1,14 +1,28 @@
 
 
+
+want to be able to click old (not necessarily original) position of image then new new position
+original_position is where uncorrected image is.
+convert point to this on accepting
+
+additional_x and additional_y instead of offset.
+
+correction: chainage,x_offset,y_offset,x,y
+
+
+
+
+
+
+views for points with correction
+
 constraints:
 	start of image should be end of last image.
 	image width should be ~ constant (gradient effects?)
 
-
 need something to:
 	-align images with each other and google earth ie georeference images
 	-view many images without crashing QGIS for rating.
-	
 
 problems clicking near to adjacent runs.
 specify run to avoid.
@@ -25,3 +39,35 @@ gdaladdo "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\pyth
  
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\1.vrt" 32 64 128 256 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\6.vrt" 32 64 128 256 -ro --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL --config GDAL_NUM_THREADS ALL_CPUS
+
+
+
+points:
+	m
+	x
+	y
+	corrected_x
+	corrected_y
+	next_m
+	
+lines_view with connected
+
+
+
+corrections:
+	chainage
+	x
+	y
+	x_offset
+	y_offset
+	
+	need to move current position to new position 
+
+
+
+
+
+images
+images_view:
+	file_name
+	centerline

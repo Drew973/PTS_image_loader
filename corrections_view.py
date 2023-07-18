@@ -35,8 +35,8 @@ class correctionsView(QTableView):
         super().setModel(model)
         self.correctionDialog.setModel(model)
         toShow = [model.fieldIndex('chainage'),model.fieldIndex('x'),model.fieldIndex('y')]
-        for c in range(model.columnCount()):
-            self.setColumnHidden(c,not c in toShow)
+     #   for c in range(model.columnCount()):
+      #      self.setColumnHidden(c,not c in toShow)
     
     
     def editSelected(self,index=None):
