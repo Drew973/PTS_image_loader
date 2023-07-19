@@ -133,10 +133,10 @@ def initDb(db):
                  pk INTEGER PRIMARY KEY
                  ,run text default ''
                  ,chainage DECIMAL(9,3) unique not null
-                 ,x_offset float
-                 ,y_offset float
 				 ,new_x float
 				 ,new_y float
+				 ,old_x float
+				 ,old_y float
              );
             
     create table if not exists points(
@@ -170,23 +170,9 @@ create view if not exists lines_view as
 select points.m,points.next_m,makeline(points.pt,points2.pt) as line,makeline(points.corrected_pt,points2.corrected_pt) as corrected_line from points inner join points as points2
 on points2.m = points.next_m;
 
-
 create view if not exists corrections_view as
-with a as(
-select run,pk,chainage,new_x,new_y,corrections.pk,m,next_m,x_offset,y_offset
-,Line_Interpolate_Point(line,(chainage-m)/(next_m-m)) as pt
-from corrections
-inner join lines_view on m <=chainage and chainage <= next_m)
-select run
-,pk
-,chainage
-,new_x-x_offset-st_x(pt) as x_shift
-,new_y-y_offset-st_y(pt) as y_shift
-,new_x
-,new_y
-,st_x(pt)+x_offset as current_x
-,st_y(pt)+y_offset as current_y
-from a;
+select pk,run,chainage,new_x,new_y,corrections.pk,new_x - old_x as x_shift,new_y - old_y as y_shift,old_x as current_x,old_y as current_y
+from corrections;
 
 
 create view if not exists cv as
@@ -196,7 +182,6 @@ select chainage,x_shift,y_shift
 ,lead(x_shift) over (order by chainage)	as next_xs
 ,lead(y_shift) over (order by chainage) as next_ys
 from corrections_view;
-
 
 create view if not exists points_view as
 select m
