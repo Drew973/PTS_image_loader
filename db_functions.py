@@ -81,35 +81,40 @@ def runQuery(query,db = None,values = {}):
         raise queryError(q)
         
     return q
-        
-#save to file.
-#"vacuum main into 'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\saved.db'"
+
+import shutil
+
 def saveToFile(file):
-    runQuery(query = "vacuum main into ':file'".replace(':file',file))
+   if dbFile() == ':memory:':
+        runQuery(query = "vacuum main into ':file'".replace(':file',file))#error transaction in progress... with non memory database
+   else:
+       shutil.copy2(dbFile(), file)
 
 
 def loadFile(dbFile):
+    db = defaultDb()
+    db.transaction()
     try:
-        runQuery("DETACH DATABASE if exists db2".replace(':file',dbFile))
+        runQuery(query = "DETACH DATABASE 'db2'",db = db)
     except Exception:
         pass
-    
-    runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile))
-    runQuery("delete from images")
-    runQuery('insert into images(image_id,run,original_file,image_type,marked) select image_id,run,original_file,image_type,marked from db2.images')
-    runQuery("delete from corrections")
-    runQuery('insert into corrections(run,original_chainage,new_chainage,original_offset,new_offset) select run,original_chainage,new_chainage,original_offset,new_offset from db2.corrections')
-    runQuery("delete from points")
-    runQuery('insert into points(m,x,y,next_m,last_m) select m,x,y,next_m,last_m from db2.points')
+    runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile),db=db)
+    runQuery("delete from images",db = db)
+    runQuery('insert into images(image_id,run,original_file,image_type,marked) select image_id,run,original_file,image_type,marked from db2.images',db=db)
+    runQuery("delete from corrections",db=db)
+    runQuery('insert into corrections(run,chainage,x_offset,y_offset,new_x,new_y) select run,chainage,x_offset,y_offset,new_x,new_y from db2.corrections',db=db)
+    runQuery("delete from points",db=db)
+    runQuery('insert into points(m,x,y,next_m,last_m,corrected_x,corrected_y) select m,x,y,next_m,last_m,corrected_x,corrected_y from db2.points',db=db)
+    db.commit()
+   # runQuery("DETACH DATABASE 'db2'",db=db)
 
 
-    
 def hasGps(db=None):
     q = runQuery('select count(m) from points',db)
     while q.next():
         return q.value(0) > 0
-    
-        
+
+
 def initDb(db):
     db.transaction()
     
@@ -177,12 +182,12 @@ from points inner join points as points2
 on points2.m = points.next_m;
 
 create view if not exists corrections_view as
-select pk,run,chainage,new_x,new_y
+select pk,run,chainage,new_x,new_y,x_offset,y_offset
 ,st_x(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + x_offset as current_x
 ,st_y(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + y_offset as current_y
 ,new_x-st_x(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - x_offset as x_shift
 ,new_y - st_y(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - y_offset as y_shift
-from corrections left join lines_view on start_m <= chainage and chainage < end_m;;
+from corrections left join lines_view on start_m <= chainage and chainage < end_m;
 
 create view if not exists cv as
 select chainage,x_shift,y_shift 
@@ -197,8 +202,8 @@ select m
 ,COALESCE(x+x_shift+(next_xs-x_shift)*(m-chainage)/(next_ch-chainage),x+x_shift,x) as corrected_x
 ,COALESCE(y+y_shift+(next_ys-y_shift)*(m-chainage)/(next_ch-chainage),y+y_shift,y) as corrected_y
 from points left join cv on chainage<=m and m<next_ch
-or next_ch is null and m>chainage
-or last_ch is null and m<chainage
+or next_ch is null and m>=chainage
+or last_ch is null and m<=chainage
 ;
 
     '''
@@ -300,8 +305,8 @@ def getChainage(run,x,y,db):
 correctedChainageQuery = '''
 select start_m+(end_m-start_m)*Line_Locate_Point(corrected_line,makePoint(:x,:y)) as corrected_chainage
 from lines_view where
-end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ''),(select min(m) from points))
-and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ''),(select max(m) from points))
+end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ':run'),(select min(m) from points))
+and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ':run'),(select max(m) from points))
 and abs(corrected_start_x-:x) < 50
 and abs(corrected_start_y-:y) < 50
 order by st_distance(corrected_line,makePoint(:x,:y))
@@ -368,7 +373,7 @@ def hasMarked(run):
     
 def dbFile():
   #  return ':memory:'        
-    return os.path.join(os.path.dirname(__file__),'images.image_loader_db')
+    return os.path.join(os.path.dirname(__file__),'images.db')
 
 
 def createDb(file = dbFile()):

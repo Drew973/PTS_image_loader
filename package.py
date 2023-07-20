@@ -4,7 +4,7 @@ import os
 
 #copys everything except .git ,__pycache__ folders and .pyc extention in folder to zip file zip_name
 #need filenames 1st otherwise looping through zip?
-def package(folder,zipPath=None,excludeExt=['.pyc','.zip','.gitignore','.image_loader_db'],excludeDir=['.git','test','tests']):
+def package(folder,zipPath=None,excludeExt=['.pyc','.zip','.gitignore','.db'],excludeDir=['.git','test','tests']):
     
     print('package(%s,%s,%s)'%(str(folder),str(zipPath),str(excludeExt)))
     if not zipPath:

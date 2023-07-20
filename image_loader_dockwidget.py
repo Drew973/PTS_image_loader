@@ -115,7 +115,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def load(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';image loader database (*.image_loader_db)')
+        f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';sqlite database (*.db)')
         if f:
             if f[0]:
                 self.model.load(f[0])
@@ -274,7 +274,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             
     #save all tables to sqlite database.
     def saveAs(self):
-        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = ';image loader database (*.image_loader_db)')[0]
+        f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'sqlite database (*.db)')[0]
         if f:
             self.model.save(f)
             iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)

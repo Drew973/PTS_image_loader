@@ -8,6 +8,7 @@ Created on Mon Apr 24 09:42:07 2023
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 from image_loader import db_functions
+from qgis.core import QgsPointXY
 
 
 class correctionsModel(QSqlQueryModel):
@@ -62,7 +63,7 @@ class correctionsModel(QSqlQueryModel):
             filt = ''
             #original
         #filt = ''
-        q = 'select run,pk,chainage,new_x,new_y,current_x,current_y from corrections_view {filt} order by chainage'.format(filt=filt)
+        q = 'select run,pk,chainage,new_x,new_y,current_x,current_y,x_offset,y_offset from corrections_view {filt} order by chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 
 
@@ -85,24 +86,13 @@ class correctionsModel(QSqlQueryModel):
     
     
     #x_offset is x difference between point & corrected chainage.
-    def setCorrection(self,chainage,currentPosition,newPosition):
-        #select Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m)) from lines_view where m <= :ch and :ch <=next_m
-        
-    #    pt = db_functions.getPoint(chainage=chainage,db=self.database())
-        correctedPt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
-        xo = currentPosition[0] - correctedPt.x()
-        yo = currentPosition[1] - correctedPt.y()
-
-        #add to existing correction correctedPt.x()-pt.x()
-     #   ox = currentPosition[0] correctedPt.x()-pt.x()
-      #  ys = newPosition[1] - currentPosition[1] + correctedPt.y() - pt.y()
-
+    def setCorrection(self,chainage,xOffset,yOffset,newX,newY):
         updateQuery = """
         insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (':run',:ch,:new_x,:new_y,:xo,:yo)
         ON CONFLICT DO UPDATE SET run = ':run',chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo
         """
-        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':new_x':newPosition[0],
-                                                            ':new_y':newPosition[1],':xo':xo,':yo':yo})
+        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':new_x':newX,
+                                                            ':new_y':newY,':xo':xOffset,':yo':yOffset})
         self.select()
         
         
@@ -116,19 +106,25 @@ class correctionsModel(QSqlQueryModel):
         
 
 #chainage:float,offset:float,index:QModelIndex -> QgsPointXY
-    def getPoint(self,chainage,index=None):
-        return db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
-      
+    def getPoint(self,chainage,xOffset,yOffset,index=None):
+        pt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
+        return QgsPointXY(pt.x()+xOffset,pt.y()+yOffset)
     
     '''
-    find closest chainage
+    find closest (chainage,x_offset,y_offset)
     index unused
     '''
     #index QModelIndex,point:QgsPointXY -> (chainage float,offset float)
     def getChainage(self,point,index=None):
        # print('run:',self.run)
-        return db_functions.getCorrectedChainage(run = self._run,
+        ch = db_functions.getCorrectedChainage(run = self._run,
                                         x = point.x(),
                                         y = point.y(),
                                         db = self.database())
+        
+        pt = db_functions.getCorrectedPoint(chainage =ch,db = self.database())#snapped to corrected line.
+        
+        return (ch , point.x()-pt.x() , point.y()-pt.y() )
+        
+        
     
