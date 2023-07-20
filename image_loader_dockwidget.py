@@ -141,8 +141,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         openRilAct = openMenu.addAction('Open Raster image load file...')
         openRilAct.triggered.connect(self.openRilFile)
         
-        openCorrectionsAct = openMenu.addAction('Open corrections...')
-        openCorrectionsAct.triggered.connect(self.openCorrections)
+     #  openCorrectionsAct = openMenu.addAction('Open corrections...')
+      #  openCorrectionsAct.triggered.connect(self.openCorrections)
         
         loadGpsAct = openMenu.addAction('Open GPS...')
         loadGpsAct.triggered.connect(self.loadGps)

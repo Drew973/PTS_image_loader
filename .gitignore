@@ -1,7 +1,7 @@
 *.pyc
 *.vrt
 *.tif
-*.image_loader_db
+*.db
 __pycache__/
 convert_folder_profile.txt
 test/outputs
