@@ -89,19 +89,20 @@ class correctionsModel(QSqlQueryModel):
         #select Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m)) from lines_view where m <= :ch and :ch <=next_m
         
     #    pt = db_functions.getPoint(chainage=chainage,db=self.database())
-     #   correctedPt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
-        
-        
+        correctedPt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
+        xo = currentPosition[0] - correctedPt.x()
+        yo = currentPosition[1] - correctedPt.y()
+
         #add to existing correction correctedPt.x()-pt.x()
      #   ox = currentPosition[0] correctedPt.x()-pt.x()
       #  ys = newPosition[1] - currentPosition[1] + correctedPt.y() - pt.y()
 
         updateQuery = """
-        insert into corrections (run,chainage,new_x,new_y,old_x,old_y) values (':run',:ch,:new_x,:new_y,:old_x,:old_y)
-        ON CONFLICT DO UPDATE SET run = ':run',chainage=:ch,new_x = :new_x,new_y = :new_y,old_x = :old_x,old_y=:old_y
+        insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (':run',:ch,:new_x,:new_y,:xo,:yo)
+        ON CONFLICT DO UPDATE SET run = ':run',chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo
         """
         db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':new_x':newPosition[0],
-                                                            ':new_y':newPosition[1],':old_x':currentPosition[0],':old_y':currentPosition[1]})
+                                                            ':new_y':newPosition[1],':xo':xo,':yo':yo})
         self.select()
         
         
@@ -116,7 +117,7 @@ class correctionsModel(QSqlQueryModel):
 
 #chainage:float,offset:float,index:QModelIndex -> QgsPointXY
     def getPoint(self,chainage,index=None):
-        return db_functions.getPoint(chainage=chainage,db=self.database())
+        return db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
       
     
     '''
@@ -126,7 +127,7 @@ class correctionsModel(QSqlQueryModel):
     #index QModelIndex,point:QgsPointXY -> (chainage float,offset float)
     def getChainage(self,point,index=None):
        # print('run:',self.run)
-        return db_functions.getChainage(run = self._run,
+        return db_functions.getCorrectedChainage(run = self._run,
                                         x = point.x(),
                                         y = point.y(),
                                         db = self.database())

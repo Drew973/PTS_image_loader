@@ -45,7 +45,8 @@ def runQuery(query,db = None,values = {}):
     if db is None:
         db = defaultDb()
         
-
+    query = query.replace("\n",' ')
+    
     if isinstance(values,dict):
         for k in values:
             query = query.replace(k,str(values[k]))
@@ -128,15 +129,15 @@ def initDb(db):
                 ,original_end_chainage float GENERATED ALWAYS AS (image_id*5+5) VIRTUAL
              );
       
-     create table if not exists corrections
+	create table if not exists corrections
             ( 
                  pk INTEGER PRIMARY KEY
                  ,run text default ''
                  ,chainage DECIMAL(9,3) unique not null
 				 ,new_x float
 				 ,new_y float
-				 ,old_x float
-				 ,old_y float
+				 ,x_offset float
+				 ,y_offset float
              );
             
     create table if not exists points(
@@ -153,7 +154,6 @@ def initDb(db):
         ,corrected_pt generated as (makePointM(corrected_x,corrected_y,m))
         );    
   
-    
    CREATE INDEX IF NOT EXISTS m_index on points(m);
    create index if not exists next_m_ind on points(next_m);
   
@@ -167,13 +167,22 @@ inner join points on marked and last_m<image_id*5+5 and next_m>image_id*5
 group by original_file;
  
 create view if not exists lines_view as
-select points.m,points.next_m,makeline(points.pt,points2.pt) as line,makeline(points.corrected_pt,points2.corrected_pt) as corrected_line from points inner join points as points2
+select points.m as start_m
+,points.next_m as end_m
+,makeline(points.pt,points2.pt) as line
+,makeline(points.corrected_pt,points2.corrected_pt) as corrected_line
+,points.corrected_x as corrected_start_x
+,points.corrected_y as corrected_start_y
+from points inner join points as points2
 on points2.m = points.next_m;
 
 create view if not exists corrections_view as
-select pk,run,chainage,new_x,new_y,corrections.pk,new_x - old_x as x_shift,new_y - old_y as y_shift,old_x as current_x,old_y as current_y
-from corrections;
-
+select pk,run,chainage,new_x,new_y
+,st_x(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + x_offset as current_x
+,st_y(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + y_offset as current_y
+,new_x-st_x(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - x_offset as x_shift
+,new_y - st_y(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - y_offset as y_shift
+from corrections left join lines_view on start_m <= chainage and chainage < end_m;;
 
 create view if not exists cv as
 select chainage,x_shift,y_shift 
@@ -269,18 +278,14 @@ update points set corrected_x = points_view.corrected_x,corrected_y=points_view.
 
 
 chainageQuery = '''
-with nearest as (
-select m,pt,next_m,last_m from points where
-m >= coalesce((select min(original_start_chainage)-200 from images where run = ':run'),(select min(m) from points))
-and m <= coalesce((select max(original_end_chainage)+200 from images where run = ':run'),(select max(m) from points))
-and abs(x-:x) < 50
-and abs(y-:y) < 50
-order by st_distance(pt,makePoint(:x,:y))
+select start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(:x,:y)) as corrected_chainage
+from lines_view where
+end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ''),(select min(m) from points))
+and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ''),(select max(m) from points))
+and abs(corrected_start_x-:x) < 50
+and abs(corrected_start_y-:y) < 50
+order by st_distance(line,makePoint(:x,:y))
 limit 1
-)
-select min(points.m)+Line_Locate_Point(MakeLine(points.pt),makePoint(:x,:y))*(max(points.m)-min(points.m)) from nearest
-inner join points on points.m = nearest.m or points.m = nearest.next_m or points.m=nearest.last_m
-order by points.m
 '''
 #->(chainage:float,offset:float) or None
 def getChainage(run,x,y,db):   
@@ -292,8 +297,27 @@ def getChainage(run,x,y,db):
     return -1
     
 
-pointQuery = '''select st_x(Line_Interpolate_Point(line,(:ch-m)/(next_m-m))),st_y(Line_Interpolate_Point(line,(:ch-m)/(next_m-m)))
-from lines_view where m <= :ch and :ch <=next_m'''
+correctedChainageQuery = '''
+select start_m+(end_m-start_m)*Line_Locate_Point(corrected_line,makePoint(:x,:y)) as corrected_chainage
+from lines_view where
+end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ''),(select min(m) from points))
+and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ''),(select max(m) from points))
+and abs(corrected_start_x-:x) < 50
+and abs(corrected_start_y-:y) < 50
+order by st_distance(corrected_line,makePoint(:x,:y))
+limit 1
+'''
+def getCorrectedChainage(run,x,y,db):
+    q = runQuery(query=correctedChainageQuery,values={':x':x,':y':y,':run':run,':dist':50},db=db)
+    while q.next():
+        if isinstance(q.value(0),float):
+            return q.value(0)
+    print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
+    return -1
+
+
+pointQuery = '''select st_x(Line_Interpolate_Point(line,(:ch-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(line,(:ch-start_m)/(end_m-start_m)))
+from lines_view where start_m <= :ch and :ch <=end_m'''
 # -> QgsPointXY
 def getPoint(chainage,db):
         q = runQuery(query=pointQuery,db = db,values= {':ch':float(chainage)})
@@ -303,17 +327,16 @@ def getPoint(chainage,db):
         return QgsPointXY()
     
     
-correctedPointQuery = 'select st_x(Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m))),st_y(Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m)))'
+correctedPointQuery = '''select st_x(Line_Interpolate_Point(corrected_line,(:ch-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(corrected_line,(:ch-start_m)/(end_m-start_m)))
+from lines_view where start_m <= :ch and :ch <=end_m'''
 def getCorrectedPoint(chainage,db):
-        q = runQuery(query=pointQuery,db = db,values= {':ch':float(chainage)})
+        q = runQuery(query=correctedPointQuery,db = db,values= {':ch':float(chainage)})
         while q.next():
             if isinstance(q.value(0),float) and isinstance(q.value(1),float):
                 return QgsPointXY(q.value(0),q.value(1))
         return QgsPointXY()    
     
     
-    
-correctedPointQuery = 'select Line_Interpolate_Point(corrected_line,(:ch-m)/(next_m-m)) from lines_view where m <= :ch and :ch <=next_m'
 def loadCorrections(file):
     db = QSqlDatabase.database('image_loader')
     db.transaction()

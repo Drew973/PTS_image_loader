@@ -89,6 +89,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def georeferenceImages(self):
         if self.model.hasGps():
             self.model.georeference()
+            self.correctionsModel.select()
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
