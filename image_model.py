@@ -83,7 +83,7 @@ class imageModel(QSqlQueryModel,gpsModel):
      #   self._db = db
         self.run = None
         self.runsModel = runsModel()
-      #  self.runsModel.select()
+        self.runsModel.select()
         #self.gpsModel = gpsModel()
         self.setRun('')
         
@@ -211,7 +211,7 @@ class imageModel(QSqlQueryModel,gpsModel):
     #load images into qgis
     def georeference(self,indexes=None):
         
-        db_functions.correctGps()
+   #     db_functions.correctGps()
 
 
         georeferenceCommands = []
@@ -242,6 +242,7 @@ class imageModel(QSqlQueryModel,gpsModel):
         progress.close()
         
         if georeferenceCommands:
+            print(georeferenceCommands)
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
             run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
 
@@ -381,7 +382,7 @@ class imageModel(QSqlQueryModel,gpsModel):
                         filePath = os.path.normpath(os.path.join(file,p))#from file not folder
                     data.append(_image(newFile = filePath,
                                 run = _find(row,'runid'),
-                                imageId= _find(row,'frameid')
+                              #  imageId= _find(row,'frameid')#use file name. starts from 1 in RIL file
                                 ))
             #find origonal files
             if 'Raster Image Load File' in file:

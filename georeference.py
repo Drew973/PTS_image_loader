@@ -101,6 +101,10 @@ def _gcps(centerLine):
     left = centerLine.parallel_offset(0.5*WIDTH, side='left', resolution=64)   
     right = centerLine.parallel_offset(0.5*WIDTH, side='right', resolution=64)
 
+
+    print('left',left)
+    print('right',right)
+
     right = LineString(reversed(right.coords))#offset curve inverts direction for negative distances.
     
     r = []

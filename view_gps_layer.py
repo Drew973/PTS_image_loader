@@ -20,7 +20,7 @@ def loadGpsLayer():
     fields = layer.fields()
     
     def features():
-        q = db_functions.runQuery(query = 'select m,corrected_x,corrected_y from points')
+        q = db_functions.runQuery(query = 'select m,corrected_x,corrected_y from points_view')
         while q.next():
             f = QgsFeature(fields)
             f['chainage'] = q.value(0)

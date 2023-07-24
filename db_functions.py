@@ -63,18 +63,12 @@ def runQuery(query,db = None,values = {}):
 
     q = QSqlQuery(db)    
     if not q.prepare(query):
-        raise queryError(q)
-        
-        
-
-        
+        raise queryPrepareError(q)
         
   #  if isinstance(values,list):
      #   for i,v in enumerate(values):
             #q.bindValue(i,v)
         #    q.addBindValue(v)
-    
-
         
     if not q.exec():
         print(q.boundValues())
@@ -162,15 +156,7 @@ def initDb(db):
    CREATE INDEX IF NOT EXISTS m_index on points(m);
    create index if not exists next_m_ind on points(next_m);
   
-    create view if not exists images_view as
-select original_file,
-Line_Substring(makeLine(makePoint(corrected_x,corrected_y)),
-(image_id*5-min(m))/(max(m)-min(m)),
-(image_id*5+5-min(m))/(max(m)-min(m))) as center_line
-from images
-inner join points on marked and last_m<image_id*5+5 and next_m>image_id*5
-group by original_file;
- 
+   
 create view if not exists lines_view as
 select points.m as start_m
 ,points.next_m as end_m
@@ -198,13 +184,23 @@ select chainage,x_shift,y_shift
 from corrections_view;
 
 create view if not exists points_view as
-select m
+select pk
+,m
 ,COALESCE(x+x_shift+(next_xs-x_shift)*(m-chainage)/(next_ch-chainage),x+x_shift,x) as corrected_x
 ,COALESCE(y+y_shift+(next_ys-y_shift)*(m-chainage)/(next_ch-chainage),y+y_shift,y) as corrected_y
-from points left join cv on chainage<=m and m<next_ch
+from points left join cv on chainage<m and m<next_ch
 or next_ch is null and m>=chainage
 or last_ch is null and m<=chainage
 ;
+
+create view if not exists images_view as
+select original_file,
+image_id,
+makeLine(MakePointM(corrected_x,corrected_y,m)) as center_line
+from images
+inner join points_view on marked and image_id*5<=m and m<=image_id*5+5
+group by original_file
+order by m;
 
     '''
     
