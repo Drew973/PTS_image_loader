@@ -5,44 +5,17 @@ Created on Mon Mar 13 12:16:57 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QTableView,QMenu,QDialog,QVBoxLayout,QComboBox,QDialogButtonBox
+from PyQt5.QtWidgets import QTableView,QMenu
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtCore import QItemSelectionModel
-
-
-
-
-class setRunDialog(QDialog):
-    
-    def __init__(self,runsModel,imagesModel,parent=None):
-        super().__init__(parent)
-        self.setLayout(QVBoxLayout())
-        self.runBox = QComboBox(self)
-        self.layout().addWidget(self.runBox)
-        self.runBox.setModel(runsModel)
-        self.runBox.setEditable(True)
-        self.imagesModel = imagesModel
-        self.indexes = []
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel)
-        self.layout().addWidget(self.buttons)
-        self.buttons.rejected.connect(self.reject)
-        self.buttons.accepted.connect(self.accept)
-
-
-    def setIndexes(self,indexes):
-        self.indexes = indexes
-        
-        
-    def accept(self):
-        self.imagesModel.setRunForItems(self.indexes,self.runBox.currentText())
-        return super().accept()
-
+from image_loader.set_run_dialog import setRunDialog
 
 
 class imagesView(QTableView):
   
     def __init__(self,parent=None):
         super().__init__(parent)
+        self.runsModel = None
         self.menu = QMenu(self)
         markAct = self.menu.addAction('Mark selected rows')
         markAct.triggered.connect(self.mark)
@@ -50,16 +23,21 @@ class imagesView(QTableView):
         unmarkAct.triggered.connect(self.unmark)
         dropAct = self.menu.addAction('Remove selected rows')
         dropAct.triggered.connect(self.dropSelected)
-        dropAct = self.menu.addAction('Set run for selected rows...')
-        dropAct.triggered.connect(self.setRunForSelected)
+        setRunAct = self.menu.addAction('Set run for selected rows...')
+        setRunAct.triggered.connect(self.setRunForSelected)
         self.setWordWrap(False)        
         self.doubleClicked.connect(self.onDoubleClick)
     
     
+    
+    def setRunsModel(self,model):
+        self.runsModel = model
+        
+    
     def setRunForSelected(self):
         inds = self.selected()
-        if inds:
-            d = setRunDialog(parent = self,imagesModel=self.detailsModel(),runsModel = self.detailsModel().runsModel)
+        if inds and self.runsModel is not None:
+            d = setRunDialog(parent = self,model=self.detailsModel(),runsModel = self.runsModel)
             d.setIndexes(inds)
             d.exec()
         

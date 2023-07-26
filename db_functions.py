@@ -179,7 +179,7 @@ create view if not exists cv as
 select chainage,x_shift,y_shift 
 ,lead(chainage) over (order by chainage) as next_ch
 ,lag(chainage) over (order by chainage) as last_ch
-,lead(x_shift) over (order by chainage)	as next_xs
+,lead(x_shift) over (order by chainage) as next_xs
 ,lead(y_shift) over (order by chainage) as next_ys
 from corrections_view;
 
@@ -202,7 +202,15 @@ inner join points_view on marked and image_id*5<=m and m<=image_id*5+5
 group by original_file
 order by m;
 
+create view if not exists center_lines as
+select image_id,MakeLine(makePoint(corrected_x,corrected_y)) as center_line from
+(select cast(floor(m/5) as int) as image_id from points group by cast(floor(m/5) as int) order by m)
+inner join points on image_id*5 <= cast(m as int) and cast(m as int) <= image_id *5 +5
+group by image_id order by m;
+
+
     '''
+
     
     for q in script.split(';'):
         q = q.strip()

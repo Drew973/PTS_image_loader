@@ -14,7 +14,6 @@ from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 
 import os
 import csv
-#import re
 
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
@@ -149,7 +148,6 @@ class imageModel(QSqlQueryModel,gpsModel):
 
     def select(self):
         t = self.query().lastQuery()#str
-      #  print(t)
         self.setQuery(t,self.database())
        #self.setQuery(self.query()) query does not update model. bug in qt?
         self.runsModel.select()
@@ -210,70 +208,20 @@ class imageModel(QSqlQueryModel,gpsModel):
     '''
     #load images into qgis
     def georeference(self,indexes=None):
-        
-   #     db_functions.correctGps()
-
-
+        db_functions.correctGps()
         georeferenceCommands = []
         sources = []
-        i = 1
-        
         q = db_functions.runQuery('select original_file,st_asText(center_line) from images_view')
-        
-        progress = QProgressDialog("Calculating positions...","Cancel", 0, q.size(),parent = self.parent())#QObjectwithout parent gets deleted like normal python object
-       # progress.show()
         while q.next():
-            progress.setValue(i)
-            i += 1
-            if progress.wasCanceled():
-                return
             file = q.value(0)#string
-          #  left = query.value(1)#QVariant
-          #  right = query.value(2)#QVariant
-
             if os.path.exists(file):
-                #left = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(3))               
-                #right = self.gpsModel.getLine(startM = q.value(1),endM = q.value(2),offset=q.value(4))
                 sources.append(georeference.warpedFileName(file))
                 c = 'python "{script}" "{file}" "{cl}"'.format(script = georeference.__file__,file = file, cl = q.value(1))
                 georeferenceCommands.append(c)
-            
-        progress.setValue(progress.maximum())
-        progress.close()
-        
         if georeferenceCommands:
-            print(georeferenceCommands)
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
             run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
-
      
-    '''
-    unused. probabaly unnecessary. Strange behavior creating overviews for vrt. No external file created but line like 
-    <OverviewList>2 4 8 16 32 64 </OverviewList>
-    added to band.
-    overview exists in memory?
-    
-    '''
-    def createOverviews(self):
-        progress = run_commands.commandRunner(parent=self.parent(),labelText = "Calculating positions...")
-        progress.setAutoClose(False)
-        progress.show()
-        
-        query = db_functions.runQuery('select original_file from images where marked')
-        files = []
-        while query.next():
-            f = georeference.warpedFileName(query.value(0))
-            if os.path.isfile(f):
-                files.append(f)
-        #print(files)
-        #warpedFileName()
-        template = 'gdaladdo "{file}" 2 4 8 16 32 64 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'
-        commands = [template.format(file = f) for f in files]
-       # print(commands)
-        progress.setAutoClose(True)
-        progress.runCommands(commands = commands)#running in paralell.
-        progress.exec()
-
 
     def makeVrt(self):
         vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
@@ -435,16 +383,11 @@ class imageModel(QSqlQueryModel,gpsModel):
 
     #if run index in indexes set all in run.
     def mark(self,indexes,value = True):
-        
         col = self.fieldIndex('pk')
         pks = [str(self.index(index.row(),col).data()) for index in indexes]
         q = 'update images set marked = {value} where pk in ({pks})'.format(pks = ','.join(pks),value = str(value))
-        #print(q)
         db_functions.runQuery(q)
-        
         self.select()
-       # print(pks)
-        #self._refreshRuns()
       
       
     def markAll(self):
@@ -458,14 +401,11 @@ class imageModel(QSqlQueryModel,gpsModel):
         
         
     def markRun(self):
-        #print('run',self.run)
-        #db_functions.runQuery(query = "update images set marked = True where run = ':run'".replace(':run',self.run))#error when binding value?
         db_functions.runQuery(query = "update images set marked = True where run = :run",values = {':run':self.run})#not run when binding value. why?
         self.select()
 
 
     def unmarkRun(self):
-       # print(self.run)
         db_functions.runQuery(query = "update images set marked = False where run = ':run'".replace(':run',self.run))#error when binding value?
         self.select()
 

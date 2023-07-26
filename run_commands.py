@@ -36,7 +36,7 @@ class commandRunner:
 
         for c in commands:
             proc = QProcess()
-            proc.finished.connect(self._processCompleted)           
+            proc.finished.connect(lambda process:self._processCompleted(proc))           
             self.processes.append(proc)
         
         for i in range(0,self.batchSize):
@@ -61,7 +61,7 @@ class commandRunner:
 
 
     def abort(self):
-        print('abort')
+    #    print('abort')
         self.commands = []
         for p in self.processes:
             p.close()
@@ -69,8 +69,11 @@ class commandRunner:
 
 
 
-    def _processCompleted(self,state):
+    def _processCompleted(self,process):
        # print('_processCompleted',state)
+        e = process.readAllStandardError()
+        if e:
+            print('error:',e)
         self.progress.setValue(self.progress.value()+1)
         self._startNextProcess()
         
@@ -82,11 +85,14 @@ update progress dialog and allow cancelling
 
 
 
-def runCommands(commands,labelText = 'running...'):
-    progress = QProgressDialog(labelText,"Cancel", 0, len(commands),parent = None)#QObjectwithout parent gets deleted like normal python object
+def runCommands(commands,labelText = 'running...',progress = None):
+    
+    if progress is None:
+        progress = QProgressDialog(labelText,"Cancel", 0, len(commands),parent = None)#QObjectwithout parent gets deleted like normal python object
+        progress.forceShow()
+        QApplication.processEvents()
+    
     d = commandRunner(progress = progress)
-    progress.forceShow()
-    QApplication.processEvents()
     d.runCommands(commands)
     del d
     progress.close()

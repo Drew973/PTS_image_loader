@@ -5,16 +5,11 @@ want to be able to click old (not necessarily original) position of image then n
 original_position is where uncorrected image is.
 convert point to this on accepting
 
-additional_x and additional_y instead of offset.
+corrections as
+	image_id,pixel,line,x,y
+	pixel and line refer to original image.
+	chainage = image_id*5 + 5 - line*LENGTH/LINES
 
-correction: chainage,x_offset,y_offset,x,y
-
-
-
-
-
-
-views for points with correction
 
 constraints:
 	start of image should be end of last image.
@@ -40,34 +35,3 @@ gdaladdo "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\pyth
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\1.vrt" 32 64 128 256 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\6.vrt" 32 64 128 256 -ro --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL --config GDAL_NUM_THREADS ALL_CPUS
 
-
-
-points:
-	m
-	x
-	y
-	corrected_x
-	corrected_y
-	next_m
-	
-lines_view with connected
-
-
-
-corrections:
-	chainage
-	x
-	y
-	x_offset
-	y_offset
-	
-	need to move current position to new position 
-
-
-
-
-
-images
-images_view:
-	file_name
-	centerline

@@ -45,11 +45,9 @@ class gpsModel:
     
 
     
-    '''
+    """
     def getLine(self,startM:float,endM:float,offset:float=0,run:str=''):->str
-    
     replace with getGCPs method?
-    '''
     def getLine(self,startM,endM,offset=0,run=''):
         lineQuery = '''select st_asText(line_substring(makeLine(pt)
         ,abs(:start_m-min(m))/abs(max(m)-min(m))
@@ -57,7 +55,6 @@ class gpsModel:
          from points where next_m>=:start_m and last_m<=:end_m order by m
         '''
         q = runQuery(lineQuery,values={':start_m':startM,':end_m':endM})
-        
         while q.next():
             g = q.value(0)
             geom = wkt.loads(g)
@@ -67,10 +64,8 @@ class gpsModel:
                 return resample(geom.parallel_offset(abs(offset),side = 'left',resolution=8)).wkt
             else:
                 return resample(flip(geom.parallel_offset(abs(offset),side = 'right',resolution=8))).wkt#direction inverted for this side?
-
-            
           #  return geom.parallel_offset(abs(offset),side=side,resolution=64).wkt
-    
+    """
     
     
     

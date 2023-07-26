@@ -54,7 +54,14 @@ class correctionsModel(QSqlQueryModel):
        #self.setQuery(self.query()) query does not update model. bug in qt?
 
 
-
+    def setRunForItems(self,indexes,run):
+       col = self.fieldIndex('pk')
+       pks = [str(self.index(index.row(),col).data()) for index in indexes]
+       q = "update corrections set run = ':run' where pk in ({pks})".format(pks = ','.join(pks))
+       db_functions.runQuery(query = q,values={':run':run})
+       self.select()               
+               
+               
     def setRun(self,run):
         self._run = run
         if run:
@@ -114,7 +121,7 @@ class correctionsModel(QSqlQueryModel):
     find closest (chainage,x_offset,y_offset)
     index unused
     '''
-    #index QModelIndex,point:QgsPointXY -> (chainage float,offset float)
+    #index QModelIndex,point:QgsPointXY -> (chainage float,xOffset float,yOffset float)
     def getChainage(self,point,index=None):
        # print('run:',self.run)
         ch = db_functions.getCorrectedChainage(run = self._run,

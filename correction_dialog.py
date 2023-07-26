@@ -51,7 +51,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         super().__init__(parent)
         self.setupUi(self)
      #   self.setAttribute(Qt.WA_DeleteOnClose)
-        
+        self.prevTool = None
         self.setModel(None)
         self.setIndex(QModelIndex())
         
@@ -142,6 +142,9 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     def show(self):
         self.showMarkers()
+        self.prevTool = iface.mapCanvas().mapTool()
+        
+        
         if self.model():
             self.updateStartMarker()#images moved/points changed after georeferencing            
             if not self.model().hasGps():
@@ -163,7 +166,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         return super().accept()
         #set model values...
         
-        
+    #close button also calls this.
     def reject(self):
         self.hideMarkers()
         return super().reject()
@@ -189,6 +192,7 @@ class correctionDialog(QDialog,FORM_CLASS):
     def hide(self):
       #  print('hide')
         self.hideMarkers()
+        
         return super().hide()
         #hide on map.
         #unset map tool
@@ -198,7 +202,9 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.startMarker.hide()
         self.endMarker.hide()
         self.canvas.refresh()
-        
+        if self.prevTool is not None:
+           iface.mapCanvas().setMapTool(self.prevTool,clean=True)
+
         
     def showMarkers(self):
      #   print('showMarkers')
@@ -212,7 +218,6 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.canvas.scene().removeItem(self.startMarker)
         self.canvas.scene().removeItem(self.endMarker)
         self.canvas.refresh()
-        
         
         #not called by accept or reject or close button...
     #def close(self):

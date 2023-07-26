@@ -8,6 +8,7 @@ Created on Mon Mar 13 12:16:57 2023
 from PyQt5.QtWidgets import QTableView,QMenu
 from image_loader.correction_dialog import correctionDialog
 from PyQt5.QtCore import QModelIndex
+from image_loader.set_run_dialog import setRunDialog
 
 
 
@@ -15,6 +16,9 @@ class correctionsView(QTableView):
   
     def __init__(self,parent=None):
         super().__init__(parent)
+        
+        
+        self.runsModel = None
         self.correctionDialog = correctionDialog(parent=self)
         self.correctionDialog.hide()
         self.menu = QMenu(self)
@@ -23,6 +27,10 @@ class correctionsView(QTableView):
         addAct = self.menu.addAction('Add correction...')
         addAct.triggered.connect(self.add)
         #self.setWordWrap(False)        
+        
+        setRunAct = self.menu.addAction('Set run for selected rows...')
+        setRunAct.triggered.connect(self.setRunForSelected)
+        
         self.doubleClicked.connect(self.editSelected)
         
         
@@ -39,11 +47,25 @@ class correctionsView(QTableView):
             self.setColumnHidden(c,not c in toShow)
     
     
+    def setRunsModel(self,model):
+        self.runsModel=model
+    
+    
     def editSelected(self,index=None):
         self.correctionDialog.setIndex(index)
         self.correctionDialog.setWindowTitle('Edit correction')
         self.correctionDialog.show()
+       # self.correctionDialog.exec()
+
       #  self.correctionDialog.showMarkers()
+        
+        
+    def setRunForSelected(self):
+        inds = self.selected()
+        if inds and self.runsModel is not None:
+            d = setRunDialog(parent = self,model=self.model(),runsModel = self.runsModel)
+            d.setIndexes(inds)
+            d.exec()        
         
         
     def add(self):
@@ -53,7 +75,7 @@ class correctionsView(QTableView):
    #     self.correctionDialog.showMarkers()
         
     def selected(self):
-        return self.selectionModel().selectedRows(self.detailsModel().fieldIndex('pk'))
+        return self.selectionModel().selectedRows(self.model().fieldIndex('pk'))
         
   
     def dropSelected(self):

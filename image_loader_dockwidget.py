@@ -42,6 +42,7 @@ from image_loader.widgets import set_layers_dialog
 
 from image_loader.natural_sort import naturalSortProxy
 from image_loader import view_gps_layer
+from image_loader import db_functions
 
 from PyQt5.QtCore import Qt
 
@@ -49,7 +50,6 @@ from PyQt5.QtCore import Qt
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
 
-from image_loader import db_functions
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
@@ -69,13 +69,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.correctionsView.setModel(self.correctionsModel)
       #  self.correctionsView.setParent(self)
         
+        runsProxy = naturalSortProxy()
+        runsProxy.setSourceModel(self.model.runsModel)
+        runsProxy.sort(Qt.AscendingOrder)
         
-        self.runBox.setModel(naturalSortProxy())
-        self.runBox.model().setSourceModel(self.model.runsModel)
-        self.runBox.model().sort(Qt.AscendingOrder)
+        self.runBox.setModel(runsProxy)
+        self.imagesView.setRunsModel(runsProxy)
+        self.correctionsView.setRunsModel(runsProxy)
 
         self.imagesView.setModel(self.model)
         self.runBox.currentIndexChanged.connect(self.runChange)
+        self.runChange()
 
 
     def loadImages(self):

@@ -12,7 +12,7 @@ from image_loader import db_functions
 
 
 
-def loadGpsLayer():
+def loadGpsPoints():
 
     uri = "PointM?crs=epsg:27700&field=chainage:double&index=yes"
     name = 'GPS'
@@ -31,6 +31,28 @@ def loadGpsLayer():
     with edit(layer):
          layer.addFeatures(features())
          
+
+
+
+def loadGpsLayer():
+
+    uri = "Linestring?crs=epsg:27700&field=image_id:int&index=yes"
+    name = 'GPS'
+    layer = iface.addVectorLayer(uri, name, "memory")
+    fields = layer.fields()
+    
+    def features():
+        q = db_functions.runQuery(query = 'select image_id,st_asText(center_line) from center_lines')
+        while q.next():
+            f = QgsFeature(fields)
+            f['image_id'] = q.value(0)
+            f.setGeometry(QgsGeometry.fromWkt(q.value(1)))
+            yield f
+    
+    
+    with edit(layer):
+         layer.addFeatures(features())
+
 
 if __name__ == '__console__':
     loadGpsLayer()

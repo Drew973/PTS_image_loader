@@ -70,9 +70,6 @@ class runsModel(QStandardItemModel):
         
      #sych with database... 
     def select(self):
-        
-        print('select')
-
         q = '''
        select run
         ,max(marked) = 1 as has_marked
