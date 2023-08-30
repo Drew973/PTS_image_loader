@@ -14,20 +14,20 @@
 <p>Tool for georeferencing and loading images into QGIS.</p>
 
 
-<h3 id="loading details">Loading image details</h3>
+<h3 id="loading details">Tell plugin where images are.</h3>
     <p>"Tools","Find images from folder..." will add a row to the images table for every .jpg file in folder and subfolders.</p>
-	<p>The tool can also load image details from a 'raster image load' file produced by the distress plotter macro.</p>
+	<p>The tool can also find image details from a 'raster image load' file produced by the distress plotter macro.</p>
 	<p>project_folder/data is searched for original jpg filenames.</p>
 
 
-<h3 id="loading gps">Loading GPS data</h3>
+<h3 id="loading gps">Load GPS data</h3>
 	<p>GPS data is usually in a file named like "project_folder\Hawkeye Exported Data\MFV1_007-rutacd-1.csv".</p>
 	<p>This will need loading (through "File, open..., Open gps...") before georeferencing.</p>
 
 
-<h3 id="georeferencing">Georeferencing</h3>
+<h3 id="georeferencing">Georeference</h3>
     <p> Georeferencing means adding information to an image to specify it's position on a map.</p>
-    <p> This plugin does this by writing files when Process... georeference selected images is clicked.</p>
+    <p> This plugin does this by writing .tif files when Process... georeference selected images is clicked.</p>
 	<p>The plugin uses a <a href="https://en.wikipedia.org/wiki/Linear_referencing">linear referencing system</a> with the GPS data to find image positions.</p>
 	<p>Position of an image is defined by a start chainage and end chainage.</p>
 </ul>
@@ -48,8 +48,8 @@
 
 <h3 id="combined files">Combining files</h3>
 <p>Images can be merged into "virtual raster text" files. These are small text files containing links to 1 or more original images.</p>
-<p>Viewing the VRT file is much faster than viewing its images as seperate layers.</p>
-<p>"Process,make combined VRT" makes and loads a VRT per run and image type.</p>
+<p>Viewing the VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
+<p>"Process,make combined VRT" makes and loads a .vrt file per run and image type.</p>
 
 
 </body>
