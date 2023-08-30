@@ -112,6 +112,17 @@ def hasGps(db=None):
 def initDb(db):
     db.transaction()
     
+    #"Generated column support was added with SQLite version 3.31.0 (2020-01-22). If an earlier version of SQLite attempts to
+    #read a database file that contains a generated column in its schema, then that earlier version will perceive the generated 
+    #column syntax as an error and will report that the database schema is corrupt"
+    
+    
+    
+   # file = os.path.join(os.path.dirname(__file__),'setup.sql')
+   # with open(file
+    
+   # print('setup file',file)
+    
     script = '''
     SELECT InitSpatialMetaData();
     
@@ -124,8 +135,6 @@ def initDb(db):
                 ,new_file text
                 ,image_type text
                 ,marked bool default false
-                ,original_start_chainage float GENERATED ALWAYS AS (image_id*5) VIRTUAL
-                ,original_end_chainage float GENERATED ALWAYS AS (image_id*5+5) VIRTUAL
              );
       
 	create table if not exists corrections
@@ -149,8 +158,6 @@ def initDb(db):
         ,next_m float
         ,next_pk int
         ,last_m float
-        ,pt generated as (makePointM(x,y,m))
-        ,corrected_pt generated as (makePointM(corrected_x,corrected_y,m))
         );    
   
    CREATE INDEX IF NOT EXISTS m_index on points(m);
@@ -160,8 +167,8 @@ def initDb(db):
 create view if not exists lines_view as
 select points.m as start_m
 ,points.next_m as end_m
-,makeline(points.pt,points2.pt) as line
-,makeline(points.corrected_pt,points2.corrected_pt) as corrected_line
+,makeline(makePointM(points.x,points.y,points.m),makePointM(points2.x,points2.y,points2.m)) as line
+,makeline(makePointM(points.corrected_x,points.corrected_y,points.m),makePointM(points2.corrected_x,points2.corrected_y,points2.m)) as corrected_line
 ,points.corrected_x as corrected_start_x
 ,points.corrected_y as corrected_start_y
 from points inner join points as points2
@@ -289,8 +296,8 @@ update points set corrected_x = points_view.corrected_x,corrected_y=points_view.
 chainageQuery = '''
 select start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(:x,:y)) as corrected_chainage
 from lines_view where
-end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ''),(select min(m) from points))
-and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ''),(select max(m) from points))
+end_m >= coalesce((select min(image_id*5)-200 from images where run = ''),(select min(m) from points))
+and start_m <= coalesce((select max(image_id*5+5)+200 from images where run = ''),(select max(m) from points))
 and abs(corrected_start_x-:x) < 50
 and abs(corrected_start_y-:y) < 50
 order by st_distance(line,makePoint(:x,:y))
@@ -309,8 +316,8 @@ def getChainage(run,x,y,db):
 correctedChainageQuery = '''
 select start_m+(end_m-start_m)*Line_Locate_Point(corrected_line,makePoint(:x,:y)) as corrected_chainage
 from lines_view where
-end_m >= coalesce((select min(original_start_chainage)-200 from images where run = ':run'),(select min(m) from points))
-and start_m <= coalesce((select max(original_end_chainage)+200 from images where run = ':run'),(select max(m) from points))
+end_m >= coalesce((select min(image_id*5)-200 from images where run = ':run'),(select min(m) from points))
+and start_m <= coalesce((select max(image_id*5+5)+200 from images where run = ':run'),(select max(m) from points))
 and abs(corrected_start_x-:x) < 50
 and abs(corrected_start_y-:y) < 50
 order by st_distance(corrected_line,makePoint(:x,:y))
