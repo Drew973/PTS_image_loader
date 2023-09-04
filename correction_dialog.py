@@ -54,7 +54,8 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.prevTool = None
         self.setModel(None)
         self.setIndex(QModelIndex())
-        
+        self.pk = None
+
        # canvas = iface.mapCanvas()
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
         self.canvas.setDestinationCrs(crs)
@@ -85,7 +86,6 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.yOffset.valueChanged.connect(self.updateStartMarker)
         self.x.valueChanged.connect(self.updateEndMarker)
         self.y.valueChanged.connect(self.updateEndMarker)
-        
         
     def startToolClicked(self,point):   
         pt = fromCanvasCrs(point)       
@@ -125,7 +125,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         if index.isValid() and self.model() is not None:
             m = self.model()
             r = index.row()
-            
+            self.pk = m.index(r,m.fieldIndex('pk')).data()
             setValue(self.chainage,m.index(r,m.fieldIndex('chainage')))
             setValue(self.x,m.index(r,m.fieldIndex('new_x')))
             setValue(self.y,m.index(r,m.fieldIndex('new_y')))
@@ -133,6 +133,7 @@ class correctionDialog(QDialog,FORM_CLASS):
             setValue(self.yOffset,m.index(r,m.fieldIndex('y_offset')))
 
         else:
+            self.pk = None
             self.chainage.setValue(0)
             self.x.setValue(0)
             self.y.setValue(0)
@@ -156,6 +157,7 @@ class correctionDialog(QDialog,FORM_CLASS):
     def accept(self):
         if self.model():
             self.model().setCorrection(
+                                        pk = self.pk,
                                         chainage = self.chainage.value(),
                                         xOffset = self.xOffset.value(),
                                         yOffset = self.yOffset.value(),

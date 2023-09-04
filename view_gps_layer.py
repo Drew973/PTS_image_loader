@@ -42,7 +42,7 @@ def loadGpsLayer():
     fields = layer.fields()
     
     def features():
-        q = db_functions.runQuery(query = 'select image_id,st_asText(center_line) from center_lines')
+        q = db_functions.runQuery(query = 'select image_id,st_asText(center_line) from center_lines where not center_line is null')
         while q.next():
             f = QgsFeature(fields)
             f['image_id'] = q.value(0)

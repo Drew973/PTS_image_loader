@@ -24,6 +24,13 @@ specify run to avoid.
 or specify image for correction.
 
 
+
+alternative to QSqlTableModel with sqlite3?
+    load extentions.
+    use more recent sqlite version.
+
+
+
 intensity-range hybrid
 gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata "0 0 0 0" -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
 gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata 0 -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"

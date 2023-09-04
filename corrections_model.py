@@ -73,34 +73,20 @@ class correctionsModel(QSqlQueryModel):
         q = 'select run,pk,chainage,new_x,new_y,current_x,current_y,x_offset,y_offset from corrections_view {filt} order by chainage'.format(filt=filt)
         self.setQuery(q,self.database())
 
-
-        
-#    def addCorrections(self,corrections):
-#        q = QSqlQuery(self.database())
-#        if q.prepare('insert into corrections(run,chainage,x,y) values (:run,:chainage,:x,:y)'):
-#            for r in corrections:
-#                q.bindValue(':run',r['run'])
-#                q.bindValue(':chainage',r['chainage'])
- #               q.bindValue(':x',r['x'])
- #               q.bindValue(':y',r['y'])
-#                if not q.exec():
- #                   print(q.boundValues())
-#                    raise db_functions.queryError(q)
-   #     else:
- #          raise db_functions.queryPrepareError(q)
-  #     self.select()
-        
     
-    
+    #insert or update correction. pk = None for insert.
     #x_offset is x difference between point & corrected chainage.
-    def setCorrection(self,chainage,xOffset,yOffset,newX,newY):
-        updateQuery = """
-        insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (':run',:ch,:new_x,:new_y,:xo,:yo)
-        ON CONFLICT DO UPDATE SET run = ':run',chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo
-        """
-        db_functions.runQuery(query = updateQuery,values = {':run':self._run,':ch':chainage,':new_x':newX,
-                                                            ':new_y':newY,':xo':xOffset,':yo':yOffset})
+    def setCorrection(self,pk,chainage,xOffset,yOffset,newX,newY):
+        
+   #     print('setCorrection. pk = ',pk)
+        if pk is None:
+            db_functions.runQuery(query = 'insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (:run,:ch,:new_x,:new_y,:xo,:yo)',
+                                  values = {':run':self._run,':ch':chainage,':new_x':newX,':new_y':newY,':xo':xOffset,':yo':yOffset})
+        else:
+            db_functions.runQuery(query = 'update corrections SET run = :run,chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo where pk = :pk',
+                                  values = {':run':self._run,':ch':chainage,':new_x':newX,':new_y':newY,':xo':xOffset,':yo':yOffset,':pk':pk})
         self.select()
+        
         
         
     def hasGps(self):

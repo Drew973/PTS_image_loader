@@ -297,7 +297,7 @@ class imageModel(QSqlQueryModel,gpsModel):
         #print(q)
         db_functions.runQuery(q)
         self.select()    
-        self._refreshRuns()
+       # self._refreshRuns()
         
     
    # def imageCount(self,run):
