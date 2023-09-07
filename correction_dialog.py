@@ -55,7 +55,6 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.setModel(None)
         self.setIndex(QModelIndex())
         self.pk = None
-
        # canvas = iface.mapCanvas()
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
         self.canvas.setDestinationCrs(crs)

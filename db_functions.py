@@ -219,22 +219,18 @@ from qgis.core import QgsPointXY#,QgsCoordinateTransform,QgsCoordinateReferenceS
 #todo:
 #PRAGMA synchronous = OFF
 #PRAGMA journal_mode = MEMORY
+#ignore duplicate rows after 1st and where wrong type
+
 
 def loadGps(file,db=None):
     if db is None:
         db = defaultDb()
 
-
-    #ST_Transform( geom Geometry , newSRID 27700 )
-    #do tranform in QGIS. ST_TransformXY slow and buggy.
-  #  transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem('EPSG:4326'),QgsCoordinateReferenceSystem('EPSG:27700'),QgsProject.instance())
     db.transaction()
         
-    #runQuery(db=db,query='delete from gps')
     runQuery(db=db,query='delete from points')
     
     q = QSqlQuery(db)
-    #if not q.prepare('insert into points(m,x,y) values(:m,:x,:y)'):
     if not q.prepare('insert into points(m,pt) values(:m,st_transform(MakePoint(:x,:y,4326),27700))'):
         raise queryError(q)
     
@@ -243,20 +239,26 @@ def loadGps(file,db=None):
         
         for i,d in enumerate(reader):
         #   pt = transform.transform(QgsPointXY(float(d['Longitude (deg)']),float(d['Latitude (deg)'])))
-            m = round(float(d['Chainage (km)'])*1000)# need round to avoid floating point errors like int(1.001*1000) = 1000
-            q.bindValue(':m',m)
-        #    q.bindValue(':x',pt.x())
-         #   q.bindValue(':y',pt.y())
-            q.bindValue(':x',float(d['Longitude (deg)']))
-            q.bindValue(':y',float(d['Latitude (deg)']))
+        
+            try:
+                m = round(float(d['Chainage (km)'])*1000)# need round to avoid floating point errors like int(1.001*1000) = 1000
+                x = float(d['Longitude (deg)'])
+                y = float(d['Latitude (deg)'])
+                
+                q.bindValue(':m',m)
+                q.bindValue(':x',x)
+                q.bindValue(':y',y)
             
-            if not q.exec():
-                print(q.boundValues())
-                raise queryError(q)
-    
-    runQuery(db=db,query='update points set next_m = (select m from points as np where np.m>points.m order by m limit 1)')
-    runQuery(db=db,query='update points set x = st_x(pt)')
-    runQuery(db=db,query='update points set y = st_y(pt)')
+                if not q.exec():
+                    raise queryError(q)
+            except Exception as e:
+                message = 'error loading row {r} : {err}'.format(r = i,err = e)
+                print(message)
+                
+                
+                
+    runQuery(db=db,query='update points set next_m = (select m from points as np where np.m>points.m order by m limit 1),x = st_x(pt), y = st_y(pt)')
+    runQuery(db=db,query='update points set corrected_x=x,corrected_y = y')
 
     db.commit()
 

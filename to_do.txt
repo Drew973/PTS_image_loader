@@ -42,3 +42,14 @@ gdaladdo "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\pyth
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\1.vrt" 32 64 128 256 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
 gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\6.vrt" 32 64 128 256 -ro --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL --config GDAL_NUM_THREADS ALL_CPUS
 
+	
+run:
+	number text unique
+	uncorrected_start_chainage
+	uncorrected_end_chainage
+	line geometry(linestring)
+	
+	
+Runs as view and table of bounderies to prevent overlap?
+Or update runs where overlap?
+
