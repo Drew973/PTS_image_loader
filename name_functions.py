@@ -98,7 +98,8 @@ def findOrigonals(georeferenced,projectFolder):
  
     for m in mfvs:
         pattern = "{project}/Data/**/{mfv}/**/Images/**/*.jpg".format(project=projectFolder,mfv = m)
-    
+       # pattern = "{project}/*.jpg".format(project=projectFolder)
+
         files = glob(pattern, recursive = True)
     
         for f in files:
@@ -120,7 +121,6 @@ def projectFolderFromRIL(file):
             return f
     return ''
 
-print(projectFolderFromRIL(r'D:\RAF Shawbury\Spatial Data\Text Files\MFV1_002 Raster Image Load File'))
 
 
 if __name__ == '__main__':
@@ -130,7 +130,8 @@ if __name__ == '__main__':
     #print(r)
     
     
-    
+    #print(projectFolderFromRIL(r'D:\RAF Shawbury\Spatial Data\Text Files\MFV1_002 Raster Image Load File'))
+
     f2 = r' D:\RAF Shawbury\TIF Images\MFV1_020\ImageInt\MFV1_020_ImageInt_000005.tif'
     #r2 = generateMfv(f)
     #print(r2)
