@@ -28,7 +28,6 @@ from image_loader import georeference
 from image_loader import run_commands
 from image_loader import layer_functions
 from image_loader.runs_model import runsModel
-from image_loader.gps_model import gpsModel
 
 
 from collections import namedtuple
@@ -75,7 +74,7 @@ def createProgressDialog(parent=None,labelText=''):
 
 
 
-class imageModel(QSqlQueryModel,gpsModel):
+class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
@@ -83,7 +82,6 @@ class imageModel(QSqlQueryModel,gpsModel):
         self.run = None
         self.runsModel = runsModel()
         self.runsModel.select()
-        #self.gpsModel = gpsModel()
         self.setRun('')
         
     
@@ -158,7 +156,6 @@ class imageModel(QSqlQueryModel,gpsModel):
         if not q.exec('delete from images'):
             raise db_functions.queryError(q)
             
-        gpsModel.clear(self)#method of parent class
         self.runsModel.clear()
         self.select()
 

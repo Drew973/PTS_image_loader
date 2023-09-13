@@ -53,3 +53,15 @@ run:
 Runs as view and table of bounderies to prevent overlap?
 Or update runs where overlap?
 
+
+store left and right edge in images. update on georeference.
+ensures corrections matches image.
+
+corrections should be in gdal gcps.
+create view with gpcp from corrections and offset points.
+use this for georeference function.
+
+
+
+can get perpendicular vector from derivitive. cubic spline has continous derivitive
+

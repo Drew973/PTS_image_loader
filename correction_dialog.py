@@ -52,9 +52,12 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.setupUi(self)
      #   self.setAttribute(Qt.WA_DeleteOnClose)
         self.prevTool = None
-        self.setModel(None)
-        self.setIndex(QModelIndex())
         self.pk = None
+        self.run = None
+        self.setModel(None)
+        self.gpsModel = None
+        
+        self.setIndex(QModelIndex())
        # canvas = iface.mapCanvas()
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
         self.canvas.setDestinationCrs(crs)
@@ -77,22 +80,24 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.endTool = QgsMapToolEmitPoint(self.canvas)
         self.endTool.canvasClicked.connect(self.endToolClicked)
         
-        self.currentButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.startTool))
-        self.endButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.endTool))
+        self.pixelLineButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.startTool))
+        self.XYButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.endTool))
 
-        self.chainage.valueChanged.connect(self.updateStartMarker)
-        self.xOffset.valueChanged.connect(self.updateStartMarker)
-        self.yOffset.valueChanged.connect(self.updateStartMarker)
+        self.frameId.valueChanged.connect(self.updateStartMarker)
+        self.pixel.valueChanged.connect(self.updateStartMarker)
+        self.line.valueChanged.connect(self.updateStartMarker)
         self.x.valueChanged.connect(self.updateEndMarker)
         self.y.valueChanged.connect(self.updateEndMarker)
         
+        
     def startToolClicked(self,point):   
         pt = fromCanvasCrs(point)       
-        if self.model() is not None:
-            ch,xo,yo = self.model().getChainage(point=pt,index=self.index)
-            self.chainage.setValue(ch)
-            self.xOffset.setValue(xo)
-            self.yOffset.setValue(yo)
+        if self.gpsModel is not None:
+            vals = self.gpsModel.getPixelLine(point=pt,frameId = self.frameId.value())
+          #  print('pixel_line',vals)
+            if vals:
+                self.pixel.setValue(vals[0])
+                self.line.setValue(vals[1])
         else:
             print('chainage tool clicked but no model set...')
 
@@ -102,10 +107,11 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     
     def setModel(self,model):
-        self._model = model
+        self._model = model  
     
     
     def endToolClicked(self,point):
+     #   print('end tool clicked',point)
         pt = fromCanvasCrs(point)
         self.x.setValue(pt.x())
         self.y.setValue(pt.y())
@@ -125,19 +131,19 @@ class correctionDialog(QDialog,FORM_CLASS):
             m = self.model()
             r = index.row()
             self.pk = m.index(r,m.fieldIndex('pk')).data()
-            setValue(self.chainage,m.index(r,m.fieldIndex('chainage')))
+            setValue(self.frameId,m.index(r,m.fieldIndex('frame_id')))
             setValue(self.x,m.index(r,m.fieldIndex('new_x')))
             setValue(self.y,m.index(r,m.fieldIndex('new_y')))
-            setValue(self.xOffset,m.index(r,m.fieldIndex('x_offset')))
-            setValue(self.yOffset,m.index(r,m.fieldIndex('y_offset')))
+            setValue(self.pixel,m.index(r,m.fieldIndex('pixel')))
+            setValue(self.line,m.index(r,m.fieldIndex('line')))
 
         else:
             self.pk = None
-            self.chainage.setValue(0)
+            self.frameId.setValue(0)
             self.x.setValue(0)
             self.y.setValue(0)
-            self.xOffset.setValue(0)
-            self.yOffset.setValue(0)
+            self.pixel.setValue(0)
+            self.line.setValue(0)
 
         
     def show(self):
@@ -157,9 +163,10 @@ class correctionDialog(QDialog,FORM_CLASS):
         if self.model():
             self.model().setCorrection(
                                         pk = self.pk,
-                                        chainage = self.chainage.value(),
-                                        xOffset = self.xOffset.value(),
-                                        yOffset = self.yOffset.value(),
+                                        run = self.run,
+                                        frameId = self.frameId.value(),
+                                        pixel = self.pixel.value(),
+                                        line = self.line.value(),
                                         newX = self.x.value(),
                                         newY = self.y.value()
                                         )
@@ -174,14 +181,13 @@ class correctionDialog(QDialog,FORM_CLASS):
         
         
     def updateStartMarker(self):
-        if self.model() is not None:
-            pt = self.model().getPoint(chainage = self.chainage.value(),
-                                       xOffset = self.xOffset.value(),
-                                       yOffset = self.yOffset.value(),
-                                       index = self.index)
-            
-            self.startMarker.setCenter(toCanvasCrs(pt))
-            self.showMarkers()
+        if self.gpsModel is not None:
+            pt = self.gpsModel.getPoint(frameId = self.frameId.value(),
+                                       pixel = self.pixel.value(),
+                                       line = self.line.value())
+            if pt is not None:
+                self.startMarker.setCenter(toCanvasCrs(pt))
+                self.showMarkers()
 
             
     def updateEndMarker(self):

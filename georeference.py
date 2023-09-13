@@ -101,7 +101,9 @@ def georeferenceFile(file,centerLine):
         raise ValueError('{file} not found'.format(file=file))
        
 
-
+#unit vector of bisector. positive = left
+def bisector(v1,v2):
+    return unitVector(leftPerp(v1)+leftPerp(v2))
 
 #numpy.array -> numpy.array
 def unitVector(vector):
@@ -152,8 +154,6 @@ def offset(g,leftOffset):
     
    #print('newPoints',newPoints)
     return LineString([Point(p[0],p[1]) for p in newPoints])
-
-
     
 
 

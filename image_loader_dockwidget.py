@@ -44,6 +44,8 @@ from image_loader.natural_sort import naturalSortProxy
 from image_loader import view_gps_layer
 from image_loader import db_functions
 
+from image_loader import gps_model
+
 from PyQt5.QtCore import Qt
 
 
@@ -64,7 +66,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model = imageModel(parent=self)
         self.model.fields = self.layersDialog
         self.initTopMenu()
-
+        
+        self.gpsModel = gps_model.gpsModel()
+        
+        
         self.correctionsModel = correctionsModel()
         self.correctionsView.setModel(self.correctionsModel)
       #  self.correctionsView.setParent(self)
@@ -78,6 +83,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.correctionsView.setRunsModel(runsProxy)
 
         self.imagesView.setModel(self.model)
+        
+        self.correctionsView.correctionDialog.gpsModel = self.gpsModel
+        
         self.runBox.currentIndexChanged.connect(self.runChange)
         self.runChange()
 
@@ -91,8 +99,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
    
     def georeferenceImages(self):
-        if self.model.hasGps():
-            self.model.georeference()
+        if self.gpsModel.hasGps():
+            self.gpsModel.updateGCP()
+            #self.model.georeference()
             self.correctionsModel.select()
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
@@ -103,6 +112,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         run = self.runBox.itemText(index)
         self.model.setRun(run)
         self.correctionsModel.setRun(run)
+        self.correctionsView.correctionDialog.run = run
+
         #set combobox color
         
         c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
@@ -248,7 +259,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)',directory=d)
         if f:
             if f[0]:
-                self.model.loadGps(f[0])
+                self.gpsModel.loadFile(f[0])
                 iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
 
 

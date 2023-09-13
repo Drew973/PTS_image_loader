@@ -70,21 +70,22 @@ class correctionsModel(QSqlQueryModel):
             filt = ''
             #original
         #filt = ''
-        q = 'select run,pk,chainage,new_x,new_y,current_x,current_y,x_offset,y_offset from corrections_view {filt} order by chainage'.format(filt=filt)
+        q = 'select run,pk,frame_id,pixel,line,new_x,new_y from corrections {filt} order by frame_id,line'.format(filt=filt)
         self.setQuery(q,self.database())
 
     
     #insert or update correction. pk = None for insert.
-    #x_offset is x difference between point & corrected chainage.
-    def setCorrection(self,pk,chainage,xOffset,yOffset,newX,newY):
+  
+    def setCorrection(self,pk,run,frameId,pixel,line,newX,newY):
         
-   #     print('setCorrection. pk = ',pk)
+        
+        print('setCorrection',pk,run,frameId,pixel,line,newX,newY)
         if pk is None:
-            db_functions.runQuery(query = 'insert into corrections (run,chainage,new_x,new_y,x_offset,y_offset) values (:run,:ch,:new_x,:new_y,:xo,:yo)',
-                                  values = {':run':self._run,':ch':chainage,':new_x':newX,':new_y':newY,':xo':xOffset,':yo':yOffset})
+            db_functions.runQuery(query = 'insert into corrections (run,frame_id,pixel,line,new_x,new_y) values (:run,:frame,:pixel,:line,:new_x,:new_y)',
+                                  values = {':run':run,':frame':frameId,':new_x':newX,':new_y':newY,':pixel':pixel,':line':line})
         else:
-            db_functions.runQuery(query = 'update corrections SET run = :run,chainage=:ch,new_x = :new_x,new_y = :new_y,x_offset = :xo,y_offset=:yo where pk = :pk',
-                                  values = {':run':self._run,':ch':chainage,':new_x':newX,':new_y':newY,':xo':xOffset,':yo':yOffset,':pk':pk})
+            db_functions.runQuery(query = 'update corrections SET run = :run,frame_id=:frame,new_x = :new_x,new_y = :new_y,pixel = :pixel ,line = :line where pk = :pk',
+                                  values = {':run':run,':frame':frameId,':new_x':newX,':new_y':newY,':pixel':pixel,':line':line,':pk':pk})
         self.select()
         
         
@@ -99,25 +100,13 @@ class correctionsModel(QSqlQueryModel):
         
 
 #chainage:float,offset:float,index:QModelIndex -> QgsPointXY
-    def getPoint(self,chainage,xOffset,yOffset,index=None):
-        pt = db_functions.getCorrectedPoint(chainage=chainage,db=self.database())
-        return QgsPointXY(pt.x()+xOffset,pt.y()+yOffset)
-    
-    '''
-    find closest (chainage,x_offset,y_offset)
-    index unused
-    '''
-    #index QModelIndex,point:QgsPointXY -> (chainage float,xOffset float,yOffset float)
-    def getChainage(self,point,index=None):
-       # print('run:',self.run)
-        ch = db_functions.getCorrectedChainage(run = self._run,
-                                        x = point.x(),
-                                        y = point.y(),
-                                        db = self.database())
-        
-        pt = db_functions.getCorrectedPoint(chainage =ch,db = self.database())#snapped to corrected line.
-        
-        return (ch , point.x()-pt.x() , point.y()-pt.y() )
+    def getPoint(self,frameId,pixel,line):
+        return db_functions.getPoint(frameId,pixel,line)
         
         
-    
+
+
+    #from last image position    
+    def getPixelLine(self,frameId,point):
+        'select '
+        pass

@@ -42,7 +42,7 @@ class correctionsView(QTableView):
     def setModel(self,model):
         super().setModel(model)
         self.correctionDialog.setModel(model)
-        toShow = [model.fieldIndex('chainage'),model.fieldIndex('new_x'),model.fieldIndex('new_y')]
+        toShow = [model.fieldIndex('frame_id'),model.fieldIndex('pixel'),model.fieldIndex('line'),model.fieldIndex('new_x'),model.fieldIndex('new_y')]
         for c in range(model.columnCount()):
             self.setColumnHidden(c,not c in toShow)
     

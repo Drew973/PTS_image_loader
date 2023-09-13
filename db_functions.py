@@ -25,6 +25,12 @@ column syntax as an error and will report that the database schema is corrupt"
 import os
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
 
+WIDTH = 4.0
+LENGTH = 5.0
+PIXELS = 1038
+LINES = 1250
+
+
 
 class queryError(Exception):
     def __init__(self,query):
@@ -133,11 +139,11 @@ def initDb(db):
             ( 
                  pk INTEGER PRIMARY KEY
                  ,run text default ''
-                 ,chainage DECIMAL(9,3) unique not null
+                 ,frame_id int not null
+				 ,line int
+				 ,pixel int
 				 ,new_x float
 				 ,new_y float
-				 ,x_offset float
-				 ,y_offset float
              );
             
     create table if not exists points(
@@ -149,8 +155,21 @@ def initDb(db):
         ,corrected_y float
         );      
   
-    SELECT AddGeometryColumn('points' , 'pt', 27700, 'POINT', 'XY');
+    create table if not exists gcp(
+    frame INT
+    ,pixel INT
+    ,line INT
+    );
     
+    SELECT AddGeometryColumn('gcp' , 'pt', 27700, 'POINT', 'XY');
+    
+    create index if not exists gcp_frame on gcp(frame);
+    
+    
+    SELECT AddGeometryColumn('points' , 'pt', 27700, 'POINT', 'XY');
+    SELECT AddGeometryColumn('images' , 'left_edge', 27700, 'Linestring', 'XY');
+    SELECT AddGeometryColumn('images' , 'right_edge', 27700, 'Linestring', 'XY');
+
     create view if not exists lines as
     select points.m as start_m
     ,points2.m as end_m
@@ -212,55 +231,9 @@ def initDb(db):
 
     
 import csv
-from qgis.core import QgsPointXY#,QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject
 
 
 
-#todo:
-#PRAGMA synchronous = OFF
-#PRAGMA journal_mode = MEMORY
-#ignore duplicate rows after 1st and where wrong type
-
-
-def loadGps(file,db=None):
-    if db is None:
-        db = defaultDb()
-
-    db.transaction()
-        
-    runQuery(db=db,query='delete from points')
-    
-    q = QSqlQuery(db)
-    if not q.prepare('insert into points(m,pt) values(:m,st_transform(MakePoint(:x,:y,4326),27700))'):
-        raise queryError(q)
-    
-    with open(file,'r') as f:
-        reader = csv.DictReader(f)
-        
-        for i,d in enumerate(reader):
-        #   pt = transform.transform(QgsPointXY(float(d['Longitude (deg)']),float(d['Latitude (deg)'])))
-        
-            try:
-                m = round(float(d['Chainage (km)'])*1000)# need round to avoid floating point errors like int(1.001*1000) = 1000
-                x = float(d['Longitude (deg)'])
-                y = float(d['Latitude (deg)'])
-                
-                q.bindValue(':m',m)
-                q.bindValue(':x',x)
-                q.bindValue(':y',y)
-            
-                if not q.exec():
-                    raise queryError(q)
-            except Exception as e:
-                message = 'error loading row {r} : {err}'.format(r = i,err = e)
-                print(message)
-                
-                
-                
-    runQuery(db=db,query='update points set next_m = (select m from points as np where np.m>points.m order by m limit 1),x = st_x(pt), y = st_y(pt)')
-    runQuery(db=db,query='update points set corrected_x=x,corrected_y = y')
-
-    db.commit()
 
 
 
@@ -269,74 +242,6 @@ def correctGps():
     runQuery(query = 'update points set (corrected_x,corrected_y) = (select coalesce(corrected_x,points.x),coalesce(corrected_y,points.y) from points_view where points_view.m=points.m)')
 
 
-
-#start and end can be float,numpy array...
-#def interpolate(start,startM,end,endM,m):
-  #  frac = (m-startM)/abs(endM-startM)
-   # return start + frac*(end-start)
-    
- #print(interpolate(0,0,100,10,2))#50   
-
-
-chainageQuery = '''
-select start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(:x,:y)) as corrected_chainage
-from lines where
-end_m >= coalesce((select min(image_id*5)-200 from images where run = ''),(select min(m) from points))
-and start_m <= coalesce((select max(image_id*5+5)+200 from images where run = ''),(select max(m) from points))
-and abs(corrected_start_x-:x) < 50
-and abs(corrected_start_y-:y) < 50
-order by st_distance(line,makePoint(:x,:y))
-limit 1
-'''
-#->(chainage:float,offset:float) or None
-def getChainage(run,x,y,db):   
-    q = runQuery(query=chainageQuery,values={':x':x,':y':y,':run':run,':dist':50},db=db)
-    while q.next():
-        if isinstance(q.value(0),float):
-            return q.value(0)
-    print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
-    return -1
-    
-
-correctedChainageQuery = '''
-select start_m+(end_m-start_m)*Line_Locate_Point(corrected_line,makePoint(:x,:y)) as corrected_chainage
-from lines where
-end_m >= coalesce((select min(image_id*5)-200 from images where run = ':run'),(select min(m) from points))
-and start_m <= coalesce((select max(image_id*5+5)+200 from images where run = ':run'),(select max(m) from points))
-and abs(corrected_start_x-:x) < 50
-and abs(corrected_start_y-:y) < 50
-order by st_distance(corrected_line,makePoint(:x,:y))
-limit 1
-'''
-def getCorrectedChainage(run,x,y,db):
-    q = runQuery(query=correctedChainageQuery,values={':x':x,':y':y,':run':run,':dist':50},db=db)
-    while q.next():
-        if isinstance(q.value(0),float):
-            return q.value(0)
-    print('no chainage found for run "{run}" ({x},{y})'.format(x=x,y=y,run=run))
-    return -1
-
-
-pointQuery = '''select st_x(Line_Interpolate_Point(line,(:ch-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(line,(:ch-start_m)/(end_m-start_m)))
-from lines where start_m <= :ch and :ch <=end_m'''
-# -> QgsPointXY
-def getPoint(chainage,db):
-        q = runQuery(query=pointQuery,db = db,values= {':ch':float(chainage)})
-        while q.next():
-            if isinstance(q.value(0),float) and isinstance(q.value(1),float):
-                return QgsPointXY(q.value(0),q.value(1))
-        return QgsPointXY()
-    
-    
-correctedPointQuery = '''select st_x(Line_Interpolate_Point(corrected_line,(:ch-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(corrected_line,(:ch-start_m)/(end_m-start_m)))
-from lines where start_m <= :ch and :ch <=end_m'''
-def getCorrectedPoint(chainage,db):
-        q = runQuery(query=correctedPointQuery,db = db,values= {':ch':float(chainage)})
-        while q.next():
-            if isinstance(q.value(0),float) and isinstance(q.value(1),float):
-                return QgsPointXY(q.value(0),q.value(1))
-        return QgsPointXY()    
-    
     
 def loadCorrections(file):
     db = QSqlDatabase.database('image_loader')
