@@ -157,13 +157,23 @@ class gpsModel:
     
 
     def getPixelLine(self,frameId,point):
-        mQuery = '''
+        _______mQuery = '''
         select minm+Line_Locate_Point(geom,pt)*(maxm-minm) from
         (
         select makeLine(MakePointM(corrected_x,corrected_y,m)) as geom,min(m) as minm,max(m) as maxm,makePoint(:x,:y) as pt
         from points where :frame*5-5<=m and m <=:frame*5
         order by m) line
         '''
+        
+        mQuery = '''
+        select minm+Line_Locate_Point(geom,pt)*(maxm-minm) from
+        (
+        select makeLine(pt) as geom,min(m) as minm,max(m) as maxm,makePoint(:x,:y) as pt
+        from p where :frame*5-5<=m and m <=:frame*5
+        order by m) line
+        '''        
+        
+        
         q = runQuery(mQuery,values = {':frame':frameId,':x':point.x(),':y':point.y()})
         while q.next():
         #    print('m',q.value(0))
@@ -181,7 +191,9 @@ class gpsModel:
     def _sync(self):
         try:
             points = []
-            q = runQuery('select m,corrected_x,corrected_y from points order by m')
+           # q = runQuery('select m,corrected_x,corrected_y from points order by m')
+            q = runQuery('select m,st_x(pt),st_y(pt) from p order by m')
+
             points = []
             while q.next():
                 points.append((q.value(0),q.value(1),q.value(2)))

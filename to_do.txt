@@ -65,3 +65,8 @@ use this for georeference function.
 
 can get perpendicular vector from derivitive. cubic spline has continous derivitive
 
+
+
+might want to switch to using gps shapefile.
+view with lines?
+
