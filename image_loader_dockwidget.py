@@ -100,9 +100,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
+            self.gpsModel.applyCorrections()
             self.gpsModel.updateGCP()
-            #self.model.georeference()
-            self.correctionsModel.select()
+            self.model.georeference()
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
@@ -110,23 +110,24 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def runChange(self):
         index = self.runBox.currentIndex()#int
         run = self.runBox.itemText(index)
+   #     print('runChange',str(run))
         self.model.setRun(run)
         self.correctionsModel.setRun(run)
         self.correctionsView.correctionDialog.run = run
-
-        #set combobox color
+        self.gpsModel.setRun(run)
         
+        #set combobox color
         c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
         if c is not None:
             p = self.runBox.palette()
             p.setColor(QtGui.QPalette.Button, c)
             self.runBox.setPalette(p)
-        
 
     
     def new(self):
         self.model.clear()
         self.correctionsModel.clear()
+        self.gpsModel.clear()
 
 
     def load(self):
@@ -134,7 +135,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
             if f[0]:
                 self.model.load(f[0])
-        
         
 
     def initTopMenu(self):
@@ -146,10 +146,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 
         saveAsAct = fileMenu.addAction('Save as...')
         saveAsAct.triggered.connect(self.saveAs)
-      
         openMenu = fileMenu.addMenu('Open')
-        
-        
         openAct = openMenu.addAction('Open...')
         openAct.triggered.connect(self.load)
         
@@ -174,10 +171,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct = viewMenu.addAction('View Spatial Frame Data...')
         loadFramesAct.triggered.connect(self.loadFrames)
         
-        loadGpsAct = viewMenu.addAction('View GPS data...')
-        loadGpsAct.triggered.connect(view_gps_layer.loadGpsLayer)
+        loadGpsAct = viewMenu.addAction('View original GPS data...')
+        loadGpsAct.triggered.connect(lambda:view_gps_layer.loadGpsLines(corrected = False))
         
-        
+        loadCorrectedGpsAct = viewMenu.addAction('View corrected GPS data...')
+        loadCorrectedGpsAct.triggered.connect(lambda:view_gps_layer.loadGpsLines(corrected = True))
         
         loadCracksAct = viewMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)     
@@ -248,15 +246,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def makeVrt(self):
         self.model.makeVrt()
 
+
     def loadGps(self):
-        
         p = os.path.join(self.layersDialog['folder'],'Hawkeye Exported Data')
         if os.path.isdir(p):
             d = p
         else:
             d = ''
-        
-        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv)',directory=d)
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
         if f:
             if f[0]:
                 self.gpsModel.loadFile(f[0])

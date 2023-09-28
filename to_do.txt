@@ -1,72 +1,82 @@
 
-
-
-want to be able to click old (not necessarily original) position of image then new new position
-original_position is where uncorrected image is.
-convert point to this on accepting
-
-corrections as
-	image_id,pixel,line,x,y
-	pixel and line refer to original image.
-	chainage = image_id*5 + 5 - line*LENGTH/LINES
-
+create/load database explicitly on starting plugin?
 
 constraints:
 	start of image should be end of last image.
 	image width should be ~ constant (gradient effects?)
 
-need something to:
-	-align images with each other and google earth ie georeference images
-	-view many images without crashing QGIS for rating.
-
-problems clicking near to adjacent runs.
-specify run to avoid.
-or specify image for correction.
-
-
 
 alternative to QSqlTableModel with sqlite3?
-    load extentions.
-    use more recent sqlite version.
+    create application defined functions. not that useful as can't use in views,triggers,constraints...
+    use more recent sqlite version? seems same.
 
-
-
-intensity-range hybrid
-gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata "0 0 0 0" -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
-gdalbuildvrt -b 1 -overwrite -a_srs EPSG:27700 -srcnodata 0 -vrtnodata 0 -separate -input_file_list "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_00000.txt" "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\MFV1_006_hybrid_000000.vrt"
-
-adding jpg compression to overviews massivly reduces file size. eg
-gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_006\hybrid\2.vrt" 16 32 64 128 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
-gdaladdo "C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\1_007\ImageInt\2023-01-21 10h08m11s LCMS Module 1 002703.jpg" 16 32 64 128 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
- 
-gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\1.vrt" 32 64 128 256 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL
-gdaladdo "D:\RAF Shawbury\TIF Images\MFV1_005\ImageInt\6.vrt" 32 64 128 256 -ro --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL --config GDAL_NUM_THREADS ALL_CPUS
-
-	
 run:
 	number text unique
 	uncorrected_start_chainage
 	uncorrected_end_chainage
 	line geometry(linestring)
 	
-	
 Runs as view and table of bounderies to prevent overlap?
 Or update runs where overlap?
 
-
-store left and right edge in images. update on georeference.
-ensures corrections matches image.
-
-corrections should be in gdal gcps.
-create view with gpcp from corrections and offset points.
-use this for georeference function.
-
-
-
-can get perpendicular vector from derivitive. cubic spline has continous derivitive
-
-
+defining offset direction:
+	can get perpendicular vector from derivitive. cubic spline has continous derivitive.
+	lookup 2 points short distance from chainage and make bisector.
 
 might want to switch to using gps shapefile.
 view with lines?
 
+only need corrected centerline to find gcps.
+m,corrected_x,corrected_y
+
+
+image shape:
+	collator treats as rectangle. causes some warping at corners.
+	trapezium? 
+	polygon
+
+
+corrections:
+	
+	want to shift image along vehicle path ie chainage shift.	
+	only realy need 1 chainage shift/run.
+	possible to get best chainage shift from user specified corrections.
+
+	for collator m correction for next run tends to be opposite sign. implies x,y shift needed
+	
+	chainages from shapefile(from geometry) higher than csv
+	csv appears to have more accurate chainages.
+	
+
+table of runs?
+	name:text or number:int?
+	uncorrected_start_chainage
+	corrected_start_chainage
+	uncorrected_end_chainage
+	corrected_end_chainage
+what images are in run depends on corrections.
+
+
+
+
+select run,frame_id,line,pixel,new_x,new_y,frame_id*5-line*5.0/1250 as m from corrections	
+
+select *,start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(354473,321903,27700)) as m from lines 
+where ST_Distance(line,makePoint(354473,321903,27700)) < 20
+order by ST_Distance(line,makePoint(354473,321903,27700)) asc
+
+could find chainage shift with
+then find lowest residual
+
+select *,ST_Intersection(line,buff)
+from 
+(select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700),st_buffer(makePoint(new_x,new_y,27700),20) as buff from corrections)
+inner join lines on ST_Intersects(line,buff)
+--want nearest point of line to point.  
+
+
+        select run,start_m+(end_m-start_m)*Line_Locate_Point(line,pt)-m as m_shift
+        from 
+        (select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700) as pt from corrections)
+        inner join lines on ST_Distance(line,pt)<30
+        where abs(m_shift) < 500

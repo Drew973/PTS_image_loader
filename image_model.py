@@ -72,6 +72,33 @@ def createProgressDialog(parent=None,labelText=''):
         return progress
 
 
+    #load images into qgis
+def _georeference():
+    georeferenceCommands = []
+    sources = []
+    
+    gcpQuery = '''
+    select original_file
+, group_concat('('||st_x(pt)||','||st_y(pt)||','||pixel||','||line||')') as gcps
+from gcp inner join images on images.image_id = gcp.frame and marked group by original_file
+    '''
+    
+    q = db_functions.runQuery(gcpQuery)
+    
+    while q.next():
+        newFile = georeference.warpedFileName(q.value(0))
+        sources.append(newFile)
+        georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = q.value(0),
+                                                                                             script = georeference.__file__,
+                                                                                             new = newFile,
+                                                                                             gcps = q.value(1)
+                                                                                             ))
+  #  print('commands',georeferenceCommands)
+    if georeferenceCommands:
+        layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+        run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
+
+
 
 
 class imageModel(QSqlQueryModel):
@@ -198,26 +225,10 @@ class imageModel(QSqlQueryModel):
         progress.deleteLater()
         del progress
         
-                
-    '''
-    some inaccuracy
-    offsetCurve
-    '''
+        
     #load images into qgis
     def georeference(self,indexes=None):
-        db_functions.correctGps()
-        georeferenceCommands = []
-        sources = []
-        q = db_functions.runQuery('select original_file,st_asText(center_line) from images_view')
-        while q.next():
-            file = q.value(0)#string
-            if os.path.exists(file):
-                sources.append(georeference.warpedFileName(file))
-                c = 'python "{script}" "{file}" "{cl}"'.format(script = georeference.__file__,file = file, cl = q.value(1))
-                georeferenceCommands.append(c)
-        if georeferenceCommands:
-            layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-            run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
+        _georeference()
      
 
     def makeVrt(self):

@@ -77,9 +77,7 @@ class correctionsModel(QSqlQueryModel):
     #insert or update correction. pk = None for insert.
   
     def setCorrection(self,pk,run,frameId,pixel,line,newX,newY):
-        
-        
-        print('setCorrection',pk,run,frameId,pixel,line,newX,newY)
+       # print('setCorrection',pk,run,frameId,pixel,line,newX,newY)
         if pk is None:
             db_functions.runQuery(query = 'insert into corrections (run,frame_id,pixel,line,new_x,new_y) values (:run,:frame,:pixel,:line,:new_x,:new_y)',
                                   values = {':run':run,':frame':frameId,':new_x':newX,':new_y':newY,':pixel':pixel,':line':line})

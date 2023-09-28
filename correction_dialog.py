@@ -20,7 +20,7 @@ from PyQt5.QtGui import QColor
 from qgis.gui import QgsVertexMarker,QgsMapToolEmitPoint
 from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject
 from qgis.PyQt import uic
-from PyQt5.QtCore import QModelIndex,Qt
+from PyQt5.QtCore import QModelIndex
 from qgis.utils import iface
 from qgis.core import Qgis,QgsPointXY
 
@@ -54,6 +54,8 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.prevTool = None
         self.pk = None
         self.run = None
+        self.lastButton = None
+        
         self.setModel(None)
         self.gpsModel = None
         
@@ -74,14 +76,13 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.endMarker.setColor(QColor('green'))
         self.endMarker.setIconType(QgsVertexMarker.ICON_X)
 
-        self.startTool = QgsMapToolEmitPoint(self.canvas)
-        self.startTool.canvasClicked.connect(self.startToolClicked)
+        self.mapTool = QgsMapToolEmitPoint(self.canvas)
+        self.mapTool.canvasClicked.connect(self.toolClicked)
         
-        self.endTool = QgsMapToolEmitPoint(self.canvas)
-        self.endTool.canvasClicked.connect(self.endToolClicked)
         
-        self.pixelLineButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.startTool))
-        self.XYButton.clicked.connect(lambda:iface.mapCanvas().setMapTool(self.endTool))
+        self.pixelLineButton.clicked.connect(self.pixelLineButtonClicked)
+        self.XYButton.clicked.connect(self.XYButtonClicked)
+        self.frameButton.clicked.connect(self.frameButtonClicked)
 
         self.frameId.valueChanged.connect(self.updateStartMarker)
         self.pixel.valueChanged.connect(self.updateStartMarker)
@@ -90,17 +91,47 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.y.valueChanged.connect(self.updateEndMarker)
         
         
-    def startToolClicked(self,point):   
-        pt = fromCanvasCrs(point)       
-        if self.gpsModel is not None:
-            vals = self.gpsModel.getPixelLine(point=pt,frameId = self.frameId.value())
-          #  print('pixel_line',vals)
-            if vals:
-                self.pixel.setValue(vals[0])
-                self.line.setValue(vals[1])
-        else:
-            print('chainage tool clicked but no model set...')
+        
+    def frameButtonClicked(self):
+        self.lastButton = 'frame'
+        iface.mapCanvas().setMapTool(self.mapTool)
 
+        
+    def pixelLineButtonClicked(self):
+        self.lastButton = 'pixelLine'
+        iface.mapCanvas().setMapTool(self.mapTool)
+
+
+    def XYButtonClicked(self):
+        self.lastButton = 'XY'
+        iface.mapCanvas().setMapTool(self.mapTool)
+
+
+    def toolClicked(self,point):
+        pt = fromCanvasCrs(point)
+        
+        if self.gpsModel is not None:
+            
+            if self.lastButton == 'frame':
+                frame = self.gpsModel.getFrame(pt)
+                if frame is not None:
+                    self.frameId.setValue(frame)
+                    self.setPixelLine(pt)
+                
+            if self.lastButton == 'pixelLine':
+                self.setPixelLine(pt)
+           
+        if self.lastButton == 'XY':
+            self.x.setValue(pt.x())
+            self.y.setValue(pt.y())
+        
+        
+    def setPixelLine(self,pt):
+        vals = self.gpsModel.getPixelLine(point=pt,frameId = self.frameId.value())
+        if vals:
+            self.pixel.setValue(vals[0])
+            self.line.setValue(vals[1])        
+        
         
     def model(self):
         return self._model
@@ -109,13 +140,6 @@ class correctionDialog(QDialog,FORM_CLASS):
     def setModel(self,model):
         self._model = model  
     
-    
-    def endToolClicked(self,point):
-     #   print('end tool clicked',point)
-        pt = fromCanvasCrs(point)
-        self.x.setValue(pt.x())
-        self.y.setValue(pt.y())
-
         
        #QModelIndex
     def setIndex(self,index):

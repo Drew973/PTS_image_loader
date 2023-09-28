@@ -54,13 +54,13 @@ def defaultDb():
    #fuck sql injection risk. just use replace.
 
 
-def runQuery(query,db = None,values = {}):
+def runQuery(query,db = None,values = {},printQuery=False):
     
     if db is None:
         db = defaultDb()
         
     query = query.replace("\n",' ')
-    
+
     q = QSqlQuery(db)    
     if not q.prepare(query):
         raise queryPrepareError(q)
@@ -74,6 +74,13 @@ def runQuery(query,db = None,values = {}):
      #   for i,v in enumerate(values):
             #q.bindValue(i,v)
         #    q.addBindValue(v)
+        
+    if printQuery:
+        t = query
+        for k,v in values.items():
+            t = t.replace(k,str(v))
+        print(t)
+            
         
     if not q.exec():
         print(q.boundValues())
@@ -102,25 +109,20 @@ def loadFile(dbFile):
     runQuery('insert into images(image_id,run,original_file,image_type,marked) select image_id,run,original_file,image_type,marked from db2.images',db=db)
     runQuery("delete from corrections",db=db)
     runQuery('insert into corrections(run,chainage,x_offset,y_offset,new_x,new_y) select run,chainage,x_offset,y_offset,new_x,new_y from db2.corrections',db=db)
-    runQuery("delete from points",db=db)
-    runQuery('insert into points(m,x,y,next_m,corrected_x,corrected_y) select m,x,y,next_m,corrected_x,corrected_y from db2.points',db=db)
+    runQuery("delete from original_points",db=db)
+    runQuery('insert into original_points(m,pt) select m,pt from db2.points',db=db)
     db.commit()
    # runQuery("DETACH DATABASE 'db2'",db=db)
 
 
 def hasGps(db=None):
-    q = runQuery('select count(m) from points',db)
+    q = runQuery('select count(m) from original_points',db)
     while q.next():
         return q.value(0) > 0
 
 
 def initDb(db):
-    db.transaction()    
-   # file = os.path.join(os.path.dirname(__file__),'setup.sql')
-   # with open(file
-    
-   # print('setup file',file)
-    
+    db.transaction()
     script = '''
     SELECT InitSpatialMetaData();
     
@@ -146,80 +148,39 @@ def initDb(db):
 				 ,new_y float
              );
             
-    create table if not exists points(
-        m INTEGER PRIMARY KEY
-        ,x float
-        ,y float
-        ,next_m int
-        ,corrected_x float
-        ,corrected_y float
-        );      
-  
+ create table if not exists original_points(
+    		id INTEGER PRIMARY KEY
+            ,m float
+            ,next_id int
+            );
+    SELECT AddGeometryColumn('original_points' , 'pt', 27700, 'POINT', 'XY');
+    create index if not exists original_points_m on original_points(m);
+
+ create table if not exists corrected_points(
+    		id INTEGER PRIMARY KEY
+            ,m float
+            ,next_id int
+            );
+    SELECT AddGeometryColumn('corrected_points' , 'pt', 27700, 'POINT', 'XY');
+    create index if not exists corrected_points_m on corrected_points(m);
+
     create table if not exists gcp(
     frame INT
     ,pixel INT
     ,line INT
     );
-    
     SELECT AddGeometryColumn('gcp' , 'pt', 27700, 'POINT', 'XY');
-    
     create index if not exists gcp_frame on gcp(frame);
-    
-    
-    SELECT AddGeometryColumn('points' , 'pt', 27700, 'POINT', 'XY');
-    SELECT AddGeometryColumn('images' , 'left_edge', 27700, 'Linestring', 'XY');
-    SELECT AddGeometryColumn('images' , 'right_edge', 27700, 'Linestring', 'XY');
 
     create view if not exists lines as
-    select points.m as start_m
-    ,points2.m as end_m
-    ,makeline(points.pt,points2.pt) as line
-    ,makeline(makePointM(points.corrected_x,points.corrected_y,points.m),makePointM(points2.corrected_x,points2.corrected_y,points2.m)) as corrected_line
-    ,points.corrected_x as corrected_start_x
-    ,points.corrected_y as corrected_start_y
-    from points inner join points as points2
-    on points2.m = points.next_m;
-
-    create view if not exists corrections_view as
-    select pk,run,chainage,new_x,new_y,x_offset,y_offset
-    ,st_x(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + x_offset as current_x
-    ,st_y(Line_Interpolate_Point(corrected_line,(chainage-start_m)/(end_m-start_m))) + y_offset as current_y
-    ,new_x-st_x(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - x_offset as x_shift
-    ,new_y - st_y(Line_Interpolate_Point(line,(chainage-start_m)/(end_m-start_m))) - y_offset as y_shift
-    from corrections left join lines on start_m <= chainage and chainage < end_m;
-
-    create view if not exists cv as
-    select chainage,x_shift,y_shift 
-    ,lead(chainage) over (order by chainage) as next_ch
-    ,lag(chainage) over (order by chainage) as last_ch
-    ,lead(x_shift) over (order by chainage) as next_xs
-    ,lead(y_shift) over (order by chainage) as next_ys
-    from corrections_view;
-
-  create view if not exists points_view as
-    select 
-    m
-    ,COALESCE(x+x_shift+(next_xs-x_shift)*(m-chainage)/(next_ch-chainage),x+x_shift,x) as corrected_x
-    ,COALESCE(y+y_shift+(next_ys-y_shift)*(m-chainage)/(next_ch-chainage),y+y_shift,y) as corrected_y
-    from points left join cv on chainage<m and m<next_ch
-    or next_ch is null and m>=chainage
-    or last_ch is null and m<=chainage
-    ;
-
-    create view if not exists images_view as
-    select original_file,
-    image_id,
-    makeLine(MakePointM(corrected_x,corrected_y,m)) as center_line
-    from images
-    inner join points_view on marked and image_id*5<=m and m<=image_id*5+5
-    group by original_file
-    order by m;
-
-    create view if not exists center_lines as
-    select image_id,MakeLine(makePoint(corrected_x,corrected_y)) as center_line from
-    (select cast(floor(m/5) as int) as image_id from points group by cast(floor(m/5) as int) order by m)
-    inner join points on image_id*5 <= cast(m as int) and cast(m as int) <= image_id *5 +5
-    group by image_id order by m;
+    select original_points.id,original_points.m as start_m,next.m as end_m,makeLine(original_points.pt,next.pt) as line from original_points
+    inner join original_points as next 
+    on next.id = original_points.id+1;
+    
+    create view if not exists corrected_lines as
+    select corrected_points.id,corrected_points.m as start_m,next.m as end_m,makeLine(corrected_points.pt,next.pt) as line from corrected_points
+    inner join corrected_points as next 
+    on next.id = corrected_points.id+1;
     '''
 
     
@@ -231,16 +192,6 @@ def initDb(db):
 
     
 import csv
-
-
-
-
-
-
-#update corrected_x and corrected_y columns of points using corrections.
-def correctGps():
-    runQuery(query = 'update points set (corrected_x,corrected_y) = (select coalesce(corrected_x,points.x),coalesce(corrected_y,points.y) from points_view where points_view.m=points.m)')
-
 
     
 def loadCorrections(file):
@@ -287,3 +238,10 @@ def createDb(file = dbFile()):
     return db
 
 
+def sqliteVersion():
+    q = runQuery('select sqlite_version()')
+    return q.value(0)
+
+
+if __name__ == '__console__':
+    print(sqliteVersion)
