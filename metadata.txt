@@ -6,7 +6,7 @@
 name=PTS image loader
 qgisMinimumVersion=3.0
 description=Loads and unloads images.
-version=3.33
+version=3.34
 author=Drew
 email=drew.bennett@ptsinternational.co.uk
 

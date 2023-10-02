@@ -80,7 +80,7 @@ def _georeference():
     gcpQuery = '''
     select original_file
 , group_concat('('||st_x(pt)||','||st_y(pt)||','||pixel||','||line||')') as gcps
-from gcp inner join images on images.image_id = gcp.frame and marked group by original_file
+from gcp inner join images on images.frame_id = gcp.frame and marked group by original_file
     '''
     
     q = db_functions.runQuery(gcpQuery)
@@ -198,7 +198,7 @@ class imageModel(QSqlQueryModel):
                 filt = "where run = '{run}'".format(run=run)#"
             else:
                 filt = ''
-            q = 'select marked,pk,run,image_id,original_file,image_type from images {filt} order by image_id,original_file,image_type'.format(filt=filt)
+            q = 'select marked,pk,run,frame_id,original_file,image_type from images {filt} order by frame_id,original_file,image_type'.format(filt=filt)
             self.setQuery(q,self.database())
         self.run = run
         
@@ -314,7 +314,7 @@ class imageModel(QSqlQueryModel):
     def setRunForItems(self,indexes,run):
        col = self.fieldIndex('pk')
        pks = [str(self.index(index.row(),col).data()) for index in indexes]
-       q = "update images set run = ':run' where pk in ({pks})".format(pks = ','.join(pks))
+       q = "update images set run = :run where pk in ({pks})".format(pks = ','.join(pks))
        db_functions.runQuery(query = q,values={':run':run})
        self.select()
     
@@ -363,7 +363,7 @@ class imageModel(QSqlQueryModel):
         #self.runsModel.addRuns([str(d.run) for d in data])
         
         q = QSqlQuery(db)
-        if not q.prepare('insert into images(image_id,original_file,run,image_type) values(:i,:origonal,:run,:type)'):
+        if not q.prepare('insert into images(frame_id,original_file,run,image_type) values(:i,:origonal,:run,:type)'):
             raise db_functions.queryError(q)
             
             

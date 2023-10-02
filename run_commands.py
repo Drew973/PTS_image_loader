@@ -36,7 +36,7 @@ class commandRunner:
 
         for c in commands:
             proc = QProcess()
-            proc.finished.connect(lambda process:self._processCompleted(proc))           
+            proc.finished.connect(lambda process:self._processCompleted(proc,c))           
             self.processes.append(proc)
         
         for i in range(0,self.batchSize):
@@ -69,11 +69,14 @@ class commandRunner:
 
 
 
-    def _processCompleted(self,process):
+    def _processCompleted(self,process,command):
        # print('_processCompleted',state)
         e = process.readAllStandardError()
         if e:
-            print('error:',e)
+            print('error running {c}:{e}:'.format(c=command,e = e))
+        else:
+            pass
+            #print(command)
         self.progress.setValue(self.progress.value()+1)
         self._startNextProcess()
         

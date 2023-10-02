@@ -8,7 +8,6 @@ Created on Mon Apr 24 09:42:07 2023
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 from image_loader import db_functions
-from qgis.core import QgsPointXY
 
 
 class correctionsModel(QSqlQueryModel):

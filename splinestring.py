@@ -109,13 +109,13 @@ class splineStringM:
         
         
     #return m shift that minimizes distance to points
-    def bestMShift(self,points,mVals=None):
+    def bestMShift(self,points,mVals=None,maxShift = 100):
         def res(mShift):
             return self.residual(points,mShift)
         
         if mVals is None:
             d = numpy.max(self.m)-numpy.min(self.m)
-            return minimize_scalar(res,bounds=(-d, d), method='bounded').x
+            return minimize_scalar(res,bounds=(max([-d,-maxShift]), min([d,maxShift])), method='bounded').x
    
     
     

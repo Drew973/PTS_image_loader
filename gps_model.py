@@ -97,7 +97,6 @@ class gpsModel:
         return self.geom is not None
     
     
-    
     def loadFile(self,file):
         ext = os.path.splitext(file)[1]
        # print('loading gps ',ext)
@@ -119,7 +118,7 @@ class gpsModel:
             db.transaction()
             runQuery('delete from gcp',db=db)
             runQuery('insert into gcp (frame,pixel,line,pt) select frame_id,pixel,line,makePoint(new_x,new_y,27700) from corrections',db=db)
-            imagesQuery = runQuery('select image_id from images',db=db)#could add where marked here.
+            imagesQuery = runQuery('select frame_id from images',db=db)#could add where marked here.
             q = QSqlQuery(db)
             if not q.prepare('insert into gcp(frame,pixel,line,pt) values (:frame,:pixel,:line,makePoint(:x,:y,27700))'):
                 raise queryError(q)
@@ -161,8 +160,8 @@ class gpsModel:
         if self.run is not None:
             mQuery = '''
             select start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(:x,:y,27700))  
-            from corrected_lines where start_m <= (select max(image_id)*5-5 from images where run = :run) 
-                                                   and end_m>=  (select min(image_id)*5-5 from images where run = :run) 
+            from corrected_lines where start_m <= (select max(frame_id)*5-5 from images where run = :run) 
+                                                   and end_m>=  (select min(frame_id)*5-5 from images where run = :run) 
                                                    order by ST_Distance(line,makePoint(:x,:y,27700)) 
                                                    limit 1
             '''
@@ -226,6 +225,10 @@ class gpsModel:
             if len(m)>0:    
                 m = numpy.array(m)
                 newPoints = numpy.stack([numpy.array(newX),numpy.array(newY)])
+                
+                #shift = self.geom.bestMShift(points(m = m,x = newX,y=newY))
+                #print('best shift',shift)
+                
                 oldPoints = self.geom.interpolatePoints(m,offset)#2 rows top is x bottom is y.
                 XYShifts = newPoints - oldPoints
                 #print('x',self.geom.x + numpy.interp(self.geom.m,m,XYShifts[0]))
@@ -242,7 +245,6 @@ class gpsModel:
 
     def _uploadGeom(self):
         if self.geom is not None:
-            print(self.geom.x)
             db = defaultDb()
             db.transaction()
             runQuery(db=db,query='delete from corrected_points')

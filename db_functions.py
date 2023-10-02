@@ -106,7 +106,7 @@ def loadFile(dbFile):
         pass
     runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile),db=db)
     runQuery("delete from images",db = db)
-    runQuery('insert into images(image_id,run,original_file,image_type,marked) select image_id,run,original_file,image_type,marked from db2.images',db=db)
+    runQuery('insert into images(frame_id,run,original_file,image_type,marked) select frame_id,run,original_file,image_type,marked from db2.images',db=db)
     runQuery("delete from corrections",db=db)
     runQuery('insert into corrections(run,chainage,x_offset,y_offset,new_x,new_y) select run,chainage,x_offset,y_offset,new_x,new_y from db2.corrections',db=db)
     runQuery("delete from original_points",db=db)
@@ -129,7 +129,7 @@ def initDb(db):
    create table if not exists images 
             ( 
                 pk INTEGER PRIMARY KEY
-                ,image_id INTEGER
+                ,frame_id INTEGER
                 ,run text default ''
                 ,original_file text
                 ,new_file text

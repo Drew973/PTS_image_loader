@@ -40,24 +40,28 @@ corrections:
 	
 	want to shift image along vehicle path ie chainage shift.	
 	only realy need 1 chainage shift/run.
-	possible to get best chainage shift from user specified corrections.
 
+	1 per correction?
+
+	possible to get best chainage shift from user specified corrections.
+	
 	for collator m correction for next run tends to be opposite sign. implies x,y shift needed
 	
 	chainages from shapefile(from geometry) higher than csv
 	csv appears to have more accurate chainages.
-	
 
 table of runs?
-	name:text or number:int?
-	uncorrected_start_chainage
-	corrected_start_chainage
-	uncorrected_end_chainage
-	corrected_end_chainage
+    create table if not exists runs
+    (
+    number INT
+    ,original_start_chainage float
+    ,original_end_chainage float
+    ,corrected_start_chainage float
+    ,corrected_end_chainage float
+    );
+	
+	
 what images are in run depends on corrections.
-
-
-
 
 select run,frame_id,line,pixel,new_x,new_y,frame_id*5-line*5.0/1250 as m from corrections	
 
@@ -75,8 +79,16 @@ inner join lines on ST_Intersects(line,buff)
 --want nearest point of line to point.  
 
 
-        select run,start_m+(end_m-start_m)*Line_Locate_Point(line,pt)-m as m_shift
+        select run,m as old_m,start_m+(end_m-start_m)*Line_Locate_Point(line,pt) as new_m
         from 
         (select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700) as pt from corrections)
         inner join lines on ST_Distance(line,pt)<30
-        where abs(m_shift) < 500
+        where abs(new_m-m) < 500
+		
+		
+		
+		corrected point should be in run or next/last run
+		
+		
+		
+		

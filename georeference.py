@@ -24,7 +24,10 @@ LINES = 1250
 
 '''
 dataset should have gcps OR geotransform , not both
-use GCPs. geotransform is affine. Doesn't curve rectangle as it should.
+geotransform is affine. Doesn't curve rectangle as it should.
+could write worldfile for original image if rectangle not big issue.
+
+use GCPs.
 translated has weird bits like repeated image. fine after warping.
 rendering of vrt seems buggy with random crashes. COG seems to take about as long to write. use this.
 
