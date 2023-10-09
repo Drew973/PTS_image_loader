@@ -181,6 +181,14 @@ def initDb(db):
     select corrected_points.id,corrected_points.m as start_m,next.m as end_m,makeLine(corrected_points.pt,next.pt) as line from corrected_points
     inner join corrected_points as next 
     on next.id = corrected_points.id+1;
+    
+    create view if not exists lines_5 as
+    select s,e,makeLine(pt) as line from
+    (select cast(id/5.0 as int)*5 as s,cast(id/5.0 as int)*5+5 as e from original_points as e group by s,e)
+    inner join original_points on s<=id and id<=e
+    group by s
+    order by m;
+    
     '''
 
     

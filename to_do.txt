@@ -50,7 +50,8 @@ corrections:
 	chainages from shapefile(from geometry) higher than csv
 	csv appears to have more accurate chainages.
 
-table of runs?
+
+add table of runs
     create table if not exists runs
     (
     number INT
@@ -76,19 +77,9 @@ select *,ST_Intersection(line,buff)
 from 
 (select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700),st_buffer(makePoint(new_x,new_y,27700),20) as buff from corrections)
 inner join lines on ST_Intersects(line,buff)
---want nearest point of line to point.  
-
-
-        select run,m as old_m,start_m+(end_m-start_m)*Line_Locate_Point(line,pt) as new_m
-        from 
-        (select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700) as pt from corrections)
-        inner join lines on ST_Distance(line,pt)<30
-        where abs(new_m-m) < 500
+--want nearest point of line to point.  		
 		
 		
-		
-		corrected point should be in run or next/last run
-		
-		
-		
-		
+dialog for chainage shift from point?
+	QComboxBox of chainage,offset within distance.
+	display linestring from start to new chainage. QgsRubberBand.

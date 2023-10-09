@@ -7,7 +7,7 @@ Created on Tue Sep 12 11:44:13 2023
 
 from image_loader.splinestring import splineStringM,points
 from image_loader.db_functions import defaultDb,runQuery,queryError,queryPrepareError
-from qgis.core import QgsPointXY
+from qgis.core import QgsPointXY,QgsGeometry,QgsPoint
 from PyQt5.QtSql import QSqlQuery
 import csv
 import numpy
@@ -280,5 +280,50 @@ class gpsModel:
         except Exception as e:
             self.geom = None
             print(e)
+            
+            
+
+    def originalLine(self,startM,endM):
+        return originalLine(startM,endM)
+    
+    
+    
+#linestring of original_points from startM to endM. ends interpolated.      
+#->QgsGeometry    
+def originalLine(startM,endM):
+    lineQuery = '''
+    select st_asText(st_linemerge(ST_Collect(Line_Substring(line,(:s-start_m)/(end_m-start_m),(:e-start_m)/(end_m-start_m)))))
+    from lines where :s <=end_m and start_m<= :e'''
+    q = runQuery(query = lineQuery,values = {':s':startM,':e':endM})
+    while q.next():
+        wkt = q.value(0)
+        if isinstance(wkt,str):
+            return QgsGeometry.fromWkt(wkt)
+    return QgsGeometry()
 
 
+#way harder than it should be.
+#no way to split multilinestring in spatialite.
+#linemerge drops m value
+#view with longer lines ~10m?
+#QgsPointXY -> [(chainage:float,offset:float)]
+def possibleChainages(pt,dist=20):
+    #1 possible chainage,offset per run...
+    query = '''
+    select s+(e-s)*Line_Locate_Point(line,makePoint(:x,:y)) as m
+    ,st_distance(line,makePoint(498522,363010)) as dist
+    from lines_5 where st_intersects(line,st_buffer(makePoint(:x,:y),:d))
+    order by dist
+    '''
+    q = runQuery(query = query,
+    values = {':x':pt.x(),':y':pt.y(),':d':dist})
+    r = []
+    while q.next():
+        r.append((q.value(0),q.value(1)))
+    return r
+
+
+if __name__ == '__console__':
+    v = possibleChainages(QgsPointXY(498522,363010))
+    print(v)
+    
