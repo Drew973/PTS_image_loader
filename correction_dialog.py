@@ -17,12 +17,12 @@ where chainage&offset is vertex of gps 1 chainage&offset : many (x,y)
 import os
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtGui import QColor
-from qgis.gui import QgsVertexMarker,QgsMapToolEmitPoint
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject
+from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
+from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry
 from qgis.PyQt import uic
 from PyQt5.QtCore import QModelIndex
 from qgis.utils import iface
-from qgis.core import Qgis,QgsPointXY
+from qgis.core import Qgis
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -51,6 +51,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         super().__init__(parent)
         self.setupUi(self)
      #   self.setAttribute(Qt.WA_DeleteOnClose)
+     
         self.prevTool = None
         self.pk = None
         self.run = None
@@ -62,36 +63,45 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.setIndex(QModelIndex())
        # canvas = iface.mapCanvas()
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
-        self.canvas.setDestinationCrs(crs)
         
-        self.startMarker = QgsVertexMarker(self.canvas)
-        self.startMarker.setIconSize(20)
-        self.startMarker.setPenWidth(5)
-        self.startMarker.setColor(QColor('red'))
-        self.startMarker.setIconType(QgsVertexMarker.ICON_CROSS)
+        self.markerLine = QgsRubberBand(self.canvas,False)
+        self.markerLine.setWidth(5)
+        self.markerLine.setColor(QColor('red'))
+        #QColor('green')
 
-        self.endMarker = QgsVertexMarker(self.canvas)
-        self.endMarker.setIconSize(20)
-        self.endMarker.setPenWidth(5)
-        self.endMarker.setColor(QColor('green'))
-        self.endMarker.setIconType(QgsVertexMarker.ICON_X)
+        self.canvas.setDestinationCrs(crs)
 
         self.mapTool = QgsMapToolEmitPoint(self.canvas)
         self.mapTool.canvasClicked.connect(self.toolClicked)
         
-        
         self.pixelLineButton.clicked.connect(self.pixelLineButtonClicked)
-        self.XYButton.clicked.connect(self.XYButtonClicked)
+        self.endButton.clicked.connect(self.endButtonClicked)
         self.frameButton.clicked.connect(self.frameButtonClicked)
 
-        self.frameId.valueChanged.connect(self.updateStartMarker)
-        self.pixel.valueChanged.connect(self.updateStartMarker)
-        self.line.valueChanged.connect(self.updateStartMarker)
-        self.x.valueChanged.connect(self.updateEndMarker)
-        self.y.valueChanged.connect(self.updateEndMarker)
+        self.frameId.valueChanged.connect(self.updateMarkerLine)
+        self.pixel.valueChanged.connect(self.updateMarkerLine)
+        self.line.valueChanged.connect(self.updateMarkerLine)
+        self.m.valueChanged.connect(self.updateMarkerLine)
+        self.offset.valueChanged.connect(self.updateMarkerLine)
+
         
-        
-        
+    def updateMarkerLine(self):
+        if self.gpsModel is not None:
+            startPt = self.gpsModel.getPoint(frameId = self.frameId.value(),
+                                       pixel = self.pixel.value(),
+                                       line = self.line.value())
+            startM = self.gpsModel.lineToM(frame = self.frameId.value(),line = self.line.value())
+            line = self.gpsModel.originalLine(startM,self.m.value())
+           # print(startM,self.m.value())
+            
+            if not line.isNull():
+                endPt = self.gpsModel.originalPointFromM(m = self.m.value(),offset = self.offset.value())
+                g = QgsGeometry.fromPolylineXY([startPt] + line.asPolyline() + [endPt])
+               # print(g)
+                self.markerLine.setToGeometry(g,crs = crs)
+                return
+        self.markerLine.setToGeometry(QgsGeometry(),crs = crs)
+
     def frameButtonClicked(self):
         self.lastButton = 'frame'
         iface.mapCanvas().setMapTool(self.mapTool)
@@ -102,8 +112,8 @@ class correctionDialog(QDialog,FORM_CLASS):
         iface.mapCanvas().setMapTool(self.mapTool)
 
 
-    def XYButtonClicked(self):
-        self.lastButton = 'XY'
+    def endButtonClicked(self):
+        self.lastButton = 'end'
         iface.mapCanvas().setMapTool(self.mapTool)
 
 
@@ -121,9 +131,11 @@ class correctionDialog(QDialog,FORM_CLASS):
             if self.lastButton == 'pixelLine':
                 self.setPixelLine(pt)
            
-        if self.lastButton == 'XY':
-            self.x.setValue(pt.x())
-            self.y.setValue(pt.y())
+            if self.lastButton == 'end':
+                pl = self.gpsModel.getOriginalChainage(point = pt)
+                if pl is not None:
+                    self.m.setValue(pl[0])
+                    self.offset.setValue(pl[1])
         
         
     def setPixelLine(self,pt):
@@ -164,8 +176,8 @@ class correctionDialog(QDialog,FORM_CLASS):
         else:
             self.pk = None
             self.frameId.setValue(0)
-            self.x.setValue(0)
-            self.y.setValue(0)
+            self.m.setValue(0)
+            self.offset.setValue(0)
             self.pixel.setValue(0)
             self.line.setValue(0)
 
@@ -176,7 +188,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         
         
         if self.model():
-            self.updateStartMarker()#images moved/points changed after georeferencing            
+            self.updateMarkerLine()
             if not self.model().hasGps():
                 iface.messageBar().pushMessage("Image_loader", "Load GPS data to find chainages from map clicks.", level=Qgis.Info)
         return super().show()
@@ -191,8 +203,8 @@ class correctionDialog(QDialog,FORM_CLASS):
                                         frameId = self.frameId.value(),
                                         pixel = self.pixel.value(),
                                         line = self.line.value(),
-                                        newX = self.x.value(),
-                                        newY = self.y.value()
+                                        newM = self.m.value(),
+                                        newOffset = self.offset.value()
                                         )
         self.hideMarkers()
         return super().accept()
@@ -203,21 +215,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.hideMarkers()
         return super().reject()
         
-        
-    def updateStartMarker(self):
-        if self.gpsModel is not None:
-            pt = self.gpsModel.getPoint(frameId = self.frameId.value(),
-                                       pixel = self.pixel.value(),
-                                       line = self.line.value())
-            if pt is not None:
-                self.startMarker.setCenter(toCanvasCrs(pt))
-                self.showMarkers()
-
-            
-    def updateEndMarker(self):
-        pt = QgsPointXY(self.x.value(),self.y.value())
-        self.endMarker.setCenter(toCanvasCrs(pt))
-        self.showMarkers()
+  
 
         
     def hide(self):
@@ -230,24 +228,19 @@ class correctionDialog(QDialog,FORM_CLASS):
         
         
     def hideMarkers(self):
-        self.startMarker.hide()
-        self.endMarker.hide()
+        self.markerLine.hide()
         self.canvas.refresh()
         if self.prevTool is not None:
            iface.mapCanvas().setMapTool(self.prevTool,clean=True)
 
         
     def showMarkers(self):
-     #   print('showMarkers')
-        self.startMarker.show()
-        self.endMarker.show()
         self.canvas.refresh()
         
         
     def removeMarkers(self):
       #  print('removeMarkers')
-        self.canvas.scene().removeItem(self.startMarker)
-        self.canvas.scene().removeItem(self.endMarker)
+        self.canvas.scene().removeItem(self.markerLine)
         self.canvas.refresh()
         
         #not called by accept or reject or close button...

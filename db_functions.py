@@ -121,16 +121,25 @@ def hasGps(db=None):
         return q.value(0) > 0
 
 
+#store m in z. can use for interpolating
+
 def initDb(db):
     db.transaction()
     script = '''
     SELECT InitSpatialMetaData();
     
-   create table if not exists images 
+   create table if not exists run_changes
+             (
+                 pk INTEGER PRIMARY KEY
+                 ,m float
+                 ,last_run int unique
+				 ,next_run int unique
+              );
+    
+   create table if not exists images
             ( 
                 pk INTEGER PRIMARY KEY
                 ,frame_id INTEGER
-                ,run text default ''
                 ,original_file text
                 ,new_file text
                 ,image_type text
@@ -147,6 +156,11 @@ def initDb(db):
 				 ,new_x float
 				 ,new_y float
              );
+            
+   create view if not exists corrections_m as select pk,5.0*(frame_id-line/1250) as m,
+   4.0*0.5-pixel*4.0/1038 as left_offset,makePoint(new_x,new_y) as pt from corrections;
+
+
             
  create table if not exists original_points(
     		id INTEGER PRIMARY KEY
@@ -172,10 +186,10 @@ def initDb(db):
     SELECT AddGeometryColumn('gcp' , 'pt', 27700, 'POINT', 'XY');
     create index if not exists gcp_frame on gcp(frame);
 
-    create view if not exists lines as
-    select original_points.id,original_points.m as start_m,next.m as end_m,makeLine(original_points.pt,next.pt) as line from original_points
+   create view if not exists lines as
+    select c.id,c.m as start_m,next.m as end_m,makeLine(makePointz(st_x(c.pt),st_y(c.pt),c.m),makePointz(st_x(next.pt),st_y(next.pt),next.m)) as line from original_points as c
     inner join original_points as next 
-    on next.id = original_points.id+1;
+    on next.id = c.id+1;
     
     create view if not exists corrected_lines as
     select corrected_points.id,corrected_points.m as start_m,next.m as end_m,makeLine(corrected_points.pt,next.pt) as line from corrected_points
@@ -249,6 +263,32 @@ def createDb(file = dbFile()):
 def sqliteVersion():
     q = runQuery('select sqlite_version()')
     return q.value(0)
+
+
+
+def runChainages(run):
+    
+    s = 0.0
+    e = 0.0
+    q = runQuery(query = "select m from run_changes where next_run  = :run",values = {':run':run})
+    while q.next():
+        s = q.value(0)
+        break
+    
+    q = runQuery(query = "select m from run_changes where last_run  = :run",values = {':run':run})
+    while q.next():
+        e = q.value(0)
+        break
+    
+    return (s,e)
+
+
+def setStartChainage(run,m):
+    runQuery(query = "INSERT OR REPLACE INTO run_changes(m,next_run values (m = :m where next_run  = :run",values = {':run':run,':m':m})
+
+
+def setEndChainage(run,m):
+    runQuery(query = "update run_changes set m = :m where last_run  = :run",values = {':run':run,':m':m})
 
 
 if __name__ == '__console__':

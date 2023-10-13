@@ -1,0 +1,22 @@
+
+
+xy shift puts corrected points in correct place. points between then not. where vehicle went aroung U shape.
+
+
+
+
+
+move linestringM so that specified m,left_offset at points.
+new length ~ old length
+minimize: length difference, distance to 
+
+new linestring shouldn't have gaps. shifts should be continous?
+
+points not that far from original linestring. ~10m
+chainage shift could be ~50m
+
+
+
+
+
+

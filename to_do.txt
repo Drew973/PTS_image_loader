@@ -34,36 +34,30 @@ image shape:
 	collator treats as rectangle. causes some warping at corners.
 	trapezium? 
 	polygon
-
+	
 
 corrections:
-	
+	move centerline so that specified m,offset at x,y
 	want to shift image along vehicle path ie chainage shift.	
-	only realy need 1 chainage shift/run.
-
-	1 per correction?
-
-	possible to get best chainage shift from user specified corrections.
-	
+	collator uses 1 chainage shift + offset shift/run.
+	possible to get best chainage shift for group of corrections.
 	for collator m correction for next run tends to be opposite sign. implies x,y shift needed
-	
 	chainages from shapefile(from geometry) higher than csv
 	csv appears to have more accurate chainages.
+	try chainage,offset shift per correction.
 
-
-add table of runs
-    create table if not exists runs
-    (
-    number INT
-    ,original_start_chainage float
-    ,original_end_chainage float
-    ,corrected_start_chainage float
-    ,corrected_end_chainage float
-    );
+	choosing between possible new chainages for correction?
+	minimize distance to neiboring corrections?
 	
+	
+
+
+have original_m and uncorrected x,y
+want to add correction to this.
+original_m,0 -> corrected m,offset -> corrected x,y
+
 	
 what images are in run depends on corrections.
-
 select run,frame_id,line,pixel,new_x,new_y,frame_id*5-line*5.0/1250 as m from corrections	
 
 select *,start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(354473,321903,27700)) as m from lines 
@@ -83,3 +77,23 @@ inner join lines on ST_Intersects(line,buff)
 dialog for chainage shift from point?
 	QComboxBox of chainage,offset within distance.
 	display linestring from start to new chainage. QgsRubberBand.
+	
+	
+runs vs no runs:
+	no runs simpler
+	could have 1 shift/offset per run like collator does
+	better if don't need to spend time splitting into runs
+		
+
+
+xy shift puts corrected points in correct place. points between then not.
+
+
+m shift < ~ distance from original point to new point
+		
+		
+		
+	
+everything as single run would simplify calculations.
+how to make nice ui for this?
+show chainages from a-b. next and previous buttons

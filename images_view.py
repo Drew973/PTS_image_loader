@@ -5,13 +5,14 @@ Created on Mon Mar 13 12:16:57 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QTableView,QMenu
+from PyQt5.QtWidgets import QMenu,QTreeView#QTableView
+
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtCore import QItemSelectionModel
 from image_loader.set_run_dialog import setRunDialog
 
 
-class imagesView(QTableView):
+class imagesView(QTreeView):
   
     def __init__(self,parent=None):
         super().__init__(parent)

@@ -119,8 +119,8 @@ def test():
     
     b = QComboBox()
     b.setModel(m)
-    m.addRuns(['a','b'])
-    m.addRuns(['b','c'])
+    m.addRuns([1,2])
+    m.addRuns([2,3])
 
     b.show()
     return b
