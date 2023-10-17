@@ -24,5 +24,19 @@ if more than 1
 
 forward shift and perpendicular shift?
 
-can send images around bend properly. no need to find chainages
+can send images around bend properly? no need to find chainages
+
+still problem with 
+
+
+
+
+
+
+
+
+select m,left_offset,pt
+,(select Line_Interpolate_Point(line,(m-start_m)/(end_m-start_m)) from lines limit 1) as old_pt
+from corrections_m
+
 
