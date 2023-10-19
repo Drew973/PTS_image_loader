@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>945</width>
-    <height>795</height>
+    <width>795</width>
+    <height>761</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,9 +15,6 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="verticalLayout_2">
-    <item>
-     <widget class="QSpinBox" name="runBox"/>
-    </item>
     <item>
      <widget class="QWidget" name="mainWidget" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -32,54 +29,15 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_3">
+         <widget class="QWidget" name="runs">
           <attribute name="title">
-           <string>Chainage</string>
+           <string>Runs</string>
           </attribute>
           <layout class="QGridLayout" name="gridLayout">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>Start Chainage</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="startChainage"/>
-           </item>
-           <item row="0" column="2">
-            <widget class="QPushButton" name="startFromClick">
-             <property name="text">
-              <string>From Click...</string>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="0">
-            <widget class="QLabel" name="label_2">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>End Chainage</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="endChainage"/>
-           </item>
-           <item row="1" column="2">
-            <widget class="QPushButton" name="endFromClick">
-             <property name="text">
-              <string>From Click...</string>
+            <widget class="runsView" name="runsWidget">
+             <property name="uniformRowHeights">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -90,6 +48,9 @@
            <string>Images</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QComboBox" name="runBox"/>
+           </item>
            <item>
             <widget class="imagesView" name="imagesView">
              <property name="selectionMode">
@@ -105,26 +66,6 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab_2">
-          <attribute name="title">
-           <string>Corrections</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
-            <widget class="correctionsView" name="correctionsView">
-             <property name="selectionMode">
-              <enum>QAbstractItemView::ExtendedSelection</enum>
-             </property>
-             <property name="selectionBehavior">
-              <enum>QAbstractItemView::SelectRows</enum>
-             </property>
-             <property name="textElideMode">
-              <enum>Qt::ElideLeft</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </widget>
        </item>
       </layout>
@@ -135,14 +76,14 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>correctionsView</class>
-   <extends>QTableView</extends>
-   <header>image_loader.corrections_view</header>
-  </customwidget>
-  <customwidget>
    <class>imagesView</class>
    <extends>QTreeView</extends>
    <header>image_loader.images_view</header>
+  </customwidget>
+  <customwidget>
+   <class>runsView</class>
+   <extends>QTreeView</extends>
+   <header>image_loader.runs_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

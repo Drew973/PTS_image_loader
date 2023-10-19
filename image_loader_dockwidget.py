@@ -34,7 +34,6 @@ from PyQt5 import QtGui
 from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.image_model import imageModel
-from image_loader.corrections_model import correctionsModel
 
 from image_loader.functions.load_frame_data import loadFrameData
 from image_loader.functions.load_cracking import loadCracking
@@ -43,8 +42,8 @@ from image_loader.widgets import set_layers_dialog
 from image_loader.natural_sort import naturalSortProxy
 from image_loader import view_gps_layer
 from image_loader import db_functions
-
 from image_loader.gps_model import gpsModel
+from image_loader import runs_table_model
 
 from PyQt5.QtCore import Qt
 
@@ -65,28 +64,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.model = imageModel(parent=self)
         self.model.fields = self.layersDialog
+        self.imagesView.setModel(self.model)
         self.initTopMenu()
         
         self.gpsModel = gpsModel()
-     #   self.runsModel = runs_table_model.runsTableModel()
+        self.runsModel = runs_table_model.runsTableModel()
+        self.runsWidget.setModel(self.runsModel)
+        self.runsWidget.setGpsModel(self.gpsModel)
         
-        self.correctionsModel = correctionsModel()
-        self.correctionsView.setModel(self.correctionsModel)
-      #  self.correctionsView.setParent(self)
-        
-        runsProxy = naturalSortProxy()
-        runsProxy.setSourceModel(self.model.runsModel)
-        runsProxy.sort(Qt.AscendingOrder)
-        
-     #   self.runBox.setModel(runsProxy)
-        self.imagesView.setRunsModel(runsProxy)
-        self.correctionsView.setRunsModel(runsProxy)
-      #  self.runsView.setModel(self.runsModel)
-        self.imagesView.setModel(self.model)
-        
-        self.correctionsView.correctionDialog.gpsModel = self.gpsModel
-        
-        self.runBox.valueChanged.connect(self.runChange)
+        self.runBox.setModel(self.runsModel)
+
+        self.runBox.currentIndexChanged.connect(self.runChange)
         self.runChange()
 
 
@@ -108,23 +96,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         
     def runChange(self):
-        run = self.runBox.value()
+        t = self.runBox.currentText()
+        try:
+            run = int(t)
+        except:
+            run = 0
+        
         self.model.setRun(run)
-        self.correctionsModel.setRun(run)
-        self.correctionsView.correctionDialog.run = run
         self.gpsModel.setRun(run)
-        
-        limits = gpsModel.chainageLimits(run)
-        self.startChainage.setRange(limits[0],limits[1])
-        self.endChainage.setRange(limits[0],limits[1])
-        
-        s,e = db_functions.runChainages(run)
-        self.startChainage.setValue(s)
-        self.endChainage.setValue(e)
-        
-        self.gpsModel.originalLine(self.startChainage.value(),self.endChainage.value())
-        
-        
         #set combobox color
     #    c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
      #   if c is not None:
@@ -135,7 +114,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
     def new(self):
         self.model.clear()
-        self.correctionsModel.clear()
         self.gpsModel.clear()
 
 
@@ -289,7 +267,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = getFile(folder = os.path.join(self.layersDialog['folder'],'Processed Data') , filt = '*;;*.csv')
        # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
         if f:
-            self.correctionsModel.loadFile(f)
             self.model.runsModel.select()
         
             
@@ -313,7 +290,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         QSqlDatabase.database('image_loader').close()
-        self.correctionsView.correctionDialog.removeMarkers()
         self.closingPlugin.emit()
         event.accept()
 

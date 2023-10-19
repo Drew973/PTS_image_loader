@@ -410,7 +410,7 @@ class gpsModel:
     
     @staticmethod
     #->float or None
-    def chainageLimits(run):
+    def chainageLimits(run=None):
         q = runQuery('select coalesce (min(m),0),coalesce (max(m),0) from original_points')
         while q.next():
            return (q.value(0),q.value(1))

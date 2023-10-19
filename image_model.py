@@ -27,7 +27,7 @@ from image_loader.load_image import loadImage
 from image_loader import georeference
 from image_loader import run_commands
 from image_loader import layer_functions
-from image_loader.runs_model import runsModel
+#from image_loader.runs_model import runsModel
 
 
 from collections import namedtuple
@@ -66,12 +66,8 @@ class _image():
 def createProgressDialog(parent=None,labelText=''):
         progress = QProgressDialog(labelText,"Cancel", 0, 0,parent=parent)#QObjectwithout parent gets deleted like normal python object
         progress.setWindowModality(Qt.WindowModal)
-        #progress.setAutoClose(False)
         progress.show()
-     #   progress.forceShow()    
         return progress
-
-
 
 
 
@@ -79,10 +75,7 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-     #   self._db = db
         self.run = None
-        self.runsModel = runsModel()
-        self.runsModel.select()
         self.setRun('')
         
     
@@ -153,11 +146,8 @@ class imageModel(QSqlQueryModel):
 
 
     def setData(self,index,value,role = Qt.EditRole):
-     #   print('role',role)#Qt.EditRole when editing through delegate
-   #     print('value',value)
         if index.column() == self.fieldIndex('marked'):
             if role == Qt.EditRole:
-            #    print(value)
                 self.mark([index],value)
         return True
     
@@ -176,31 +166,27 @@ class imageModel(QSqlQueryModel):
     def select(self):
         t = self.query().lastQuery()#str
         self.setQuery(t,self.database())
-       #self.setQuery(self.query()) query does not update model. bug in qt?
-        self.runsModel.select()
        
         
     def clear(self):
         q = QSqlQuery(self.database())
         if not q.exec('delete from images'):
             raise db_functions.queryError(q)
-            
-        self.runsModel.clear()
         self.select()
 
 
-   # def _refreshRuns(self):
-       # self.runsModel.select()
-        
-    
-    
     def setRun(self,run):
-        if str(run) != str(self.run):
-            if run is not None:
-                filt = "where run = '{run}'".format(run=run)#"
-            else:
-                filt = ''
-            q = 'select marked,pk,run,frame_id,original_file,image_type from images {filt} order by frame_id,original_file,image_type'.format(filt=filt)
+        if run != self.run:
+       #     if run is not None:
+         #       filt = "where run = '{run}'".format(run=run)#"
+         #   else:
+         #       filt = ''
+         #   q = 'select marked,pk,run,frame_id,original_file,image_type from images {filt} order by frame_id,original_file,image_type'.format(filt=filt)           
+            q = '''select images.pk,frame_id,original_file,image_type,marked from images
+            inner join runs_view on frame_id*5+5 >= start_chainage and frame_id*5 <= end_chainage
+            and number = {n}
+            order by frame_id,image_type'''.format(n = run)
+            
             self.setQuery(q,self.database())
         self.run = run
         

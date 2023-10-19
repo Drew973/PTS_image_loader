@@ -87,13 +87,29 @@ runs vs no runs:
 
 
 xy shift puts corrected points in correct place. points between then not.
-
-
-m shift < ~ distance from original point to new point
-		
-		
 		
 	
 everything as single run would simplify calculations.
 how to make nice ui for this?
-show chainages from a-b. next and previous buttons
+show chainages from a-b. next and previous buttons?
+
+few enough corrections not to filter by run
+need way to select images to load. image details rarely looked at.
+
+
+allow gaps and/or overlap between runs.
+
+
+1 chainage,offset correction per run.
+
+
+table of run,start_chainage,end_chainage,chainage_correction,left_offset
+find chainage dialog
+find correction dialog
+
+
+ to add/edit run. same as current add correction.
+
+
+
+
