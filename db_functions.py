@@ -165,7 +165,9 @@ def initDb(db):
    create view if not exists corrections_m as select pk,5.0*(frame_id-line/1250) as m,
    4.0*0.5-pixel*4.0/1038 as left_offset,makePoint(new_x,new_y) as pt from corrections;
 
-
+create view if not exists images_view as
+select number as run,chainage_correction,left_offset,images.pk,frame_id,original_file,image_type,marked from images
+            inner join runs_view on frame_id*5+5 >= start_chainage and frame_id*5 <= end_chainage;
             
  create table if not exists original_points(
     		id INTEGER PRIMARY KEY

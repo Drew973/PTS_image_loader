@@ -39,13 +39,10 @@ from image_loader.functions.load_frame_data import loadFrameData
 from image_loader.functions.load_cracking import loadCracking
 from image_loader.widgets import set_layers_dialog
 
-from image_loader.natural_sort import naturalSortProxy
 from image_loader import view_gps_layer
 from image_loader import db_functions
 from image_loader.gps_model import gpsModel
 from image_loader import runs_table_model
-
-from PyQt5.QtCore import Qt
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -71,6 +68,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.runsModel = runs_table_model.runsTableModel()
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
+        self.runsModel.dataChanged.connect(self.model.select)
         
         self.runBox.setModel(self.runsModel)
 

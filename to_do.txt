@@ -15,13 +15,7 @@ run:
 	uncorrected_start_chainage
 	uncorrected_end_chainage
 	line geometry(linestring)
-	
-Runs as view and table of bounderies to prevent overlap?
-Or update runs where overlap?
 
-defining offset direction:
-	can get perpendicular vector from derivitive. cubic spline has continous derivitive.
-	lookup 2 points short distance from chainage and make bisector.
 
 might want to switch to using gps shapefile.
 view with lines?
@@ -33,7 +27,7 @@ m,corrected_x,corrected_y
 image shape:
 	collator treats as rectangle. causes some warping at corners.
 	trapezium? 
-	polygon
+	polygon?
 	
 
 corrections:
@@ -49,66 +43,39 @@ corrections:
 	choosing between possible new chainages for correction?
 	minimize distance to neiboring corrections?
 	
-	
 
-
-have original_m and uncorrected x,y
-want to add correction to this.
-original_m,0 -> corrected m,offset -> corrected x,y
-
-	
-what images are in run depends on corrections.
-select run,frame_id,line,pixel,new_x,new_y,frame_id*5-line*5.0/1250 as m from corrections	
-
-select *,start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(354473,321903,27700)) as m from lines 
-where ST_Distance(line,makePoint(354473,321903,27700)) < 20
-order by ST_Distance(line,makePoint(354473,321903,27700)) asc
-
-could find chainage shift with
-then find lowest residual
-
-select *,ST_Intersection(line,buff)
-from 
-(select run,frame_id*5-line*5.0/1250 as m,makePoint(new_x,new_y,27700),st_buffer(makePoint(new_x,new_y,27700),20) as buff from corrections)
-inner join lines on ST_Intersects(line,buff)
---want nearest point of line to point.  		
-		
-		
 dialog for chainage shift from point?
 	QComboxBox of chainage,offset within distance.
 	display linestring from start to new chainage. QgsRubberBand.
 	
 	
 runs vs no runs:
-	no runs simpler
 	could have 1 shift/offset per run like collator does
 	better if don't need to spend time splitting into runs
 		
-
-
-xy shift puts corrected points in correct place. points between then not.
 		
+finding chainage,offset <-> x,y:
+
+need to define direction for offset.
+
+	depends on what path does between known points.
+	smooth path can be cublic spline.
+	has continous derivitive.
+	Causing problems due to lack of smoothing?
 	
-everything as single run would simplify calculations.
-how to make nice ui for this?
-show chainages from a-b. next and previous buttons?
-
-few enough corrections not to filter by run
-need way to select images to load. image details rarely looked at.
-
-
-allow gaps and/or overlap between runs.
-
-
-1 chainage,offset correction per run.
+	
+	define perpendicular direction by making vector from start of image centerline to end of image centerline.
+	or distance either side of m
+	left_offset = dot_product(perp,shortest_line)
+	
+	
+	
+GCP from centerline:
+	are offsets needed? try just centerline.
 
 
-table of run,start_chainage,end_chainage,chainage_correction,left_offset
-find chainage dialog
-find correction dialog
 
 
- to add/edit run. same as current add correction.
 
 
 

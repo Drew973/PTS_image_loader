@@ -3,6 +3,13 @@
 Created on Tue Sep 12 11:44:13 2023
 
 @author: Drew.Bennett
+
+
+need:
+frame,pixel,line <-> x,y for corrections.
+chainage limits for chainage dialogs.
+originalLine for displaying chainage ranges.
+
 """
 
 from image_loader.splinestring import splineStringM,points

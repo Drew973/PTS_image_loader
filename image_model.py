@@ -194,7 +194,7 @@ class imageModel(QSqlQueryModel):
     #load images into qgis
     def loadImages(self,indexes):
         progress = createProgressDialog(parent=self.parent(),labelText = "Loading images...")
-        query = db_functions.runQuery('select original_file,run,image_type from images where marked and not original_file is null')
+        query = db_functions.runQuery('select original_file,run,image_type from images_view where marked and not original_file is null')
         progress.setRange(0,query.size())
         i = 0
         while query.next():
@@ -220,7 +220,7 @@ class imageModel(QSqlQueryModel):
         progress = QProgressDialog("Preparing...","Cancel", 0, 1,parent = self.parent())#QObjectwithout parent gets deleted like normal python object
 
         #use something unlikey to be in file name as seperator.
-        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images where marked group by run,image_type order by original_file")
+        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where marked group by run,image_type order by original_file")
         data = []
         while query.next():
             files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
@@ -339,35 +339,22 @@ class imageModel(QSqlQueryModel):
          
             
     def _add(self,data):
-        
-       # print(data[0].run)
         db = self.database()
         db.transaction()
-           
-        #self.runsModel.addRuns([str(d.run) for d in data])
-        
         q = QSqlQuery(db)
-        if not q.prepare('insert into images(frame_id,original_file,run,image_type) values(:i,:origonal,:run,:type)'):
+        if not q.prepare('insert into images(frame_id,original_file,image_type) values(:i,:origonal,:type)'):
             raise db_functions.queryError(q)
-            
-            
         for d in data:
-            
             q.bindValue(':i',d.imageId)
             q.bindValue(':origonal',d.origonalFile)
          #   q.bindValue(':new',d.newFile)
-            q.bindValue(':run',d.run)
             q.bindValue(':type',d.imageType.name)
-
             if not q.exec():
                     print(q.boundValues())
                     raise db_functions.queryError(q)
-            
         db.commit()
         self.select()
-      #  self._refreshRuns()
-
-
+        
 
     def saveAs(self,file):
         pass
