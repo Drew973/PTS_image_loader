@@ -19,7 +19,7 @@
      <widget class="QWidget" name="mainWidget" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
-        <widget class="QTabWidget" name="tabWidget">
+        <widget class="QTabWidget" name="tabs">
          <property name="layoutDirection">
           <enum>Qt::LeftToRight</enum>
          </property>
@@ -43,7 +43,7 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab">
+         <widget class="QWidget" name="images">
           <attribute name="title">
            <string>Images</string>
           </attribute>
@@ -66,6 +66,16 @@
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="corrections">
+          <attribute name="title">
+           <string>Corrections</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="correctionsView" name="correctionsWidget"/>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
       </layout>
@@ -84,6 +94,11 @@
    <class>runsView</class>
    <extends>QTreeView</extends>
    <header>image_loader.runs_view</header>
+  </customwidget>
+  <customwidget>
+   <class>correctionsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.corrections_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

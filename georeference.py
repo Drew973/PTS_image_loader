@@ -66,7 +66,7 @@ def georeferenceFile(file,warpedFile,gcps):
             gdal.Warp(destNameOrDestDS = warpedFile,
                  srcDSOrSrcDSTab = translated,
                  resampleAlg = 'near',
-                 tps = True,
+             #    tps = True,
                  dstalpha = True,
                  warpOptions = ['SKIP_NOSOURCE=YES']
         )

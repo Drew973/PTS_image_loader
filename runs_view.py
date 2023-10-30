@@ -7,6 +7,7 @@ Created on Tue Oct 17 13:41:52 2023
 
 from PyQt5.QtWidgets import QMenu,QTreeView#QTableView
 from image_loader.chainages_dialog import chainagesDialog
+from image_loader.correction_dialog import correctionDialog
 
 
 class runsView(QTreeView):
@@ -28,6 +29,8 @@ class runsView(QTreeView):
         dropRunsAct.triggered.connect(self.dropRuns)
         
         self.chainagesDialog = chainagesDialog(parent=self)
+        self.correctionDialog = correctionDialog(parent=self)
+
         self.setGpsModel(None)
 
         
@@ -36,9 +39,15 @@ class runsView(QTreeView):
         self.chainagesDialog.show()
         
     
+    def minSelected(self):
+        selected = [index.row() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))]
+        if selected:
+            return min(selected)
+
+
     def setChainage(self):
-        row = min([index.row() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))])
-        self.chainagesDialog.setRow(row)
+        self.correctionDialog.hide()
+        self.chainagesDialog.setRow(self.minSelected())
         self.chainagesDialog.show()
         
         
@@ -51,6 +60,7 @@ class runsView(QTreeView):
         
     def setGpsModel(self,model):
         self.chainagesDialog.setGpsModel(model)
+        self.correctionDialog.gpsModel = model
         
         
     def contextMenuEvent(self, event):
@@ -64,4 +74,5 @@ class runsView(QTreeView):
 
     
     def findCorrection(self):
-        pass
+        self.chainagesDialog.hide()
+        self.correctionDialog.show()

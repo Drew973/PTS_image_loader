@@ -1,4 +1,8 @@
 
+
+spline interpolation causing problems?
+
+
 create/load database explicitly on starting plugin?
 
 constraints:
@@ -64,9 +68,8 @@ need to define direction for offset.
 	Causing problems due to lack of smoothing?
 	
 	
-	define perpendicular direction by making vector from start of image centerline to end of image centerline.
-	or distance either side of m
-	left_offset = dot_product(perp,shortest_line)
+	
+	
 	
 	
 	
@@ -78,5 +81,14 @@ GCP from centerline:
 
 
 
+gps_model.
+	handle all geospatial parts?
+	spatialite vs sqlite vs scipy interp1d
+	
+	
+	
+	define perpendicular direction by making vector from m+-d
 
 
+
+	left_offset = dot_product(perp,shortest_line)

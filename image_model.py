@@ -119,19 +119,22 @@ class imageModel(QSqlQueryModel):
     
     @staticmethod
         #load images into qgis
-    def georeference():
+    def georeference(gpsModel):
         georeferenceCommands = []
         sources = []
         
-        gcpQuery = '''
-        select original_file
-    , group_concat('('||st_x(pt)||','||st_y(pt)||','||pixel||','||line||')') as gcps
-    from gcp inner join images on images.frame_id = gcp.frame and marked group by original_file
+        t = '''
+        select frame_id,group_concat(original_file) from images where marked group by frame_id order by frame_id
         '''
         
-        q = db_functions.runQuery(gcpQuery)
+        q = db_functions.runQuery(t)
         
         while q.next():
+            
+            frame = q.value(0)
+            
+            gpsModel.gcps(frame)
+            
             newFile = georeference.warpedFileName(q.value(0))
             sources.append(newFile)
             georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = q.value(0),
@@ -139,7 +142,7 @@ class imageModel(QSqlQueryModel):
                                                                                                  new = newFile,
                                                                                                  gcps = q.value(1)
                                                                                                  ))
-      #  print('commands',georeferenceCommands)
+        print('commands',georeferenceCommands)
         if georeferenceCommands:
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
             run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
@@ -152,11 +155,11 @@ class imageModel(QSqlQueryModel):
         return True
     
     
-    #def flags(self,index):
-      #  if index.column() == self.fieldIndex('marked'):
-      #      return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
-     #   else:
-     #       return super().flags(index)
+    def flags(self,index):
+        if index.column() == self.fieldIndex('marked'):
+            return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
+        else:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
     
     
     def database(self):
@@ -231,7 +234,7 @@ class imageModel(QSqlQueryModel):
                 else:
                     destFolder = os.path.commonpath(files) 
                 vrtFile = os.path.join(destFolder,
-                                       '{tp}_{run}.vrt'.format(run = query.value(1),tp = query.value(2)))
+                                       '{tp}_{run}.vrt'.format(run = str(query.value(1)),tp = query.value(2)))
                 tempFile = vrtFile + '.txt'
                 data.append(vrtData(files,vrtFile,tempFile,query.value(2),query.value(1)))
                 

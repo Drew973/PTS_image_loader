@@ -185,23 +185,31 @@ select number as run,chainage_correction,left_offset,images.pk,frame_id,original
     SELECT AddGeometryColumn('corrected_points' , 'pt', 27700, 'POINT', 'XY');
     create index if not exists corrected_points_m on corrected_points(m);
 
-    create table if not exists gcp(
-    frame INT
-    ,pixel INT
-    ,line INT
-    );
-    SELECT AddGeometryColumn('gcp' , 'pt', 27700, 'POINT', 'XY');
-    create index if not exists gcp_frame on gcp(frame);
+
+    drop table if exists pos;
+    create table if not exists pos (pixel float,line float);
+    insert into pos (pixel,line) values (519,0),(519,625),(519,1250),(516,200),(525,400);
 
    create view if not exists lines as
     select c.id,c.m as start_m,next.m as end_m,makeLine(makePointz(st_x(c.pt),st_y(c.pt),c.m),makePointz(st_x(next.pt),st_y(next.pt),next.m)) as line from original_points as c
     inner join original_points as next 
     on next.id = c.id+1;
     
-    create view if not exists corrected_lines as
-    select corrected_points.id,corrected_points.m as start_m,next.m as end_m,makeLine(corrected_points.pt,next.pt) as line from corrected_points
+   create view if not exists corrected_lines as
+    select c.id,c.m as start_m,next.m as end_m,makeLine(makePointz(st_x(c.pt),st_y(c.pt),c.m),makePointz(st_x(next.pt),st_y(next.pt),next.m)) as line from corrected_points as c
     inner join corrected_points as next 
-    on next.id = corrected_points.id+1;
+    on next.id = c.id+1;
+
+create view if not exists gcp as
+select frame_id,pixel,line,
+5.0*(frame_id -line/1250) as m 
+
+,(select Line_Interpolate_Point(corrected_lines.line,(5.0*(frame_id -pos.line/1250)-start_m)/(end_m-start_m))
+        from corrected_lines where start_m <= 5.0*(frame_id -pos.line/1250) and end_m >= 5.0*(frame_id -pos.line/1250)
+		limit 1
+) as pt
+from (select distinct frame_id from images where marked) frames inner join pos;
+
     
     create view if not exists lines_5 as
     select s,e,makeLine(pt) as line from

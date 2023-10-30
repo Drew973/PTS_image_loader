@@ -73,21 +73,26 @@ class chainagesDialog(QDialog):
         buttons.rejected.connect(self.reject)
         self.startChainage.valueChanged.connect(self.updateLine)
         self.endChainage.valueChanged.connect(self.updateLine)
-
+        
+        self.startChainage.setRange(0,999999999)
+        self.endChainage.setRange(0,999999999)
         
         
     def setGpsModel(self,model):
         self.gpsModel = model
-        self.updateLimits()
+
 
 
     def toolClicked(self,point):
         if self.gpsModel is not None:
             pt = fromCanvasCrs(point)
-            if self.lastButton == 'start':
-                self.startChainage.setValue(self.gpsModel.getOriginalChainage(pt)[0])   
+            if self.lastButton == 'start':                
+                m,offset = self.gpsModel.locatePointOriginal(pt)
+               # print(pt,m,offset)
+                self.startChainage.setValue(m)   
             if self.lastButton == 'end':
-                self.endChainage.setValue(self.gpsModel.getOriginalChainage(pt)[0])
+                m,offset = self.gpsModel.locatePointOriginal(pt)
+                self.endChainage.setValue(m)
                 
                 
     def endButtonClicked(self):
@@ -99,13 +104,6 @@ class chainagesDialog(QDialog):
         self.lastButton = 'start'
         iface.mapCanvas().setMapTool(self.mapTool)
 
-        
-    def updateLimits(self):
-        if self.gpsModel is not None:
-            limits = self.gpsModel.chainageLimits()
-            self.startChainage.setRange(limits[0],limits[1])
-            self.endChainage.setRange(limits[0],limits[1])
-            
             
     def setRow(self,row):
         self.row = row
@@ -118,7 +116,6 @@ class chainagesDialog(QDialog):
             
             
     def show(self):
-        self.updateLimits()
         self.markerLine.show()
         return super().show()
             
@@ -134,9 +131,13 @@ class chainagesDialog(QDialog):
 
 
     def updateLine(self):
-        if self.gpsModel is not None:
-            line = self.gpsModel.originalLine(self.startChainage.value(),self.endChainage.value())
+        s = self.startChainage.value()
+        e = self.endChainage.value()
+        if self.gpsModel is not None and s<e :
+            line = self.gpsModel.originalLine(s,e)
             self.markerLine.setToGeometry(line,crs = crs)
+        else:
+            self.markerLine.setToGeometry(QgsGeometry())
     
     
     def done(self,r):

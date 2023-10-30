@@ -39,6 +39,7 @@ returns new or existing QgsLayerTreeGroup with name child and parent
 #parent:QgsLayerTreeGroup or QgsLayerTree
 '''
 def findOrMake(child,parent=QgsProject.instance().layerTreeRoot()):
+    child = str(child)
     for c in parent.children():
         if c.name() == child and isinstance(c,QgsLayerTreeGroup):
             return c

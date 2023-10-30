@@ -41,7 +41,7 @@ from image_loader.widgets import set_layers_dialog
 
 from image_loader import view_gps_layer
 from image_loader import db_functions
-from image_loader.gps_model import gpsModel
+from image_loader.gps_model_2 import gpsModel
 from image_loader import runs_table_model
 
 
@@ -74,7 +74,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.runBox.currentIndexChanged.connect(self.runChange)
         self.runChange()
-
+        #self.tabs.setTabEnabled(2, False)
+        
+        
 
     def loadImages(self):
         self.model.loadImages(self.imagesView.selected())
@@ -86,9 +88,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
-            self.gpsModel.applyCorrections()
-            self.gpsModel.updateGCP()
-            self.model.georeference()
+            #self.gpsModel.applyCorrections()
+            self.gpsModel.applyChainageCorrections()
+            self.model.georeference(self.gpsModel)
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
@@ -99,9 +101,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             run = int(t)
         except:
             run = 0
-        
         self.model.setRun(run)
-        self.gpsModel.setRun(run)
         #set combobox color
     #    c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
      #   if c is not None:

@@ -7,6 +7,11 @@ Created on Mon Sep 11 14:27:55 2023
 import numpy
 
 
+#vector from startPoint to endPoint of geom
+def asVector(geom):
+    line = geom.asPolyline()
+    return numpy.array([line[1].x()-line[0].x(),line[1].y()-line[0].y()])
+
 
 def bisector(v1,v2):
     return unitVector(leftPerp(v1)+leftPerp(v2))

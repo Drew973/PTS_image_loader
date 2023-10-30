@@ -3,15 +3,7 @@
 Created on Fri Jun  9 13:38:09 2023
 
 @author: Drew.Bennett
-
-
 dialog to specify start/end chainage & offset
-
-problem with LRS.
-where chainage&offset is vertex of gps 1 chainage&offset : many (x,y)
-
-
-
 """
 
 import os
@@ -87,20 +79,20 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     def updateMarkerLine(self):
         if self.gpsModel is not None:
-            startPt = self.gpsModel.getPoint(frameId = self.frameId.value(),
-                                       pixel = self.pixel.value(),
-                                       line = self.line.value())
             startM = self.gpsModel.lineToM(frame = self.frameId.value(),line = self.line.value())
-            line = self.gpsModel.originalLine(startM,self.m.value())
-           # print(startM,self.m.value())
-            
+            startOffset = self.gpsModel.pixelToOffset(pixel = self.pixel.value())
+            startPt = self.gpsModel.correctedPoint(m = startM,offset = startOffset)
+          #  print(startPt)
+            endM = self.m.value()
+            line = self.gpsModel.originalLine(startM,endM)#QgsGeometry
             if not line.isNull():
-                endPt = self.gpsModel.originalPointFromM(m = self.m.value(),offset = self.offset.value())
+                endPt = self.gpsModel.originalPoint(m = self.m.value(),offset = self.offset.value())
                 g = QgsGeometry.fromPolylineXY([startPt] + line.asPolyline() + [endPt])
-               # print(g)
                 self.markerLine.setToGeometry(g,crs = crs)
                 return
+            #iface.messageBar().pushMessage("Image_loader", "Line too long to display.", level=Qgis.Info)
         self.markerLine.setToGeometry(QgsGeometry(),crs = crs)
+
 
     def frameButtonClicked(self):
         self.lastButton = 'frame'
@@ -132,10 +124,11 @@ class correctionDialog(QDialog,FORM_CLASS):
                 self.setPixelLine(pt)
            
             if self.lastButton == 'end':
-                pl = self.gpsModel.getOriginalChainage(point = pt)
-                if pl is not None:
-                    self.m.setValue(pl[0])
-                    self.offset.setValue(pl[1])
+                minM = 5.0 * self.frameId.value()
+                maxM = minM + 5.0
+                m,offset = self.gpsModel.locatePointOriginal(point = pt,minM = minM,maxM = maxM)
+                self.m.setValue(m)
+                self.offset.setValue(offset)
         
         
     def setPixelLine(self,pt):
@@ -206,56 +199,26 @@ class correctionDialog(QDialog,FORM_CLASS):
                                         newM = self.m.value(),
                                         newOffset = self.offset.value()
                                         )
-        self.hideMarkers()
         return super().accept()
         #set model values...
         
-    #close button also calls this.
-    def reject(self):
+        
+    def done(self,r):
+       self.hideMarkers()
+       return super().done(r)
+        
+   
+    def close(self):
         self.hideMarkers()
-        return super().reject()
-        
-  
-
-        
-    def hide(self):
-      #  print('hide')
-        self.hideMarkers()
-        
-        return super().hide()
-        #hide on map.
-        #unset map tool
-        
-        
+        return super().close()
+   
     def hideMarkers(self):
         self.markerLine.hide()
         self.canvas.refresh()
         if self.prevTool is not None:
            iface.mapCanvas().setMapTool(self.prevTool,clean=True)
-
+        
         
     def showMarkers(self):
         self.canvas.refresh()
         
-        
-    def removeMarkers(self):
-      #  print('removeMarkers')
-        self.canvas.scene().removeItem(self.markerLine)
-        self.canvas.refresh()
-        
-        #not called by accept or reject or close button...
-    #def close(self):
- # #      print('close')
-   #     self.removeMarkers()
-       # return super().close()
-        
-       
-    #QCloseEvent. called by close button.
-    def closeEvent(self,event):
-        self.hideMarkers()
-        return super().closeEvent(event)
-        
-  #  def reject():
-   #     super().reject()
-        
-    
