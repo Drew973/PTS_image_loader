@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>795</width>
-    <height>761</height>
+    <width>534</width>
+    <height>626</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,6 +51,13 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout">
              <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Showing</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QDoubleSpinBox" name="startChainage">
                <property name="whatsThis">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Display images from this chainage.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -61,12 +68,26 @@
               </widget>
              </item>
              <item>
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>to</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QDoubleSpinBox" name="endChainage">
                <property name="toolTip">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To this chainage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="maximum">
                 <double>99999999999999996863366107917975552.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>m</string>
                </property>
               </widget>
              </item>

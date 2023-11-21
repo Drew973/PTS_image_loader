@@ -81,7 +81,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
        
        
         self.tabs.setTabEnabled(2, False)
-        
+        #self.chainageBar.rangeChanged.connect()
         
 
     def loadImages(self):
