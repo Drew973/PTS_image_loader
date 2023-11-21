@@ -67,28 +67,24 @@ need to define direction for offset.
 	has continous derivitive.
 	Causing problems due to lack of smoothing?
 	
+images end up shrunk/elongated where centerline curved and offset != 0
 	
-	
-	
-	
-	
-	
-GCP from centerline:
-	are offsets needed? try just centerline.
 
 
-
-
+rectangular vs curved images:
+	length changed for curved
+	offsets > radius of curvature don't work for curved
+	could just write worldfile for rectangular. affine transform.
+	gaps and overlap between images if rectangular.
+	unclear how GDAL maps point to pixel.
+	
 
 
 gps_model.
 	handle all geospatial parts?
 	spatialite vs sqlite vs scipy interp1d
-	
-	
-	
-	define perpendicular direction by making vector from m+-d
-
-
-
+	define perpendicular direction by making vector from m+-d?
 	left_offset = dot_product(perp,shortest_line)
+	want to store and load in database for easier debugging.
+	chainages from original_points table
+	GCPs and (frame,pixel,line) from corrected_points table/view.

@@ -40,7 +40,7 @@ class imagesView(QTreeView):
         toShow = [model.fieldIndex('marked'),model.fieldIndex('frame_id'),model.fieldIndex('original_file'),model.fieldIndex('image_type')]
         for c in range(model.columnCount()):
             self.setColumnHidden(c,not c in toShow)
-        
+
 
         #selected indexes of source model. pk col.
     def selected(self):

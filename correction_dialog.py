@@ -16,10 +16,12 @@ from PyQt5.QtCore import QModelIndex
 from qgis.utils import iface
 from qgis.core import Qgis
 
+from image_loader.dims import lineToM,pixelToOffset
+from image_loader import combobox_dialog
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'correction_dialog.ui'))
-
 
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
@@ -79,11 +81,11 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     def updateMarkerLine(self):
         if self.gpsModel is not None:
-            startM = self.gpsModel.lineToM(frame = self.frameId.value(),line = self.line.value())
-            startOffset = self.gpsModel.pixelToOffset(pixel = self.pixel.value())
-            startPt = self.gpsModel.correctedPoint(m = startM,offset = startOffset)
+            startPt = self.gpsModel.pointFromPixelLine(pixel=self.pixel.value(),line = self.line.value(),frame=self.frameId.value())
+        #    print(startM,startOffset)           
           #  print(startPt)
             endM = self.m.value()
+            startM = lineToM(frame = self.frameId.value(),line = self.line.value())
             line = self.gpsModel.originalLine(startM,endM)#QgsGeometry
             if not line.isNull():
                 endPt = self.gpsModel.originalPoint(m = self.m.value(),offset = self.offset.value())
@@ -111,31 +113,48 @@ class correctionDialog(QDialog,FORM_CLASS):
 
     def toolClicked(self,point):
         pt = fromCanvasCrs(point)
-        
         if self.gpsModel is not None:
+            if self.gpsModel.hasGps():
             
-            if self.lastButton == 'frame':
-                frame = self.gpsModel.getFrame(pt)
-                if frame is not None:
-                    self.frameId.setValue(frame)
-                    self.setPixelLine(pt)
+                if self.lastButton == 'frame':
+                    frame = self.gpsModel.getFrame(pt)
+                    if frame is not None:
+                        self.frameId.setValue(frame)
+                        self.setPixelLine(pt)
                 
-            if self.lastButton == 'pixelLine':
-                self.setPixelLine(pt)
-           
-            if self.lastButton == 'end':
-                minM = 5.0 * self.frameId.value()
-                maxM = minM + 5.0
-                m,offset = self.gpsModel.locatePointOriginal(point = pt,minM = minM,maxM = maxM)
-                self.m.setValue(m)
-                self.offset.setValue(offset)
-        
-        
+                if self.lastButton == 'pixelLine':
+                    self.setPixelLine(pt)
+    
+                if self.lastButton == 'end':
+                    options = self.gpsModel.locatePointOriginal(point = pt)#[(m,offset),()]
+                    print('options',options)
+                    m = 0
+                    offset = 0
+                    if len(options) == 1:
+                        m = options[0][0]
+                        offset = options[0][1]
+                        
+                    if len(options)>1:
+                        r = combobox_dialog.chooseItem(items = options,title = 'Select (chainage,offset)')
+                        if r is not None:
+                            m = r[0]
+                            offset = r[1]
+                    self.m.setValue(m)
+                    self.offset.setValue(offset)
+            else:
+                iface.messageBar().pushMessage("Image_loader", "No GPS data.", level=Qgis.Info)
+                
+        else:
+            iface.messageBar().pushMessage("Image_loader", "GPS model not set.", level=Qgis.Info)
+            iface.mapCanvas().unsetMapTool(self.mapTool)
+
+
+
     def setPixelLine(self,pt):
-        vals = self.gpsModel.getPixelLine(point=pt,frameId = self.frameId.value())
+        vals = self.gpsModel.pixelLine(point=pt,frameId = self.frameId.value())
         if vals:
             self.pixel.setValue(vals[0])
-            self.line.setValue(vals[1])        
+            self.line.setValue(vals[1])
         
         
     def model(self):
@@ -178,8 +197,6 @@ class correctionDialog(QDialog,FORM_CLASS):
     def show(self):
         self.showMarkers()
         self.prevTool = iface.mapCanvas().mapTool()
-        
-        
         if self.model():
             self.updateMarkerLine()
             if not self.model().hasGps():
@@ -212,6 +229,7 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.hideMarkers()
         return super().close()
    
+    
     def hideMarkers(self):
         self.markerLine.hide()
         self.canvas.refresh()

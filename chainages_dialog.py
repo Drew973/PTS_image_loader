@@ -86,12 +86,16 @@ class chainagesDialog(QDialog):
     def toolClicked(self,point):
         if self.gpsModel is not None:
             pt = fromCanvasCrs(point)
-            if self.lastButton == 'start':                
-                m,offset = self.gpsModel.locatePointOriginal(pt)
-               # print(pt,m,offset)
-                self.startChainage.setValue(m)   
+            opts = self.gpsModel.locatePointOriginal(pt)
+            if opts:
+                m = opts[0][0]
+            else:
+                m = 0
+            
+            if self.lastButton == 'start':
+                self.startChainage.setValue(m)
+                
             if self.lastButton == 'end':
-                m,offset = self.gpsModel.locatePointOriginal(pt)
                 self.endChainage.setValue(m)
                 
                 
@@ -135,6 +139,7 @@ class chainagesDialog(QDialog):
         e = self.endChainage.value()
         if self.gpsModel is not None and s<e :
             line = self.gpsModel.originalLine(s,e)
+            print('line',line)
             self.markerLine.setToGeometry(line,crs = crs)
         else:
             self.markerLine.setToGeometry(QgsGeometry())

@@ -51,7 +51,7 @@ def georeferenceFile(file,warpedFile,gcps):
        # translatedFile = os.path.splitext(file)[0] + '_translated.vrt'
         translated = gdal.Translate(translatedFile,
                                     file,
-                                    GCPs = gcps,
+                                    GCPs = gcps,#list
                                     outputSRS = srs,
                                     noData = noData,
                                     bandList=[1])
@@ -101,6 +101,7 @@ def georeferenceFile(file,warpedFile,gcps):
 
 #file:file,pixel[],line:[],x:[],y:[]
 
+#GCP like (x,y,pixel,line)
 
 if __name__ == '__main__':
     import ast

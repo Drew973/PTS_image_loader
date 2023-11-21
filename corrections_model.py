@@ -74,7 +74,6 @@ class correctionsModel(QSqlQueryModel):
 
     
     #insert or update correction. pk = None for insert.
-  
     def setCorrection(self,pk,run,frameId,pixel,line,newX,newY):
        # print('setCorrection',pk,run,frameId,pixel,line,newX,newY)
         if pk is None:
@@ -84,7 +83,6 @@ class correctionsModel(QSqlQueryModel):
             db_functions.runQuery(query = 'update corrections SET run = :run,frame_id=:frame,new_x = :new_x,new_y = :new_y,pixel = :pixel ,line = :line where pk = :pk',
                                   values = {':run':run,':frame':frameId,':new_x':newX,':new_y':newY,':pixel':pixel,':line':line,':pk':pk})
         self.select()
-        
         
         
     def hasGps(self):
@@ -100,8 +98,6 @@ class correctionsModel(QSqlQueryModel):
     def getPoint(self,frameId,pixel,line):
         return db_functions.getPoint(frameId,pixel,line)
         
-        
-
 
     #from last image position    
     def getPixelLine(self,frameId,point):

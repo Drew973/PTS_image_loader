@@ -5,10 +5,10 @@ Created on Mon Oct  9 11:12:37 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtSql import QSqlTableModel,QSqlQueryModel,QSqlQuery
+from PyQt5.QtSql import QSqlQueryModel,QSqlQuery
 from PyQt5.QtCore import Qt
 from image_loader.db_functions import runQuery,defaultDb
-
+import numpy as np
 
 
 class runsTableModel(QSqlQueryModel):
@@ -81,4 +81,20 @@ class runsTableModel(QSqlQueryModel):
         q = 'delete from runs where pk in ({pks})'.format(pks = ','.join(pks))
         #print(q)
         runQuery(q)
-        self.select()    
+        self.select()
+        
+        
+    #array row (m,m_shift,offset_shift)
+    def corrections(self):
+        q = runQuery('''select start_chainage as m,chainage_correction,left_offset from runs
+        UNION
+        select end_chainage as m,chainage_correction,left_offset from runs
+        order by m,start_chainage''')
+        
+        d = []
+        while q.next():
+            d.append((q.value(0),q.value(1),q.value(2)))
+        
+        t = [('m',np.double),('m_shift',np.double),('offset_shift',np.double)]
+        return np.array(d,dtype = t)
+        

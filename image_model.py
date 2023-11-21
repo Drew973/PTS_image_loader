@@ -18,9 +18,6 @@ import csv
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QProgressDialog
-
-import glob
-
 from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
 from image_loader.load_image import loadImage
@@ -29,8 +26,10 @@ from image_loader import run_commands
 from image_loader import layer_functions
 #from image_loader.runs_model import runsModel
 
-
+#from image_loader.dims import WIDTH,PIXELS,LINES,HEIGHT
 from collections import namedtuple
+from pathlib import Path
+from image_loader.dims import HEIGHT
 
 
 class _image():
@@ -75,10 +74,8 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.run = None
-        self.setRun('')
+        self.setRange(0,0)
         
-    
     def save(self,file):
         db_functions.saveToFile(file)
         
@@ -101,19 +98,15 @@ class imageModel(QSqlQueryModel):
 
         #special handling for marked column
         if index.column() == self.fieldIndex('marked'):
-        
             if role == Qt.EditRole:
                 return bool(super().data(index,role))
-
             if role == Qt.DisplayRole:
                 return None
-
             if role == Qt.CheckStateRole:
                 if super().data(index,Qt.EditRole):
                     return Qt.Checked
                 else:
                     return Qt.Unchecked
-
         return super().data(index,role)
         
     
@@ -122,27 +115,23 @@ class imageModel(QSqlQueryModel):
     def georeference(gpsModel):
         georeferenceCommands = []
         sources = []
-        
         t = '''
         select frame_id,group_concat(original_file) from images where marked group by frame_id order by frame_id
         '''
-        
         q = db_functions.runQuery(t)
-        
         while q.next():
-            
             frame = q.value(0)
-            
-            gpsModel.gcps(frame)
-            
-            newFile = georeference.warpedFileName(q.value(0))
-            sources.append(newFile)
-            georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = q.value(0),
-                                                                                                 script = georeference.__file__,
-                                                                                                 new = newFile,
-                                                                                                 gcps = q.value(1)
-                                                                                                 ))
-        print('commands',georeferenceCommands)
+            gcp = gpsModel.gcps(frame)
+            if gcp:
+                for f in q.value(1).split(','):
+                    newFile = georeference.warpedFileName(f)
+                    sources.append(newFile)
+                    georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = f,
+                                                                                                         script = georeference.__file__,
+                                                                                                         new = newFile,
+                                                                                                         gcps = gcp
+                                                                                                         ))
+       # print('commands',georeferenceCommands)
         if georeferenceCommands:
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
             run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
@@ -167,9 +156,8 @@ class imageModel(QSqlQueryModel):
 
 
     def select(self):
-        t = self.query().lastQuery()#str
-        self.setQuery(t,self.database())
-       
+        self.query().exec()
+        
         
     def clear(self):
         q = QSqlQuery(self.database())
@@ -178,21 +166,21 @@ class imageModel(QSqlQueryModel):
         self.select()
 
 
-    def setRun(self,run):
-        if run != self.run:
-       #     if run is not None:
-         #       filt = "where run = '{run}'".format(run=run)#"
-         #   else:
-         #       filt = ''
-         #   q = 'select marked,pk,run,frame_id,original_file,image_type from images {filt} order by frame_id,original_file,image_type'.format(filt=filt)           
-            q = '''select images.pk,frame_id,original_file,image_type,marked from images
-            inner join runs_view on frame_id*5+5 >= start_chainage and frame_id*5 <= end_chainage
-            and number = {n}
-            order by frame_id,image_type'''.format(n = run)
-            
-            self.setQuery(q,self.database())
-        self.run = run
-        
+    def setRange(self,startChainage,endChainage):
+        s = startChainage/HEIGHT
+        e = endChainage/HEIGHT
+    #    print('setRange',s,e)        
+        queryString = '''select pk,frame_id,original_file,image_type,marked from images
+            where :s <= frame_id and frame_id <= :e
+            order by frame_id,image_type'''
+        q = QSqlQuery(self.database())
+        q.prepare(queryString)
+        q.bindValue(':s',s)
+        q.bindValue(':e',e)
+        q.exec()
+        self.setQuery(q)
+
+
         
     #load images into qgis
     def loadImages(self,indexes):
@@ -281,8 +269,14 @@ class imageModel(QSqlQueryModel):
     
     
     def addFolder(self,folder):
-        pattern = folder+'/**/*.jpg'
-        self._add([_image(origonalFile = f) for f in glob.glob(pattern,recursive=True)])
+        #pattern = folder+'/**/*.jpg'
+       # pattern = folder+'/**/*.jpg'
+        files = [str(f) for f in Path(folder).glob("**/*.jpg")]
+        print('files',files)
+     
+        self._add([_image(origonalFile = str(f)) for f in Path(folder).glob("**/*.jpg")])
+        
+        #self._add([_image(origonalFile = f) for f in glob.glob(pattern,recursive=True)])
     
     
     def dropRows(self,indexes):
@@ -292,19 +286,7 @@ class imageModel(QSqlQueryModel):
         #print(q)
         db_functions.runQuery(q)
         self.select()    
-       # self._refreshRuns()
         
-    
-   # def imageCount(self,run):
-        
-
-    def setRunForItems(self,indexes,run):
-       col = self.fieldIndex('pk')
-       pks = [str(self.index(index.row(),col).data()) for index in indexes]
-       q = "update images set run = :run where pk in ({pks})".format(pks = ','.join(pks))
-       db_functions.runQuery(query = q,values={':run':run})
-       self.select()
-    
     
     
     def loadRIL(self,file):

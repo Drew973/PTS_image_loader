@@ -41,7 +41,7 @@ from image_loader.widgets import set_layers_dialog
 
 from image_loader import view_gps_layer
 from image_loader import db_functions
-from image_loader.gps_model_2 import gpsModel
+from image_loader.gps_model_3 import gpsModel
 from image_loader import runs_table_model
 
 
@@ -69,12 +69,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
         self.runsModel.dataChanged.connect(self.model.select)
-        
-        self.runBox.setModel(self.runsModel)
+        self.startChainage.valueChanged.connect(self.startChainageChange)
+        self.endChainage.valueChanged.connect(self.endChainageChange)
 
-        self.runBox.currentIndexChanged.connect(self.runChange)
-        self.runChange()
-        #self.tabs.setTabEnabled(2, False)
+       # self.runBox.setModel(self.runsModel)
+
+     #   self.runBox.currentIndexChanged.connect(self.runChange)
+       # self.runChange()
+        self.runsWidget.clicked.connect(self.setChainages)
+           
+       
+       
+        self.tabs.setTabEnabled(2, False)
         
         
 
@@ -88,20 +94,48 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
-            #self.gpsModel.applyCorrections()
-            self.gpsModel.applyChainageCorrections()
+            self.gpsModel.setCorrections(self.runsModel.corrections())
             self.model.georeference(self.gpsModel)
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
         
-    def runChange(self):
-        t = self.runBox.currentText()
-        try:
-            run = int(t)
-        except:
-            run = 0
-        self.model.setRun(run)
+    def startChainageChange(self,value):
+        if value > self.endChainage.value():
+            self.endChainage.setValue(value)
+        self.model.setRange(self.startChainage.value(),self.endChainage.value())
+        
+        
+    def endChainageChange(self,value):
+        if value < self.startChainage.value():
+            self.startChainage.setValue(value)
+        self.model.setRange(self.startChainage.value(),self.endChainage.value())
+
+
+    #set start chainage and end chainage spinboxes.
+    def setChainages(self,index):
+        m = index.model()
+        s = index.siblingAtColumn(m.fieldIndex('start_chainage')).data()
+        if not isinstance(s,float):
+            s = 0.0
+        self.startChainage.setValue(s)
+        
+        e = index.siblingAtColumn(m.fieldIndex('end_chainage')).data()
+        if not isinstance(e,float):
+            e = 0.0
+        self.endChainage.setValue(e)
+   #     print('setChainages',s,e)
+
+        
+        
+
+  #  def runChange(self):
+  #      t = self.runBox.currentText()
+    #    try:
+    #        run = int(t)
+     #   except:
+     #       run = 0
+      #  self.model.setRun(run)
         #set combobox color
     #    c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
      #   if c is not None:
@@ -217,7 +251,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         helpPath = os.path.join(os.path.dirname(__file__),'help','help.html')
         helpPath = 'file:///'+os.path.abspath(helpPath)
         QtGui.QDesktopServices.openUrl(QUrl(helpPath))
-
         
 
     def loadFrames(self):
@@ -225,7 +258,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
             if f[0]:
                 loadFrameData(f[0])
-
 
 
     def makeVrt(self):

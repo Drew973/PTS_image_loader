@@ -25,12 +25,6 @@ column syntax as an error and will report that the database schema is corrupt"
 import os
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
 
-WIDTH = 4.0
-LENGTH = 5.0
-PIXELS = 1038
-LINES = 1250
-
-
 
 class queryError(Exception):
     def __init__(self,query):
@@ -169,11 +163,13 @@ create view if not exists images_view as
 select number as run,chainage_correction,left_offset,images.pk,frame_id,original_file,image_type,marked from images
             inner join runs_view on frame_id*5+5 >= start_chainage and frame_id*5 <= end_chainage;
             
- create table if not exists original_points(
+create table if not exists original_points(
     		id INTEGER PRIMARY KEY
             ,m float
             ,next_id int
+            ,next_m float
             );
+ 
     SELECT AddGeometryColumn('original_points' , 'pt', 27700, 'POINT', 'XY');
     create index if not exists original_points_m on original_points(m);
 

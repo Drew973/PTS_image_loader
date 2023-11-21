@@ -47,9 +47,30 @@
           <attribute name="title">
            <string>Images</string>
           </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
+          <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
-            <widget class="QComboBox" name="runBox"/>
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QDoubleSpinBox" name="startChainage">
+               <property name="whatsThis">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Display images from this chainage.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="maximum">
+                <double>9999999999999999538762658202121142272.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QDoubleSpinBox" name="endChainage">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To this chainage&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="maximum">
+                <double>99999999999999996863366107917975552.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
             <widget class="imagesView" name="imagesView">
