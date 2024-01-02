@@ -13,18 +13,12 @@ import os
 
 def loadImage(file,groups):
     name = os.path.splitext(os.path.basename(file))[0]
-   
-    
-
     group = getGroup(groups)#QgsLayerTreeGroup
-    
     layer = QgsRasterLayer(file,name)        
     layer.setContrastEnhancement(QgsContrastEnhancement.NoEnhancement)#remove contrast enhancement. end up with same pixel value showing as different color.
     group.addLayer(layer)
    # group.setExpanded(False)    
-        
         #addLayer
-        
     QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
     node = group.findLayer(layer)
     node.setItemVisibilityChecked(True)

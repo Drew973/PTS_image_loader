@@ -48,39 +48,41 @@ def defaultDb():
    #fuck sql injection risk. just use replace.
 
 
-def runQuery(query,db = None,values = {},printQuery=False):
-    
+def prepareQuery(query,db=None):
     if db is None:
         db = defaultDb()
-        
-    query = query.replace("\n",' ')
-
+    query = query.replace("\n",' ')    
     q = QSqlQuery(db)    
     if not q.prepare(query):
         raise queryPrepareError(q)
-        
+    return q
+
+
+def runQuery(query,db = None,values = {},printQuery=False):
+    if db is None:
+        db = defaultDb()
+    query = query.replace("\n",' ')
+    q = QSqlQuery(db)    
+    if not q.prepare(query):
+        raise queryPrepareError(q)
     if isinstance(values,dict):
         for k in values:
             #query = query.replace(k,str(values[k]))
             q.bindValue(k,values[k])
-              
   #  if isinstance(values,list):
      #   for i,v in enumerate(values):
             #q.bindValue(i,v)
         #    q.addBindValue(v)
-        
     if printQuery:
         t = query
         for k,v in values.items():
             t = t.replace(k,str(v))
         print(t)
-            
-        
     if not q.exec():
         print(q.boundValues())
         raise queryError(q)
-        
     return q
+
 
 import shutil
 
@@ -125,21 +127,19 @@ def initDb(db):
     create table if not exists runs
     (
     	pk INTEGER PRIMARY KEY
-    	,start_chainage float default 0.0
-    	,end_chainage float default 0.0
-    	,chainage_correction float default 0.0
-    	,left_offset float default 0.0
+    	,start_frame int default 0
+    	,end_frame int default 0
     );
     
-    create view if not exists runs_view as select ROW_NUMBER() over (order by start_chainage,end_chainage) as number,pk
-    ,start_chainage,end_chainage,chainage_correction,left_offset from runs;
+    create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk
+    ,start_frame,end_frame from runs;
 
     
    create table if not exists images
             ( 
                 pk INTEGER PRIMARY KEY
                 ,frame_id INTEGER
-                ,original_file text
+                ,original_file text unique
                 ,new_file text
                 ,image_type text
                 ,marked bool default false
@@ -148,20 +148,24 @@ def initDb(db):
 	create table if not exists corrections
             ( 
                  pk INTEGER PRIMARY KEY
-                 ,run text default ''
                  ,frame_id int not null
-				 ,line int
-				 ,pixel int
+				 ,line int default 0
+				 ,pixel int default 0
 				 ,new_x float
 				 ,new_y float
+				 ,x_shift float
+				 ,y_shift float
              );
+			 
+create index if not exists corrections_frame on corrections(frame_id);
             
-   create view if not exists corrections_m as select pk,5.0*(frame_id-line/1250) as m,
-   4.0*0.5-pixel*4.0/1038 as left_offset,makePoint(new_x,new_y) as pt from corrections;
+create view if not exists corrections_m as select pk,5.0*(frame_id-line/1250) as m,
+4.0*0.5-pixel*4.0/1038 as left_offset,makePoint(new_x,new_y) as pt from corrections;
 
 create view if not exists images_view as
-select number as run,chainage_correction,left_offset,images.pk,frame_id,original_file,image_type,marked from images
-            inner join runs_view on frame_id*5+5 >= start_chainage and frame_id*5 <= end_chainage;
+select pk,original_file,image_type,frame_id,marked
+,(select number from runs_view where start_frame<=frame_id and end_frame >= frame_id order by number limit 1) as run
+from images;
             
 create table if not exists original_points(
     		id INTEGER PRIMARY KEY
@@ -170,23 +174,25 @@ create table if not exists original_points(
             ,next_m float
             );
  
-    SELECT AddGeometryColumn('original_points' , 'pt', 27700, 'POINT', 'XY');
-    create index if not exists original_points_m on original_points(m);
+SELECT AddGeometryColumn('original_points' , 'pt', 27700, 'POINT', 'XY');
+create index if not exists original_points_m on original_points(m);
 
- create table if not exists corrected_points(
+create table if not exists corrected_points(
     		id INTEGER PRIMARY KEY
             ,m float
             ,next_id int
+            ,next_m float
             );
-    SELECT AddGeometryColumn('corrected_points' , 'pt', 27700, 'POINT', 'XY');
-    create index if not exists corrected_points_m on corrected_points(m);
+SELECT AddGeometryColumn('corrected_points' , 'pt', 27700, 'POINT', 'XY');
+create index if not exists corrected_points_m on corrected_points(m);
+create index if not exists corrected_points_next_m on corrected_points(next_m);
 
 
-    drop table if exists pos;
-    create table if not exists pos (pixel float,line float);
-    insert into pos (pixel,line) values (519,0),(519,625),(519,1250),(516,200),(525,400);
+drop table if exists pos;
+create table if not exists pos (pixel float,line float);
+insert into pos (pixel,line) values (519,0),(519,625),(519,1250),(516,200),(525,400);
 
-   create view if not exists lines as
+   create view if not exists original_lines as
     select c.id,c.m as start_m,next.m as end_m,makeLine(makePointz(st_x(c.pt),st_y(c.pt),c.m),makePointz(st_x(next.pt),st_y(next.pt),next.m)) as line from original_points as c
     inner join original_points as next 
     on next.id = c.id+1;
@@ -214,7 +220,44 @@ from (select distinct frame_id from images where marked) frames inner join pos;
     group by s
     order by m;
     
-    '''
+create view if not exists interpolate_corrections as
+select m,5*(frame_id-line/1250) as next_m
+,c.x_shift,c.y_shift
+,n.x_shift as next_x_shift,n.y_shift as next_y_shift from
+(select 5*(frame_id-line/1250) as m
+,lead(pk) over (order by 5*(frame_id-line/1250)) as next
+,x_shift
+,y_shift
+from corrections) c
+inner join corrections as n
+on n.pk = c.next;
+
+CREATE VIEW if not exists corrected_view as select id,p.m,p.next_m,p.next_id
+,makePoint(
+st_x(pt) + x_shift + (p.m-c.m)*(next_x_shift-x_shift)/(c.next_m-c.m)
+,st_y(pt) + y_shift + (p.m-c.m)*(next_y_shift-y_shift)/(c.next_m-c.m)
+,27700) as point
+from original_points as p inner join interpolate_corrections as c on c.m < p.m and p.m < c.next_m
+union
+select id,p.m,p.next_m,p.next_id
+,makePoint(st_x(pt)+x_shift,
+st_y(pt) + y_shift
+,27700)
+from 
+(select m,x_shift,y_shift from interpolate_corrections order by m limit 1) mi
+inner join original_points as p on p.m <= mi.m
+union
+select id,p.m,p.next_m,p.next_id
+,makePoint(st_x(pt)+next_x_shift,
+st_y(pt) + next_y_shift
+,27700)
+from 
+(select next_m,next_x_shift,next_y_shift from interpolate_corrections order by m desc limit 1) mi
+inner join original_points as p on p.m >= mi.next_m;
+
+
+
+'''
 
     
     for q in script.split(';'):

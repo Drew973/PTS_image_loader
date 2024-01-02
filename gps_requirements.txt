@@ -1,0 +1,41 @@
+
+--define offset direction.
+--calculate correction to move m,o to x,y
+
+for corrections ui need
+x,y <-> frame,pixel,line for anywhere within georeferenced image.
+outside images not necessary.
+
+for georeferencing need frame -> x,y,pixel,line.
+	same as corrections
+
+for setting runs need x,y <-> frame
+
+may need to rotate images.
+x,y shift per point not good for this?
+
+offset+rotation complicates corrections.
+
+xy shift per m can cause skew. if perp direction not constant.
+xy shift of centerline easy. approximately same as offset point.
+
+2d interpolation?
+	get x/y shift from m,offset
+
+x = f(m,off) + g(m,off)
+
+uncorrected x,y = f(m,offset)
+
+corrected x,y = uncorrected x,y * Transformation_matrix(m)
+want translation rotation and scale.
+for outside first/last correction want translation only.
+
+keep general shape.
+need corrected(m,o) = correction x,y for m,o
+
+move path to intersect circle around new points?
+
+corrections as affine transform per correction to next&last?
+need 3 points?
+
+2 points enough for translation+rotation+scaling

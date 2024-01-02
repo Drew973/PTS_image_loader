@@ -41,19 +41,19 @@ class runsTableModel(QSqlQueryModel):
         self.select()
         
     
-    #[{start_chainage,end_chainage}]
+    #[{start_frame,end_frame}]
     def addRuns(self,runs):
         db = self.database()
         db.transaction()
         for r in runs:
-            runQuery(query = 'insert OR IGNORE into runs(start_chainage,end_chainage) values (:s,:e)',db=db,values = {':s':r['start_chainage'],':e':r['end_chainage']})    
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)',db=db,values = {':s':r['start_frame'],':e':r['end_frame']})    
         db.commit()
         self.select()
         
         
     def select(self):
-        #q = 'select ROW_NUMBER() over (order by start_chainage,end_chainage) as number,pk ,start_chainage,end_chainage,chainage_correction,left_offset from runs order by start_chainage,end_chainage'
-        q = 'select number,pk ,start_chainage,end_chainage,chainage_correction,left_offset from runs_view order by start_chainage,end_chainage'       
+        #q = 'select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk ,start_frame,end_frame,chainage_correction,left_offset from runs order by start_frame,end_frame'
+        q = 'select number,pk ,start_frame,end_frame from runs_view order by start_frame,end_frame'       
         self.setQuery(q,self.database())
         
      
@@ -82,19 +82,4 @@ class runsTableModel(QSqlQueryModel):
         #print(q)
         runQuery(q)
         self.select()
-        
-        
-    #array row (m,m_shift,offset_shift)
-    def corrections(self):
-        q = runQuery('''select start_chainage as m,chainage_correction,left_offset from runs
-        UNION
-        select end_chainage as m,chainage_correction,left_offset from runs
-        order by m,start_chainage''')
-        
-        d = []
-        while q.next():
-            d.append((q.value(0),q.value(1),q.value(2)))
-        
-        t = [('m',np.double),('m_shift',np.double),('offset_shift',np.double)]
-        return np.array(d,dtype = t)
         

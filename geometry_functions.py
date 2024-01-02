@@ -5,7 +5,7 @@ Created on Mon Sep 11 14:27:55 2023
 @author: Drew.Bennett
 """
 import numpy
-
+import numpy as np
 
 def dist(x1,y1,x2,y2):
     return numpy.sqrt((x1-x2)*(x1-x2) + (y2-y1)*(y2-y1))
@@ -66,6 +66,24 @@ def fractionAndOffset(start,end,point):
     offset = numpy.cross(se,sp)/magnitude(se)
     return (f,offset)
     
+
+
+#(m:float,leftOffset:float)
+def locatePoint(startX,startY,startM,endX,endY,endM,x,y):
+    s = np.array([startX,startY])
+    e = np.array([endX,endY])
+    p = np.array([x,y])
+    sp = p-s
+    se = e-s
+    f = numpy.dot(se,sp)/numpy.sum(se*se)#
+    offset = numpy.cross(se,sp)/magnitude(se)
+    return (startM+f*(endM-startM),offset)
+
+
+def testLocatePoint():
+    r = locatePoint(0,0,10,100,100,20,55,50)
+    print(r)
+    
         
 def testFractionAndOffset():
     s = numpy.array([0,0])
@@ -74,3 +92,9 @@ def testFractionAndOffset():
     
     f = fractionAndOffset(s,e,p)
     print(f)
+    
+    
+    
+if __name__ in ('__main__','__console__'):
+    testLocatePoint()   
+    

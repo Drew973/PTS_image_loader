@@ -29,7 +29,6 @@ from image_loader import layer_functions
 #from image_loader.dims import WIDTH,PIXELS,LINES,HEIGHT
 from collections import namedtuple
 from pathlib import Path
-from image_loader.dims import HEIGHT
 
 
 class _image():
@@ -112,12 +111,14 @@ class imageModel(QSqlQueryModel):
     
     @staticmethod
         #load images into qgis
-    def georeference(gpsModel):
+    def georeference(gpsModel,pks = []):
         georeferenceCommands = []
         sources = []
-        t = '''
-        select frame_id,group_concat(original_file) from images where marked group by frame_id order by frame_id
-        '''
+        
+        p = ','.join([str(pk) for pk in pks])
+      #  t = 'select frame_id,group_concat(original_file) from images where marked group by frame_id order by frame_id'
+        t = 'select frame_id,group_concat(original_file) from images where pk in ({pks}) group by frame_id order by frame_id'.format(pks=p)
+
         q = db_functions.runQuery(t)
         while q.next():
             frame = q.value(0)
@@ -134,6 +135,7 @@ class imageModel(QSqlQueryModel):
        # print('commands',georeferenceCommands)
         if georeferenceCommands:
             layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+            print(georeferenceCommands[0])
             run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
 
 
@@ -166,26 +168,35 @@ class imageModel(QSqlQueryModel):
         self.select()
 
 
-    def setRange(self,startChainage,endChainage):
-        s = startChainage/HEIGHT
-        e = endChainage/HEIGHT
+    def setRange(self,start,end):
+        #s = startChainage/HEIGHT
+        #e = endChainage/HEIGHT
     #    print('setRange',s,e)        
         queryString = '''select pk,frame_id,original_file,image_type,marked from images
             where :s <= frame_id and frame_id <= :e
             order by frame_id,image_type'''
         q = QSqlQuery(self.database())
         q.prepare(queryString)
-        q.bindValue(':s',s)
-        q.bindValue(':e',e)
+        q.bindValue(':s',start)
+        q.bindValue(':e',end)
         q.exec()
         self.setQuery(q)
 
 
         
     #load images into qgis
-    def loadImages(self,indexes):
+    def loadImages(self,pks = []):
+        
+        p = ','.join([str(pk) for pk in pks])
+
+        
         progress = createProgressDialog(parent=self.parent(),labelText = "Loading images...")
-        query = db_functions.runQuery('select original_file,run,image_type from images_view where marked and not original_file is null')
+        
+        t = 'select original_file,run,image_type from images_view where pk in ({pks}) and not original_file is null'.format(pks = p)
+        
+      #  query = db_functions.runQuery('select original_file,run,image_type from images_view where marked and not original_file is null')
+        query = db_functions.runQuery(t)
+
         progress.setRange(0,query.size())
         i = 0
         while query.next():
@@ -327,7 +338,7 @@ class imageModel(QSqlQueryModel):
         db = self.database()
         db.transaction()
         q = QSqlQuery(db)
-        if not q.prepare('insert into images(frame_id,original_file,image_type) values(:i,:origonal,:type)'):
+        if not q.prepare('insert or ignore into images(frame_id,original_file,image_type) values(:i,:origonal,:type)'):
             raise db_functions.queryError(q)
         for d in data:
             q.bindValue(':i',d.imageId)

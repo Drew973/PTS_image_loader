@@ -14,6 +14,14 @@ LINES = 1250
 HEIGHT = 5.0
 
 
+def mToFrame(m):
+    return int(m/HEIGHT)+1
+
+
+def frameToM(frame):
+    return (frame-1)*HEIGHT
+
+
 def lineToM(frame,line):
     return HEIGHT * (frame-line/LINES)
 

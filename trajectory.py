@@ -49,9 +49,7 @@ def unitVector(vector):
 
 def normalizeRows(a):
     s = a*a
-   # print('s',s)
     rowSums = numpy.sqrt(s.sum(axis=1))
-    #print('rowSums',rowSums)
     return a / rowSums[:, numpy.newaxis]
 
 

@@ -11,12 +11,13 @@ Created on Thu Oct 19 14:32:58 2023
 #set row to None to insert,integer with runModel row to update
 
 """
-from PyQt5.QtWidgets import QDialog,QFormLayout,QDialogButtonBox,QDoubleSpinBox,QHBoxLayout,QPushButton
+from PyQt5.QtWidgets import QDialog,QFormLayout,QDialogButtonBox,QSpinBox,QHBoxLayout,QPushButton
 from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry
 from qgis.utils import iface
 from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from image_loader.dims import frameToM
+
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
 
@@ -40,22 +41,22 @@ class chainagesDialog(QDialog):
         
         self.setLayout(QFormLayout())
         
-        self.startChainage = QDoubleSpinBox()
+        self.startChainage = QSpinBox()
         self.startButton = QPushButton('From click...')
         self.startButton.clicked.connect(self.startButtonClicked)
 
         startLayout = QHBoxLayout()
         startLayout.addWidget(self.startChainage)
         startLayout.addWidget(self.startButton)
-        self.layout().addRow('start_chainage',startLayout)
+        self.layout().addRow('start_frame',startLayout)
         
-        self.endChainage = QDoubleSpinBox()
+        self.endChainage = QSpinBox()
         self.endButton = QPushButton('From click...')
         self.endButton.clicked.connect(self.endButtonClicked)
         endLayout = QHBoxLayout()
         endLayout.addWidget(self.endChainage)
         endLayout.addWidget(self.endButton)
-        self.layout().addRow('end_chainage',endLayout)
+        self.layout().addRow('end_frame',endLayout)
         
         
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
@@ -86,17 +87,13 @@ class chainagesDialog(QDialog):
     def toolClicked(self,point):
         if self.gpsModel is not None:
             pt = fromCanvasCrs(point)
-            opts = self.gpsModel.locatePointOriginal(pt)
-            if opts:
-                m = opts[0][0]
-            else:
-                m = 0
-            
+            f = self.gpsModel.pointToFrame(pt)
+           
             if self.lastButton == 'start':
-                self.startChainage.setValue(m)
+                self.startChainage.setValue(f)
                 
             if self.lastButton == 'end':
-                self.endChainage.setValue(m)
+                self.endChainage.setValue(f)
                 
                 
     def endButtonClicked(self):
@@ -114,9 +111,9 @@ class chainagesDialog(QDialog):
         if row is None:
             self.setWindowTitle('Add run')
         else:
-            self.setWindowTitle('Edit chainages for run {run}'.format(run=row+1))
-            self.startChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('start_chainage')).data())
-            self.endChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('end_chainage')).data())
+            self.setWindowTitle('Edit frames for run {run}'.format(run=row+1))
+            self.startChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('start_frame')).data())
+            self.endChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('end_frame')).data())
             
             
     def show(self):
@@ -127,19 +124,19 @@ class chainagesDialog(QDialog):
     def accept(self):
         if self.runsModel is not None:
             if self.row is None:
-                self.runsModel.addRuns([{'start_chainage':self.startChainage.value(),'end_chainage':self.endChainage.value()}])
+                self.runsModel.addRuns([{'start_frame':self.startChainage.value(),'end_frame':self.endChainage.value()}])
             else:
-                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('start_chainage')),self.startChainage.value())                
-                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('end_chainage')),self.endChainage.value())
+                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('start_frame')),self.startChainage.value())                
+                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('end_frame')),self.endChainage.value())
         return super().accept()
 
 
     def updateLine(self):
-        s = self.startChainage.value()
-        e = self.endChainage.value()
+        s = frameToM(self.startChainage.value())
+        e = frameToM(self.endChainage.value())
         if self.gpsModel is not None and s<e :
-            line = self.gpsModel.originalLine(s,e)
-            print('line',line)
+            line = self.gpsModel.line(s,e,corrected = False)
+#            print('line',line)
             self.markerLine.setToGeometry(line,crs = crs)
         else:
             self.markerLine.setToGeometry(QgsGeometry())

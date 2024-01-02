@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QMenu,QTreeView#QTableView
 
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtCore import QItemSelectionModel
-
+#set selection behavior in Qt designer/parent
 
 class imagesView(QTreeView):
   

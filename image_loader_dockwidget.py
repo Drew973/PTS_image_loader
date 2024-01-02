@@ -43,7 +43,7 @@ from image_loader import view_gps_layer
 from image_loader import db_functions
 from image_loader.gps_model_3 import gpsModel
 from image_loader import runs_table_model
-
+from image_loader.corrections_model import correctionsModel
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -68,85 +68,74 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.runsModel = runs_table_model.runsTableModel()
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
+        self.correctionsWidget.correctionDialog.gpsModel = self.gpsModel
         self.runsModel.dataChanged.connect(self.model.select)
-        self.startChainage.valueChanged.connect(self.startChainageChange)
-        self.endChainage.valueChanged.connect(self.endChainageChange)
+        self.imageStart.valueChanged.connect(self.startChainageChange)
+        self.correctionStart.valueChanged.connect(self.imageStart.setValue)
 
-       # self.runBox.setModel(self.runsModel)
+        self.imageEnd.valueChanged.connect(self.endChainageChange)
+        self.correctionEnd.valueChanged.connect(self.imageEnd.setValue)
 
-     #   self.runBox.currentIndexChanged.connect(self.runChange)
-       # self.runChange()
         self.runsWidget.clicked.connect(self.setChainages)
-           
-       
-       
-        self.tabs.setTabEnabled(2, False)
         #self.chainageBar.rangeChanged.connect()
-        
+        self.correctionsModel = correctionsModel()
+        self.correctionsWidget.setModel(self.correctionsModel)
+
 
     def loadImages(self):
-        self.model.loadImages(self.imagesView.selected())
-        
-    
+        pks = [i.data() for i in self.imagesView.selected()]
+        self.model.loadImages(pks)
+
+
     def createOverviews(self):
         self.model.createOverviews()
         
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
-            self.gpsModel.setCorrections(self.runsModel.corrections())
-            self.model.georeference(self.gpsModel)
+            self.gpsModel.setCorrections()
+            pks = [i.data() for i in self.imagesView.selected()]
+            
+            self.model.georeference(self.gpsModel,pks = pks)
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
         
     def startChainageChange(self,value):
-        if value > self.endChainage.value():
-            self.endChainage.setValue(value)
-        self.model.setRange(self.startChainage.value(),self.endChainage.value())
-        
+        if value > self.imageEnd.value():
+            self.imageEnd.setValue(value)
+        self.correctionStart.setValue(value)
+        self.model.setRange(self.imageStart.value(),self.imageEnd.value())
+        self.correctionsModel.setRange(self.correctionStart.value(),self.correctionEnd.value())
+    
         
     def endChainageChange(self,value):
-        if value < self.startChainage.value():
-            self.startChainage.setValue(value)
-        self.model.setRange(self.startChainage.value(),self.endChainage.value())
+        if value < self.imageStart.value():
+            self.imageStart.setValue(value)
+        self.correctionEnd.setValue(value)
+        self.model.setRange(self.imageStart.value(),self.imageEnd.value())
+        self.correctionsModel.setRange(self.correctionStart.value(),self.correctionEnd.value())
 
 
     #set start chainage and end chainage spinboxes.
     def setChainages(self,index):
         m = index.model()
-        s = index.siblingAtColumn(m.fieldIndex('start_chainage')).data()
-        if not isinstance(s,float):
-            s = 0.0
-        self.startChainage.setValue(s)
+        s = index.siblingAtColumn(m.fieldIndex('start_frame')).data()
+        if not isinstance(s,int):
+            s = 0
+        self.imageStart.setValue(s)
         
-        e = index.siblingAtColumn(m.fieldIndex('end_chainage')).data()
-        if not isinstance(e,float):
-            e = 0.0
-        self.endChainage.setValue(e)
-   #     print('setChainages',s,e)
-
-        
-        
-
-  #  def runChange(self):
-  #      t = self.runBox.currentText()
-    #    try:
-    #        run = int(t)
-     #   except:
-     #       run = 0
-      #  self.model.setRun(run)
-        #set combobox color
-    #    c = self.runBox.model().index(index,0).data(Qt.BackgroundColorRole)#QColor or None
-     #   if c is not None:
-     #       p = self.runBox.palette()
-     #       p.setColor(QtGui.QPalette.Button, c)
-      #      self.runBox.setPalette(p)
-
+        e = index.siblingAtColumn(m.fieldIndex('end_frame')).data()
+        if not isinstance(e,int):
+            e = 0
+        self.imageEnd.setValue(e)
+   
     
     def new(self):
         self.model.clear()
         self.gpsModel.clear()
+        self.correctionsModel.clear()
+
 
 
     def load(self):
@@ -191,10 +180,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadFramesAct.triggered.connect(self.loadFrames)
         
         loadGpsAct = viewMenu.addAction('View original GPS data...')
-        loadGpsAct.triggered.connect(lambda:view_gps_layer.loadGpsLines(corrected = False))
+        loadGpsAct.triggered.connect(lambda:view_gps_layer.loadGps(corrected = False))
         
         loadCorrectedGpsAct = viewMenu.addAction('View corrected GPS data...')
-        loadCorrectedGpsAct.triggered.connect(lambda:view_gps_layer.loadGpsLines(corrected = True))
+        loadCorrectedGpsAct.triggered.connect(lambda:view_gps_layer.loadGps(corrected = True))
         
         loadCracksAct = viewMenu.addAction('View Cracking Data...')
         loadCracksAct.triggered.connect(self.loadCracks)     
