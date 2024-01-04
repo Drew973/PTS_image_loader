@@ -102,7 +102,7 @@ def loadFile(dbFile):
         pass
     runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile),db=db)
     runQuery("delete from images",db = db)
-    runQuery('insert into images(frame_id,run,original_file,image_type,marked) select frame_id,run,original_file,image_type,marked from db2.images',db=db)
+    runQuery('insert into images(frame_id,run,original_file,image_type) select frame_id,run,original_file,image_type from db2.images',db=db)
     runQuery("delete from corrections",db=db)
     runQuery('insert into corrections(run,chainage,x_offset,y_offset,new_x,new_y) select run,chainage,x_offset,y_offset,new_x,new_y from db2.corrections',db=db)
     runQuery("delete from original_points",db=db)
@@ -142,7 +142,6 @@ def initDb(db):
                 ,original_file text unique
                 ,new_file text
                 ,image_type text
-                ,marked bool default false
              );
       
 	create table if not exists corrections
@@ -163,7 +162,7 @@ create view if not exists corrections_m as select pk,5.0*(frame_id-line/1250) as
 4.0*0.5-pixel*4.0/1038 as left_offset,makePoint(new_x,new_y) as pt from corrections;
 
 create view if not exists images_view as
-select pk,original_file,image_type,frame_id,marked
+select pk,original_file,image_type,frame_id
 ,(select number from runs_view where start_frame<=frame_id and end_frame >= frame_id order by number limit 1) as run
 from images;
             
@@ -201,17 +200,6 @@ insert into pos (pixel,line) values (519,0),(519,625),(519,1250),(516,200),(525,
     select c.id,c.m as start_m,next.m as end_m,makeLine(makePointz(st_x(c.pt),st_y(c.pt),c.m),makePointz(st_x(next.pt),st_y(next.pt),next.m)) as line from corrected_points as c
     inner join corrected_points as next 
     on next.id = c.id+1;
-
-create view if not exists gcp as
-select frame_id,pixel,line,
-5.0*(frame_id -line/1250) as m 
-
-,(select Line_Interpolate_Point(corrected_lines.line,(5.0*(frame_id -pos.line/1250)-start_m)/(end_m-start_m))
-        from corrected_lines where start_m <= 5.0*(frame_id -pos.line/1250) and end_m >= 5.0*(frame_id -pos.line/1250)
-		limit 1
-) as pt
-from (select distinct frame_id from images where marked) frames inner join pos;
-
     
     create view if not exists lines_5 as
     select s,e,makeLine(pt) as line from
@@ -292,12 +280,6 @@ def loadCorrections(file):
                 raise queryError(q)
     db.commit()
     
-    
-def hasMarked(run):
-    q = runQuery(query = "select max(marked) = 1 from images where run = ':run'",values = {':run':run})
-    while q.next():
-        return bool(q.value(1))
-
     
 def dbFile():
   #  return ':memory:'        

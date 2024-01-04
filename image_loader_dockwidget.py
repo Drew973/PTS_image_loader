@@ -25,12 +25,13 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
-from qgis.PyQt.QtCore import pyqtSignal,QUrl#,Qt
+from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel
+#,Qt
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog#,QDataWidgetMapper
-from PyQt5 import QtGui
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView
+from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.image_model import imageModel
@@ -69,22 +70,15 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
         self.correctionsWidget.correctionDialog.gpsModel = self.gpsModel
-        self.runsModel.dataChanged.connect(self.model.select)
-        self.imageStart.valueChanged.connect(self.startChainageChange)
-        self.correctionStart.valueChanged.connect(self.imageStart.setValue)
 
-        self.imageEnd.valueChanged.connect(self.endChainageChange)
-        self.correctionEnd.valueChanged.connect(self.imageEnd.setValue)
-
-        self.runsWidget.clicked.connect(self.setChainages)
+        self.runsWidget.doubleClicked.connect(self.setChainages)
         #self.chainageBar.rangeChanged.connect()
         self.correctionsModel = correctionsModel()
         self.correctionsWidget.setModel(self.correctionsModel)
 
 
     def loadImages(self):
-        pks = [i.data() for i in self.imagesView.selected()]
-        self.model.loadImages(pks)
+        self.model.loadImages(self.imagesView.selectedPks())
 
 
     def createOverviews(self):
@@ -94,48 +88,57 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
             self.gpsModel.setCorrections()
-            pks = [i.data() for i in self.imagesView.selected()]
-            
-            self.model.georeference(self.gpsModel,pks = pks)
+            self.gpsModel.setCorrections()
+            self.model.georeference(self.gpsModel,pks = self.imagesView.selectedPks())
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
-        
-    def startChainageChange(self,value):
-        if value > self.imageEnd.value():
-            self.imageEnd.setValue(value)
-        self.correctionStart.setValue(value)
-        self.model.setRange(self.imageStart.value(),self.imageEnd.value())
-        self.correctionsModel.setRange(self.correctionStart.value(),self.correctionEnd.value())
-    
-        
-    def endChainageChange(self,value):
-        if value < self.imageStart.value():
-            self.imageStart.setValue(value)
-        self.correctionEnd.setValue(value)
-        self.model.setRange(self.imageStart.value(),self.imageEnd.value())
-        self.correctionsModel.setRange(self.correctionStart.value(),self.correctionEnd.value())
 
-
-    #set start chainage and end chainage spinboxes.
+    #scroll images to run and select in widget
+    #same for corrections.
     def setChainages(self,index):
         m = index.model()
         s = index.siblingAtColumn(m.fieldIndex('start_frame')).data()
         if not isinstance(s,int):
-            s = 0
-        self.imageStart.setValue(s)
-        
+            s = 0   
+            
         e = index.siblingAtColumn(m.fieldIndex('end_frame')).data()
         if not isinstance(e,int):
-            e = 0
-        self.imageEnd.setValue(e)
-   
+            e = 0   
+            
+        mode = QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
+            
+        selectionModel = self.imagesView.selectionModel()
+        selectionModel.clear()
+        col = self.model.fieldIndex('frame_id')
+        top = None
+        for i in range(self.model.rowCount()):
+            index = self.model.index(i,col)
+            if s<= index.data() and index.data() <= e:
+                selectionModel.select(index, mode)
+                if top is None:
+                    top = index
+        if top is not None:
+            self.imagesView.scrollTo(top,QAbstractItemView.PositionAtTop)    
     
+        selectionModel = self.correctionsWidget.selectionModel()
+        selectionModel.clear()
+        col = self.correctionsModel.fieldIndex('frame_id')
+        top2 = None
+        for i in range(self.correctionsModel.rowCount()):
+            index = self.correctionsModel.index(i,col)
+            if s<= index.data() and index.data() <= e:
+                selectionModel.select(index, mode)
+                if top2 is None:
+                    top2 = index
+        if top2 is not None:
+            self.correctionsWidget.scrollTo(top,QAbstractItemView.PositionAtTop)
+
+
     def new(self):
         self.model.clear()
         self.gpsModel.clear()
         self.correctionsModel.clear()
-
 
 
     def load(self):
@@ -146,8 +149,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
 
     def initTopMenu(self):
-        topMenu = QMenuBar(self.mainWidget)    
-        
+        topMenu = QMenuBar(self.mainWidget)     
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
         newAct.triggered.connect(self.new)
@@ -172,7 +174,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         fromFolderAct = toolsMenu.addAction('Find details from folder...')
         fromFolderAct.triggered.connect(self.detailsFromFolder)
 
-
         viewMenu = toolsMenu.addMenu('View')
 
         #layersMenu = topMenu.addMenu("Load layers")
@@ -190,20 +191,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         setLayers = toolsMenu.addAction('Settings...')
         setLayers.triggered.connect(self.layersDialog.exec_)
-        
-        selectMenu = topMenu.addMenu("Select")
-        markAllAct = selectMenu.addAction('Mark all images')
-        markAllAct.triggered.connect(self.model.markAll)
-
-        unmarkAllAct = selectMenu.addAction('Unmark all images')
-        unmarkAllAct.triggered.connect(self.model.unmarkAll)
-         
-        markRunAct = selectMenu.addAction('Mark all images in run')
-        markRunAct.triggered.connect(self.model.markRun)
-
-        unmarkRunAct = selectMenu.addAction('Unmark all images in run')
-        unmarkRunAct.triggered.connect(self.model.unmarkRun)
-        
+       
         processMenu = topMenu.addMenu("Process")
         
         loadAct = processMenu.addAction('Load selected images')
@@ -250,7 +238,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def makeVrt(self):
-        self.model.makeVrt()
+        self.model.makeVrt(pks = self.imagesView.selectedPks())
 
 
     def loadGps(self):

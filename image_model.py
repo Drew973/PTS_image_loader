@@ -16,7 +16,7 @@ import os
 import csv
 
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt,QModelIndex
 from PyQt5.QtWidgets import QProgressDialog
 from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
@@ -73,7 +73,7 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.setRange(0,0)
+        self.setRange(0,99999999999999)
         
     def save(self,file):
         db_functions.saveToFile(file)
@@ -88,55 +88,41 @@ class imageModel(QSqlQueryModel):
         return self.record().indexOf(name)
     
     
-    def data(self,index,role = Qt.EditRole):
-        if role == Qt.BackgroundColorRole:
-            if self.index(index.row(),self.fieldIndex('marked')).data(Qt.EditRole):
-                return QColor('yellow')
-            else:
-                return QColor('white')
-
-        #special handling for marked column
-        if index.column() == self.fieldIndex('marked'):
-            if role == Qt.EditRole:
-                return bool(super().data(index,role))
-            if role == Qt.DisplayRole:
-                return None
-            if role == Qt.CheckStateRole:
-                if super().data(index,Qt.EditRole):
-                    return Qt.Checked
-                else:
-                    return Qt.Unchecked
+    def data(self,index,role):
+        if role == Qt.ToolTipRole:
+            return str(super().data(index))
         return super().data(index,role)
-        
+    
     
     @staticmethod
         #load images into qgis
     def georeference(gpsModel,pks = []):
-        georeferenceCommands = []
-        sources = []
-        
-        p = ','.join([str(pk) for pk in pks])
-      #  t = 'select frame_id,group_concat(original_file) from images where marked group by frame_id order by frame_id'
-        t = 'select frame_id,group_concat(original_file) from images where pk in ({pks}) group by frame_id order by frame_id'.format(pks=p)
-
-        q = db_functions.runQuery(t)
-        while q.next():
-            frame = q.value(0)
-            gcp = gpsModel.gcps(frame)
-            if gcp:
-                for f in q.value(1).split(','):
-                    newFile = georeference.warpedFileName(f)
-                    sources.append(newFile)
-                    georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = f,
-                                                                                                         script = georeference.__file__,
-                                                                                                         new = newFile,
-                                                                                                         gcps = gcp
-                                                                                                         ))
-       # print('commands',georeferenceCommands)
-        if georeferenceCommands:
-            layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-            print(georeferenceCommands[0])
-            run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
+       # print('pks',pks)
+        if pks:
+            georeferenceCommands = []
+            sources = []
+            
+            p = ','.join([str(pk) for pk in pks])
+            t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=p)
+    
+            q = db_functions.runQuery(t)
+            while q.next():
+                frame = q.value(0)
+                gcp = gpsModel.gcps(frame)
+                if gcp:
+                    for f in q.value(1).split(','):
+                        newFile = georeference.warpedFileName(f)
+                        sources.append(newFile)
+                        georeferenceCommands.append('python "{script}" "{original}" "{new}" "{gcps}"'.format(original = f,
+                                                                                                             script = georeference.__file__,
+                                                                                                             new = newFile,
+                                                                                                             gcps = gcp
+                                                                                                             ))
+           # print('commands',georeferenceCommands)
+            if georeferenceCommands:
+                layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+                print(georeferenceCommands[0])
+                run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
 
 
     def setData(self,index,value,role = Qt.EditRole):
@@ -150,7 +136,7 @@ class imageModel(QSqlQueryModel):
         if index.column() == self.fieldIndex('marked'):
             return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
         else:
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
     
     
     def database(self):
@@ -172,7 +158,7 @@ class imageModel(QSqlQueryModel):
         #s = startChainage/HEIGHT
         #e = endChainage/HEIGHT
     #    print('setRange',s,e)        
-        queryString = '''select pk,frame_id,original_file,image_type,marked from images
+        queryString = '''select pk,frame_id,original_file,image_type from images
             where :s <= frame_id and frame_id <= :e
             order by frame_id,image_type'''
         q = QSqlQuery(self.database())
@@ -182,8 +168,7 @@ class imageModel(QSqlQueryModel):
         q.exec()
         self.setQuery(q)
 
-
-        
+  
     #load images into qgis
     def loadImages(self,pks = []):
         
@@ -217,12 +202,16 @@ class imageModel(QSqlQueryModel):
         
      
 
-    def makeVrt(self):
+    def makeVrt(self,pks):
+        
+        
         vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
         progress = QProgressDialog("Preparing...","Cancel", 0, 1,parent = self.parent())#QObjectwithout parent gets deleted like normal python object
 
         #use something unlikey to be in file name as seperator.
-        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where marked group by run,image_type order by original_file")
+        
+        p = ','.join([str(pk) for pk in pks])
+        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
         data = []
         while query.next():
             files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
@@ -354,37 +343,3 @@ class imageModel(QSqlQueryModel):
 
     def saveAs(self,file):
         pass
-
-
-    #if run index in indexes set all in run.
-    def mark(self,indexes,value = True):
-        col = self.fieldIndex('pk')
-        pks = [str(self.index(index.row(),col).data()) for index in indexes]
-        q = 'update images set marked = {value} where pk in ({pks})'.format(pks = ','.join(pks),value = str(value))
-        db_functions.runQuery(q)
-        self.select()
-      
-      
-    def markAll(self):
-        db_functions.runQuery(query = 'update images set marked=True')
-        self.select()
-        
-        
-    def unmarkAll(self):
-        db_functions.runQuery(query = 'update images set marked=False')
-        self.select()
-        
-        
-    def markRun(self):
-        db_functions.runQuery(query = "update images set marked = True where run = :run",values = {':run':self.run})#not run when binding value. why?
-        self.select()
-
-
-    def unmarkRun(self):
-        db_functions.runQuery(query = "update images set marked = False where run = ':run'".replace(':run',self.run))#error when binding value?
-        self.select()
-
-
-    def markBetween(self,runIndex,start,end):
-        pass    
-    

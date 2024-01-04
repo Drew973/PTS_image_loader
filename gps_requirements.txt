@@ -33,9 +33,24 @@ for outside first/last correction want translation only.
 keep general shape.
 need corrected(m,o) = correction x,y for m,o
 
+mo <-> corrected xy consistant
+
 move path to intersect circle around new points?
 
 corrections as affine transform per correction to next&last?
 need 3 points?
 
 2 points enough for translation+rotation+scaling
+
+
+moving uncorrected point to corrected:
+	x,y shift depending on m? and offset?
+	piecewise affine transform depending on m?
+	
+	
+	
+	
+	
+	
+
+

@@ -7,25 +7,29 @@ Created on Mon Mar 13 12:16:57 2023
 
 from PyQt5.QtWidgets import QMenu,QTreeView#QTableView
 
+
 from PyQt5.QtCore import QSortFilterProxyModel
 from PyQt5.QtCore import QItemSelectionModel
 #set selection behavior in Qt designer/parent
+from image_loader.no_edit_delegate import noEditDelegate
 
 class imagesView(QTreeView):
   
     def __init__(self,parent=None):
         super().__init__(parent)
         self.menu = QMenu(self)
-        markAct = self.menu.addAction('Mark selected rows')
-        markAct.triggered.connect(self.mark)
-        unmarkAct = self.menu.addAction('Unmark selected rows')
-        unmarkAct.triggered.connect(self.unmark)
-        dropAct = self.menu.addAction('Remove selected rows')
+       # markAct = self.menu.addAction('Mark selected rows')
+     #   markAct.triggered.connect(self.mark)
+     #   unmarkAct = self.menu.addAction('Unmark selected rows')
+     #   unmarkAct.triggered.connect(self.unmark)
+        dropAct = self.menu.addAction('Delete selected rows')
         dropAct.triggered.connect(self.dropSelected)
     #    setRunAct = self.menu.addAction('Set run for selected rows...')
      #   setRunAct.triggered.connect(self.setRunForSelected)
         self.setWordWrap(False)        
         self.doubleClicked.connect(self.onDoubleClick)
+        self.setItemDelegate(noEditDelegate())
+    
     
     def onDoubleClick(self,index):
     #   print(index.row(),index.column())
@@ -49,6 +53,9 @@ class imagesView(QTreeView):
             selected = [self.model().mapToSource(i) for i in selected]
         return selected
         
+        
+    def selectedPks(self):
+        return [i.data() for i in self.selected()]
         
     #triggered emits bool
     def _mark(self,value=True):

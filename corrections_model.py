@@ -14,7 +14,7 @@ class correctionsModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.setRange(0,0)
+        self.setRange()
 
 
     def fieldIndex(self,name):
@@ -32,8 +32,8 @@ class correctionsModel(QSqlQueryModel):
         self.select()
 
     
-    def allowedRange(self,index):
-        return (0,999999)
+ #   def allowedRange(self,index):
+   #     return (0,999999)
         
         
     def dropRows(self,indexes):
@@ -47,15 +47,13 @@ class correctionsModel(QSqlQueryModel):
         
         
     def select(self):
-        #self.setQuery(self.query().lastQuery(),self.database())
        #self.setQuery(self.query()) query does not update model. bug in qt?
        self.query().exec()
        self.setQuery(self.query())
+    #   self.setQuery(self.query().lastQuery(),self.database())
 
 
-    def setRange(self,startFrame,endFrame):
-       # s = startChainage/HEIGHT
-       # e = endChainage/HEIGHT
+    def setRange(self,startFrame=0,endFrame=999999999999999):
         qs = 'select pk,frame_id,pixel,line,new_x,new_y from corrections where frame_id >= :s and frame_id<:e order by frame_id,line'
         q = QSqlQuery(self.database())
         q.prepare(qs)
