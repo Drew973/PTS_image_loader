@@ -13,6 +13,17 @@ PIXELS = 1038
 LINES = 1250
 HEIGHT = 5.0
 
+MAX = 99999999999999999999
+
+
+
+def clamp(v,lower,upper):
+    if v < lower:
+        return lower
+    if v > upper:
+        return upper
+    return v
+
 
 def mToFrame(m):
     return int(m/HEIGHT)+1
@@ -46,5 +57,9 @@ def mToLine(m,frame):
 #float/np float -> int
 def offsetToPixel(offset):
     if np.isfinite(offset):
-        return round(PIXELS * 0.5 - offset * PIXELS / WIDTH )
-    return 0
+        return clamp(round(PIXELS * 0.5 - offset * PIXELS / WIDTH ),0,PIXELS)
+    else:
+        return 0
+  
+
+

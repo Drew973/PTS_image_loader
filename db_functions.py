@@ -61,7 +61,7 @@ def prepareQuery(query,db=None):
 def runQuery(query,db = None,values = {},printQuery=False):
     if db is None:
         db = defaultDb()
-    query = query.replace("\n",' ')
+  #  query = query.replace("\n",' ')
     q = QSqlQuery(db)    
     if not q.prepare(query):
         raise queryPrepareError(q)
@@ -176,15 +176,28 @@ create table if not exists original_points(
 SELECT AddGeometryColumn('original_points' , 'pt', 27700, 'POINT', 'XY');
 create index if not exists original_points_m on original_points(m);
 
-create table if not exists corrected_points(
-    		id INTEGER PRIMARY KEY
-            ,m float
-            ,next_id int
-            ,next_m float
-            );
-SELECT AddGeometryColumn('corrected_points' , 'pt', 27700, 'POINT', 'XY');
-create index if not exists corrected_points_m on corrected_points(m);
-create index if not exists corrected_points_next_m on corrected_points(next_m);
+create table if not exists transforms
+(
+	start_m float
+	,end_m float
+	,t00 float default 1.0-- x scale
+	,t01 float default 0.0 --rotation
+	,t02 float-- x shift
+	,t10 float default 0.0 -- rotation
+	,t11 float default 1.0 -- y scale
+	,t12 float -- y shift
+);
+create index if not exists start_m_ind on transforms(start_m);
+create index if not exists end_m_ind on transforms(end_m);
+
+
+create view if not exists corrected_points as
+select id,m,next_id,next_m
+,makePoint(
+st_x(pt)*t00 + t01*st_y(pt) + t02
+,st_x(pt)*t10 + t11*st_y(pt) + t12
+,27700) as pt
+ from original_points inner join transforms on m >= start_m and m < end_m;
 
 
 drop table if exists pos;

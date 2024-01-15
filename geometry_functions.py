@@ -49,6 +49,7 @@ def distance(v1,v2):
     v = v1 - v2
     return (v**2).sum()**0.5
 
+
 def magnitude(v):
     return numpy.linalg.norm(v)
 

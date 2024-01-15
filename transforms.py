@@ -5,9 +5,30 @@ Created on Fri Dec 22 09:00:54 2023
 @author: Drew.Bennett
 """
 
-
 import numpy as np
 import math
+from qgis.core import QgsPointXY
+
+
+
+class affine:
+
+    def __init__(self,a=1,b=0,c=0,d=0,e=1,f=0):
+        self.m = np.array([[a,b,c],[d,e,f],[0,0,1]],dtype = np.float)
+        self.inv = np.linalg.inv(self.m)
+        #print('inv',self.inv)
+        
+    #QgsPointXY->QgsPointXY
+    def forward(self,point):
+        t = np.matmul(self.m,np.array([point.x(),point.y(),1]))
+        return QgsPointXY(t[0],t[1])
+    
+    #QgsPointXY->QgsPointXY
+    def reverse(self,point):
+        t = np.matmul(self.inv,np.array([point.x(),point.y(),1]))
+        return QgsPointXY(t[0],t[1])
+
+
 
 def mag(v):
     return (v**2).sum()**0.5
@@ -18,10 +39,8 @@ def angle(v1,v2):
 
 
 
-
-
-
-#affine transform with translation,rotation,scale from 2 points p and corrected points c.
+#->affine
+#3x3 affine transform with translation,rotation,scale from 2 points p and corrected points c.
 #points as numpy array
 #same scale for x and y.
 #need x and y translations, the rotation angle, and the scale
@@ -41,34 +60,39 @@ def trs(p1,c1,p2,c2):
     if np.cross(v1,v2) < 0:
         a = -a
     
-    r = np.zeros(shape = (2,3),dtype = float)
-  #  r[2,2] = 1
-    
+    r = np.zeros(shape = (3,3),dtype = float)
     r[0,0] = s*math.cos(a)
     r[0,1] = - s*math.sin(a)
     r[1,0] = s*math.sin(a)
     r[1,1] = s*math.cos(a)
+    r[2,2] = 1
  #   print('r',r)
 
     #translation
-    new1 = applyTranslation(p1[0],p1[1],r)
- #   print('new1',new1)
+    new1 = applyTransform(p1,r)
+    print('new1',new1)
     tr = c1 - new1
     r[0,2] = tr[0]
     r[1,2] = tr[1]
  #   return np.matmul(r,t)
-    return r
-
+    return affine(r[0,0],r[0,1],r[0,2],r[1,0],r[1,1],r[1,2])
     
-def applyTranslation(x,y,t):
-    return np.matmul(t,np.array([x,y,1]))
+
+#array/list [x,y]
+def applyTransform(xy,t):
+    return np.matmul(t,np.array([xy[0],xy[1],1]))[0:2]
 
 
-if __name__ in ('__console__','__main__'):  
+def fromTranslation(xShift,yShift):
+    return affine(c = xShift, f = yShift)
+
+
+
+if __name__ in ('__console__','__main__'):
     m = trs((5,5),(10,10),(10,10),(30,20))
     print('m',m)
    # p = np.array([5,5])
-    new  = applyTranslation(5,5,m)
+    new  = m.forward(QgsPointXY(5,5))
     print(new)
-    print('c2',applyTranslation(7.5,7.5,m))
+#    print('c2',applyTransform([7.5,7.5],m))
   #  print('mag',mag(np.array([3,4])))

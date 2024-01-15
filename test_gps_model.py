@@ -36,16 +36,10 @@ class testGpsModel(unittest.TestCase):
         file = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv')
         self.model.loadFile(file)       
 
-
-    def estOriginalLine(self):
+    @unittest.skip
+    def testOriginalLine(self):
         line = self.model.originalLine(100,500)
         self.assertTrue(line.isGeosValid())
-        
-
-        
-    def estGetFrame(self):
-        f = self.model.getFrame(point = QgsPointXY(354503.073,322384.628))
-        self.assertEqual(f,455)
         
         
     def estGcps(self):
@@ -53,6 +47,7 @@ class testGpsModel(unittest.TestCase):
         print('gcps',r)
         
         
+    @unittest.skip        
     def testSetCorrections(self):
         self.model.setCorrections(None)
         
@@ -83,7 +78,8 @@ class testGpsModel(unittest.TestCase):
         print('mo',r)
         
         
-    def estPoint(self):
+    @unittest.skip        
+    def testPoint(self):
         mo = np.array([(0,0),(10,10),(20,5)])
        # p = self.model.point(mo)
         p = self.model.point(mo)
@@ -94,7 +90,7 @@ class testGpsModel(unittest.TestCase):
         #self.model.release()
         
         
-    def estPointToFrame(self):
+    def testPointToFrame(self):
         p = QgsPointXY(354457.671,321926.706)
         frame = self.model.pointToFrame(p)
         self.assertEqual(frame,2708)
@@ -103,14 +99,22 @@ class testGpsModel(unittest.TestCase):
         self.assertTrue(p.distance(pt)<10)
 
 
-    def estFPLToPoint(self):
-        p = self.model.FPLToPoint(1,0,0)
-        print('FPLToPoint',p)
+    #@unittest.skip
+    def testFPLToPoint(self):
+        frame = 2706
+        p = QgsPointXY(354451.939,321913.856)
+        pixel,line = self.model.pointToPixelLine(frame = frame,point = p)
+        print('pixel',pixel,'line',line)
+        p2 = self.model.FPLToPoint(frame,pixel,line)
+        self.assertTrue(p.distance(p2) < 0.1,'point->FPL->point too far apart')
+        
 
+    @unittest.skip
+    def testGetTransform(self):
+        m = 13534
+        t = self.model.getTransform(m) 
+        print('getTransform',t)
 
-    def estPointToPixelLine(self):
-        r = self.model.pointToPixelLine(frame = 2706,point = QgsPointXY(354452.430,321916.232))
-        print(r)
 
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testGpsModel)

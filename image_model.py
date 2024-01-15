@@ -15,8 +15,7 @@ from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
 import os
 import csv
 
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt,QModelIndex
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QProgressDialog
 from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
