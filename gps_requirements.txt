@@ -10,12 +10,25 @@ for georeferencing need frame -> x,y,pixel,line.
 	same as corrections
 
 
+rectangular acceptable.
+1 chainage/offset shift per run acceptable.
 
-piecewise affine transform to map corrected <-> uncorrected points.?
+should images be scaled?
+if not need 1 mo shift/run
+
+frame,x,y <-> corrected x,y
+	scaling happens...
+	piecewise affine transform to map corrected <-> uncorrected points?
 
 
-corrections model to map corrected_point <-> uncorrected?
-	scaling happens
-	
-	
-finding m values when nearest point is vertex
+frame,pixel,line <-> m,o <-correctionsModel-> corrected m,o <-gpsModel-> corrected x,y,frame
+better to specify shift. easier for user to see when wrong run.
+
+
+vs
+frame,pixel,line <-> m,o <-gpsModel-> x,y,frame <-correctionsModel-> corrected x,y,frame
+
+
+gpsModel:
+	finding m values when nearest point is vertex? spline required? get closest known point then optimize m?
+

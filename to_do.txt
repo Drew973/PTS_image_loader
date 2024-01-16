@@ -78,11 +78,16 @@ gps_model.
 	finding chainage,offset <-> x,y:
 
 	need to define direction for offset.
-
-		depends on what path does between known points.
-		smooth path can be cublic spline.
+	depends on what path does between known points.
+	
+		Cubic spline:
 		has continous derivitive.
 		Causing problems due to lack of smoothing?
+		probabaly more accurate representation pf where vehicle actualy was
+		
+		make forward vector from m-W to m+W:
+			
+		
 		
 	images end up shrunk/elongated where centerline curved and offset != 0
 

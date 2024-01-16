@@ -15,7 +15,7 @@ linestringM with cubic spline.
 from scipy import interpolate
 from scipy.optimize import minimize_scalar
 
-import numpy
+import numpy as np
 
 #numpy array. m,x,y
 #numpy.array -> numpy.array
@@ -25,13 +25,13 @@ def unitVector(vector):
 
 
 def leftPerp(vect):
-    return numpy.array([vect[1],-vect[0]])
+    return np.array([vect[1],-vect[0]])
 
 
 class points:
     def __init__(self,m,x,y):
-        self.x = numpy.array([xVal for xVal in x])
-        self.y = numpy.array([yVal for yVal in y])
+        self.x = np.array([xVal for xVal in x])
+        self.y = np.array([yVal for yVal in y])
         
 
 
@@ -52,34 +52,24 @@ class splineStringM:
         self.yDerivitive = self.ySpline.derivative(1)    
     
     
-    def interpolatePoints(self,m,leftOffsets=None):
+    def point(self,mo):
+        m = mo[:0]
         x = self.xSpline(m)
         y = self.ySpline(m)
-        if leftOffsets is not None:
+        offsets = mo[:1]
+        if not np.any(offsets):
             perps = self.leftPerps(m)#([x],[y])
-            x = x + perps[0] * leftOffsets
-            y = y + perps[1] * leftOffsets
-        return numpy.stack((x, y))
+            x = x + perps[0] * offsets
+            y = y + perps[1] * offsets
+        return np.stack((x, y))
     
-
-    #length between m1 and m2. 
-    #n = number of points
-    def length(self,m1,m2,n):
-        m = numpy.linspace(m1,m2,n,dtype=numpy.double)
-        dx = numpy.diff(self.xSpline(m))
-        dy = numpy.diff(self.ySpline(m))
-        return numpy.sum(numpy.sqrt(dx*dx+dy*dy))
        
         
     #perpendicular unit vectors at m
-    def leftPerps(self,m):
+    def leftPerp(self,m):
         dx = self.xDerivitive(m)
         dy = self.yDerivitive(m)
-        magnitudes = numpy.sqrt(dx*dx+dy*dy)
-        return numpy.stack([-dy/magnitudes,dx/magnitudes])#[[x],[y]]
+        magnitudes = np.sqrt(dx*dx+dy*dy)
+        return np.stack([-dy/magnitudes,dx/magnitudes])#[[x],[y]]
     
-    
-    def leftPerp(self,m):
-        p = self.leftPerps(m)
-        return numpy.array([p[0,0],p[0,1]])
-    
+  
