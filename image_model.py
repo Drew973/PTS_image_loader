@@ -100,15 +100,13 @@ class imageModel(QSqlQueryModel):
         if pks:
             georeferenceCommands = []
             sources = []
-            
             p = ','.join([str(pk) for pk in pks])
             t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=p)
-    
             q = db_functions.runQuery(t)
             while q.next():
                 frame = q.value(0)
                 gcp = gpsModel.gcps(frame)
-                if gcp:
+                if gcp is not None:
                     for f in q.value(1).split(','):
                         newFile = georeference.warpedFileName(f)
                         sources.append(newFile)
@@ -143,8 +141,10 @@ class imageModel(QSqlQueryModel):
 
 
     def select(self):
-        self.query().exec()
-        
+        q = self.query()
+        q.exec()
+        self.setQuery(q)
+
         
     def clear(self):
         q = QSqlQuery(self.database())
@@ -273,7 +273,7 @@ class imageModel(QSqlQueryModel):
         files = [str(f) for f in Path(folder).glob("**/*.jpg")]
         print('files',files)
      
-        self._add([_image(origonalFile = str(f)) for f in Path(folder).glob("**/*.jpg")])
+        self._add([_image(origonalFile = str(f)) for f in files])
         
         #self._add([_image(origonalFile = f) for f in glob.glob(pattern,recursive=True)])
     
@@ -331,7 +331,6 @@ class imageModel(QSqlQueryModel):
         for d in data:
             q.bindValue(':i',d.imageId)
             q.bindValue(':origonal',d.origonalFile)
-         #   q.bindValue(':new',d.newFile)
             q.bindValue(':type',d.imageType.name)
             if not q.exec():
                     print(q.boundValues())

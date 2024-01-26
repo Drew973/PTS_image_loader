@@ -42,9 +42,9 @@ from image_loader.widgets import set_layers_dialog
 
 from image_loader import view_gps_layer
 from image_loader import db_functions
-from image_loader.gps_model_3 import gpsModel
-from image_loader import runs_table_model
-from image_loader.corrections_model import correctionsModel
+from image_loader.gps_model_4 import gpsModel
+from image_loader import runs_model
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -64,17 +64,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.model.fields = self.layersDialog
         self.imagesView.setModel(self.model)
         self.initTopMenu()
-        
         self.gpsModel = gpsModel()
-        self.runsModel = runs_table_model.runsTableModel()
+        
+        self.runsModel = runs_model.runsTableModel()
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
-        self.correctionsWidget.correctionDialog.gpsModel = self.gpsModel
-
         self.runsWidget.doubleClicked.connect(self.setChainages)
         #self.chainageBar.rangeChanged.connect()
-        self.correctionsModel = correctionsModel()
-        self.correctionsWidget.setModel(self.correctionsModel)
 
 
     def loadImages(self):
@@ -87,8 +83,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
-            self.gpsModel.setCorrections()
-            self.gpsModel.setCorrections()
             self.model.georeference(self.gpsModel,pks = self.imagesView.selectedPks())
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
@@ -101,13 +95,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         s = index.siblingAtColumn(m.fieldIndex('start_frame')).data()
         if not isinstance(s,int):
             s = 0   
-            
         e = index.siblingAtColumn(m.fieldIndex('end_frame')).data()
         if not isinstance(e,int):
-            e = 0   
-            
+            e = 0              
+#        print('s',s,'e',e)
         mode = QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
-            
         selectionModel = self.imagesView.selectionModel()
         selectionModel.clear()
         col = self.model.fieldIndex('frame_id')
@@ -121,24 +113,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if top is not None:
             self.imagesView.scrollTo(top,QAbstractItemView.PositionAtTop)    
     
-        selectionModel = self.correctionsWidget.selectionModel()
-        selectionModel.clear()
-        col = self.correctionsModel.fieldIndex('frame_id')
-        top2 = None
-        for i in range(self.correctionsModel.rowCount()):
-            index = self.correctionsModel.index(i,col)
-            if s<= index.data() and index.data() <= e:
-                selectionModel.select(index, mode)
-                if top2 is None:
-                    top2 = index
-        if top2 is not None:
-            self.correctionsWidget.scrollTo(top,QAbstractItemView.PositionAtTop)
-
 
     def new(self):
         self.model.clear()
         self.gpsModel.clear()
-        self.correctionsModel.clear()
 
 
     def load(self):

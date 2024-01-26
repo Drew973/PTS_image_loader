@@ -36,7 +36,7 @@ class chainagesDialog(QDialog):
 
         self.runsModel = runsModel
         self.setGpsModel(gpsModel)
-        self.row = None
+        self.row = -1
         self.lastButton = None 
         
         self.setLayout(QFormLayout())
@@ -135,7 +135,7 @@ class chainagesDialog(QDialog):
         s = frameToM(self.startChainage.value())
         e = frameToM(self.endChainage.value())
         if self.gpsModel is not None and s<e :
-            line = self.gpsModel.line(s,e,corrected = False)
+            line = self.gpsModel.line(startM = s , endM = e)
 #            print('line',line)
             self.markerLine.setToGeometry(line,crs = crs)
         else:

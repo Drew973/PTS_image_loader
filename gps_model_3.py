@@ -94,8 +94,7 @@ class gpsModel:
                 print(message)
         runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
-        runQuery('delete from corrected_points', db=db)
-        runQuery('insert into corrected_points(m,id,next_id,next_m,pt) select m,id,next_id,next_m,pt from original_points', db=db)
+        #runQuery('insert into corrected_points(m,id,next_id,next_m,pt) select m,id,next_id,next_m,pt from original_points', db=db)
         db.commit()
 
 
@@ -430,6 +429,7 @@ class gpsModel:
        
 
     #start of uncorrected frame
+    #->int
     @staticmethod
     def pointToFrame(point,maxDist = 10):
         qs = '''
@@ -460,3 +460,14 @@ class gpsModel:
     @staticmethod
     def hasGps():
         return gpsModel.rowCount() > 0
+
+
+    #list of nearest m,offsets to single point. ordered by distance.
+    @staticmethod
+    def locatePoint(point,maxDist = 15):
+        return [(0,0)]
+    
+    #find m,o for lines within maxDist. #order by m
+    #remove where adjacent to nearer line
+    
+    

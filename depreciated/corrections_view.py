@@ -6,13 +6,15 @@ Created on Mon Mar 13 12:16:57 2023
 """
 
 from PyQt5.QtWidgets import QTreeView,QMenu
-from image_loader.correction_dialog_xy import correctionDialog
+from image_loader.correction_dialog import correctionDialog
 from PyQt5.QtCore import QModelIndex
 
-#can set selection behavior in Qt designer/parent
 
+
+#can set selection behavior in Qt designer/parent
 class correctionsView(QTreeView):
   
+    
     def __init__(self,parent=None):
         super().__init__(parent)
         self.correctionDialog = correctionDialog(parent=self)
@@ -50,6 +52,7 @@ class correctionsView(QTreeView):
         self.correctionDialog.show()
    #     self.correctionDialog.showMarkers()
         
+   
     def selected(self):
         return self.selectionModel().selectedRows(self.model().fieldIndex('pk'))
         

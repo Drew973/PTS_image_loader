@@ -32,3 +32,6 @@ frame,pixel,line <-> m,o <-gpsModel-> x,y,frame <-correctionsModel-> corrected x
 gpsModel:
 	finding m values when nearest point is vertex? spline required? get closest known point then optimize m?
 
+
+corrections model:
+select * from runs where start_frame <= 2720 and end_frame > 2720

@@ -6,7 +6,7 @@ Created on Fri Nov  3 10:17:58 2023
 """
 
 
-from PyQt5.QtWidgets import QDialog,QComboBox,QDialogButtonBox,QHBoxLayout,QComboBox
+from PyQt5.QtWidgets import QDialog,QComboBox,QDialogButtonBox,QHBoxLayout
 
 
 

@@ -63,23 +63,6 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="corrections">
-          <attribute name="title">
-           <string>Corrections</string>
-          </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
-            <widget class="correctionsView" name="correctionsWidget">
-             <property name="selectionMode">
-              <enum>QAbstractItemView::ExtendedSelection</enum>
-             </property>
-             <property name="selectionBehavior">
-              <enum>QAbstractItemView::SelectRows</enum>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </widget>
        </item>
       </layout>
@@ -98,11 +81,6 @@
    <class>runsView</class>
    <extends>QTreeView</extends>
    <header>image_loader.runs_view</header>
-  </customwidget>
-  <customwidget>
-   <class>correctionsView</class>
-   <extends>QTableView</extends>
-   <header>image_loader.corrections_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

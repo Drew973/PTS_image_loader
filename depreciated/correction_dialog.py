@@ -10,7 +10,7 @@ import os
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtGui import QColor
 from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry
+from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry,QgsPointXY
 from qgis.PyQt import uic
 from PyQt5.QtCore import QModelIndex
 from qgis.utils import iface
@@ -18,10 +18,12 @@ from qgis.core import Qgis
 
 from image_loader.dims import lineToM,pixelToOffset
 from image_loader import combobox_dialog
+import numpy as np
+
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'correction_dialog_xy.ui'))
+    os.path.dirname(__file__), 'correction_dialog.ui'))
 
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
@@ -81,17 +83,20 @@ class correctionDialog(QDialog,FORM_CLASS):
         
     def updateMarkerLine(self):
         if self.gpsModel is not None:
-            startPt = self.gpsModel.pointFromPixelLine(pixel=self.pixel.value(),line = self.line.value(),frame=self.frameId.value())
+            startPt = self.gpsModel.FPLToPoint(pixel=self.pixel.value(),line = self.line.value(),frame=self.frameId.value())
         #    print(startM,startOffset)           
           #  print(startPt)
             endM = self.m.value()
             startM = lineToM(frame = self.frameId.value(),line = self.line.value())
-            line = self.gpsModel.originalLine(startM,endM)#QgsGeometry
+            line = self.gpsModel.line(startM,endM)#QgsGeometry
             if not line.isNull():
-                endPt = self.gpsModel.originalPoint(m = self.m.value(),offset = self.offset.value())
-                g = QgsGeometry.fromPolylineXY([startPt] + line.asPolyline() + [endPt])
-                self.markerLine.setToGeometry(g,crs = crs)
-                return
+                endPt = self.gpsModel.point(np.array([[self.m.value(),self.offset.value()]]),corrected = False)
+                if len(endPt)>0:
+                    endPt = QgsPointXY(endPt[0,0],endPt[0,1])
+                if len(endPt)>0:
+                    g = QgsGeometry.fromPolylineXY([startPt] + line.asPolyline() + [endPt])
+                    self.markerLine.setToGeometry(g,crs = crs)
+                    return
             #iface.messageBar().pushMessage("Image_loader", "Line too long to display.", level=Qgis.Info)
         self.markerLine.setToGeometry(QgsGeometry(),crs = crs)
 
@@ -117,7 +122,7 @@ class correctionDialog(QDialog,FORM_CLASS):
             if self.gpsModel.hasGps():
             
                 if self.lastButton == 'frame':
-                    frame = self.gpsModel.getFrame(pt)
+                    frame = self.gpsModel.pointToFrame(pt)
                     if frame is not None:
                         self.frameId.setValue(frame)
                         self.setPixelLine(pt)
@@ -126,7 +131,7 @@ class correctionDialog(QDialog,FORM_CLASS):
                     self.setPixelLine(pt)
     
                 if self.lastButton == 'end':
-                    options = self.gpsModel.locatePointOriginal(point = pt)#[(m,offset),()]
+                    options = self.gpsModel.locatePoint(point = pt)#[(m,offset),()]
                     print('options',options)
                     m = 0
                     offset = 0
@@ -151,7 +156,7 @@ class correctionDialog(QDialog,FORM_CLASS):
 
 
     def setPixelLine(self,pt):
-        vals = self.gpsModel.pixelLine(point=pt,frameId = self.frameId.value())
+        vals = self.gpsModel.pointToPixelLine(point=pt,frame = self.frameId.value())
         if vals:
             self.pixel.setValue(vals[0])
             self.line.setValue(vals[1])
@@ -229,7 +234,6 @@ class correctionDialog(QDialog,FORM_CLASS):
         self.hideMarkers()
         return super().close()
    
-    
     def hideMarkers(self):
         self.markerLine.hide()
         self.canvas.refresh()

@@ -124,16 +124,21 @@ def initDb(db):
     script = '''
     SELECT InitSpatialMetaData();
     
-    create table if not exists runs
+  create table if not exists runs
     (
     	pk INTEGER PRIMARY KEY
     	,start_frame int default 0
     	,end_frame int default 0
+        ,correction_start_m float default 0.0
+        ,correction_end_m float default 0.0
+        ,correction_start_offset float default 0.0
+        ,correction_end_offset float default 0.0
     );
-    
+	
     create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk
-    ,start_frame,end_frame from runs;
-
+    ,start_frame,end_frame,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset
+    ,correction_end_m - correction_start_m as chainage_shift,correction_end_offset - correction_start_offset as offset
+    from runs;
     
    create table if not exists images
             ( 

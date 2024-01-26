@@ -16,7 +16,7 @@ HEIGHT = 5.0
 MAX = 99999999999999999999
 
 
-
+#use np.clip for arrays
 def clamp(v,lower,upper):
     if v < lower:
         return lower
@@ -44,15 +44,17 @@ def pixelToOffset(pixel):
 #need frame arg to distinguish end from start of next frame
 def mToLine(m,frame):
     if np.isfinite(m):
-        startM = (frame-1)*HEIGHT
-        endM = frame*HEIGHT
-        if m<startM:
-            return LINES
-        if m>endM:
-            return 0
-        return round(LINES - LINES*(m-startM)/HEIGHT)
-    return 0
+        startM = frameToM(frame)
+    #    endM = frame*HEIGHT
+        r = LINES - LINES*(m-startM)/HEIGHT
+    return clamp(r,0,LINES)
     
+
+#(m:float[],frame:int)->int[]
+def vectorizedMToLine(m,frame):
+    startM = frameToM(frame)
+    return np.clip(LINES - LINES*(m-startM)/HEIGHT,0,LINES).astype(int)
+
 
 #float/np float -> int
 def offsetToPixel(offset):
@@ -62,4 +64,7 @@ def offsetToPixel(offset):
         return 0
   
 
+#-> int[]
+def vectorizedOffsetToPixel(offsets):
+    return np.clip(PIXELS * 0.5 - offsets * PIXELS / WIDTH,0,PIXELS).astype(int)
 
