@@ -6,14 +6,18 @@ Created on Thu Apr 20 13:17:19 2023
 """
 
 from qgis.core import QgsProject,QgsRasterLayer,QgsLayerTreeGroup,QgsContrastEnhancement
-
+#from qgis.utils import iface
 import os
 
 
-
+#iface.addRasterLayer
 def loadImage(file,groups):
     name = os.path.splitext(os.path.basename(file))[0]
     group = getGroup(groups)#QgsLayerTreeGroup
+    
+   # layer = iface.addRasterLayer(file,name)
+    
+    
     layer = QgsRasterLayer(file,name)        
     layer.setContrastEnhancement(QgsContrastEnhancement.NoEnhancement)#remove contrast enhancement. end up with same pixel value showing as different color.
     group.addLayer(layer)

@@ -8,9 +8,26 @@ Created on Mon Oct  9 11:12:37 2023
 from PyQt5.QtSql import QSqlQueryModel
 from PyQt5.QtCore import Qt
 import numpy as np
-from image_loader.dims import mToFrame
-from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
+import csv
 
+from image_loader.dims import mToFrame,MAX,frameToM
+from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
+from image_loader.image_model import imageModel
+
+
+def parseCsv(file):
+    with open(file,'r', newline='') as f:
+        reader = csv.reader(f,dialect='excel',delimiter = '\t')
+        
+        for row in reader:
+            #print(row)
+            try:
+                startFrame = int(row[0])
+                endFrame = int(row[1])
+                yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':0.0,'offset':0.0}
+                               
+            except Exception as e:
+                print(e)
 
 
 class runsTableModel(QSqlQueryModel):
@@ -18,8 +35,9 @@ class runsTableModel(QSqlQueryModel):
     def __init__(self,db=None,parent=None):
         super().__init__(parent)
         self.select()
-      
+        self.gpsModel = None
         
+      
     def database(self):
         return defaultDb()
     
@@ -101,12 +119,80 @@ class runsTableModel(QSqlQueryModel):
         self.select()
         
         
+    def georeference(self,gpsModel,pks):
+        print('run pks',pks)
+        qs = '''
+select distinct(images.pk) from runs_view
+inner join images on frame_id >= start_frame and frame_id <= end_frame
+and runs_view.pk in ({pks})
+        '''.format(pks = ','.join([str(pk) for pk in pks]))
+     #   print(qs)
+    
+        q = runQuery(qs)
+        imageKeys = []
+        while q.next():
+            imageKeys.append(q.value(0))
+        
+        imageModel.georeference(gpsModel = self.gpsModel , pks = imageKeys)
+        imageModel.makeVrt(imageKeys)
+        
+   #     qs = '
+#select number,image_type from runs_view
+#inner join images on frame_id >= start_frame and frame_id <= end_frame
+#and runs_view.pk in ({pks})
+#group by runs_view.pk,image_type
+#        '.format(pks = ','.join([str(pk) for pk in pks]))
+        
+        
+   #     q = runQuery(qs)
+  #      while q.next():
+    #        imageKeys.append(q.value(0))
+        
+    
+    def loadCsv(self,file):
+        data = [row for row in parseCsv(file)]
+        print('data',data)
+        self.addRuns(data)
+        
+        
+    def locate(self,row,pt,corrected):
+        rg = self.chainageRange(row)
+        print('rg',rg)
+        opts = self.gpsModel.locate(pt,mRange = rg)
+        if corrected and len(opts) > 0:
+            opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
+            opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
+        return opts
+        
+        
+    def saveCsv(self,file):
+        with open(file,'w',newline='') as f:
+            writer = csv.writer(f,dialect='excel',delimiter = '\t')
+            writer.writerow(('start_frame','end_frame','chainage_shift','offset'))
+            q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
+            while q.next():
+                writer.writerow((q.value(0),q.value(1),q.value(2),q.value(3)))
+            
+        
+    def chainageRange(self,row,additional = 50.0):
+        s = 0.0
+        e = MAX
+        startFrame = self.index(row,self.fieldIndex('start_frame')).data()
+        endFrame = self.index(row,self.fieldIndex('end_frame')).data()
+        #  extra = abs(endFrame=startFrame) * additional
+
+        if isinstance(startFrame,int):
+            s = frameToM(startFrame) - additional
+        if isinstance(endFrame,int):
+            e = frameToM(endFrame) + additional
+        return (s,e)
+        
+    
     #array -> array
     @staticmethod
     def correctMO(mo):
-        q = prepareQuery('select m_shift,offset from runs_view where start_frame < :f and end_frame >= :f order by start_frame limit 1')
-        r = np.empty((len(mo),2),dtype = float)
-        r = np.nan
+        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
+        r = np.empty((len(mo),2),dtype = float) * np.nan
         for i,row in enumerate(mo):
             q.bindValue(':f',int(mToFrame(row[0])))
             if not q.exec():
@@ -115,3 +201,24 @@ class runsTableModel(QSqlQueryModel):
                 r[i,0] = mo[i,0] + q.value(0)
                 r[i,1] = mo[i,1] + q.value(1)
         return r
+        
+    
+    
+    #array -> array
+    @staticmethod
+    def unCorrectMO(mo):
+        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
+        r = np.empty((len(mo),2),dtype = float) * np.nan
+        for i,row in enumerate(mo):
+            q.bindValue(':f',int(mToFrame(row[0])))
+            if not q.exec():
+                raise queryError(q)
+            while q.next():
+                r[i,0] = mo[i,0] - q.value(0)
+                r[i,1] = mo[i,1] - q.value(1)
+        return r
+        
+    
+    
+    
+    

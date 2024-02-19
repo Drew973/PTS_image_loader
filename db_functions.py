@@ -86,12 +86,20 @@ def runQuery(query,db = None,values = {},printQuery=False):
 
 import shutil
 
+
+#copy to file. keeps using same db afterwards.
 def saveToFile(file):
    if dbFile() == ':memory:':
         runQuery(query = "vacuum main into :file".replace(':file',file))#error transaction in progress... with non memory database
    else:
        shutil.copy2(dbFile(), file)
 
+
+
+#change QSqlDatabase?
+#slightly quicker
+#vs copy tables?
+#good if using in memory database
 
 def loadFile(dbFile):
     db = defaultDb()
@@ -100,13 +108,14 @@ def loadFile(dbFile):
         runQuery(query = "DETACH DATABASE 'db2'",db = db)
     except Exception:
         pass
+    
     runQuery("ATTACH DATABASE ':file' AS db2".replace(':file',dbFile),db=db)
     runQuery("delete from images",db = db)
-    runQuery('insert into images(frame_id,run,original_file,image_type) select frame_id,run,original_file,image_type from db2.images',db=db)
-    runQuery("delete from corrections",db=db)
-    runQuery('insert into corrections(run,chainage,x_offset,y_offset,new_x,new_y) select run,chainage,x_offset,y_offset,new_x,new_y from db2.corrections',db=db)
+    runQuery('insert into images(frame_id,original_file,image_type) select frame_id,original_file,image_type from db2.images',db=db)
+    runQuery("delete from runs",db=db)
+    runQuery('insert into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset) select start_frame,end_frame,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset from db2.runs',db=db)
     runQuery("delete from original_points",db=db)
-    runQuery('insert into original_points(m,pt) select m,pt from db2.points',db=db)
+    runQuery('insert into original_points(m,pt) select m,pt from db2.original_points',db=db)
     db.commit()
    # runQuery("DETACH DATABASE 'db2'",db=db)
 
@@ -145,7 +154,6 @@ def initDb(db):
                 pk INTEGER PRIMARY KEY
                 ,frame_id INTEGER
                 ,original_file text unique
-                ,new_file text
                 ,image_type text
              );
       
@@ -261,8 +269,19 @@ from
 (select next_m,next_x_shift,next_y_shift from interpolate_corrections order by m desc limit 1) mi
 inner join original_points as p on p.m >= mi.next_m;
 
+create view if not exists frames as
+select cast(m/5 as int) as frame from original_points 
+group by cast(m/5 as int);
 
 
+create view if not exists lines_5m as
+select frame
+,frame * 5 -5 as start_m
+,frame * 5 as end_m
+,MakeLine(pt) as geom
+ from original_points inner join frames
+on m >= frame * 5 - 5 and m <= frame * 5
+group by frame;
 '''
 
     

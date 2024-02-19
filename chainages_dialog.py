@@ -28,6 +28,14 @@ def fromCanvasCrs(point):
 
 
 
+def asFloat(value,default = 0.0):
+    try:
+        return float(value)
+    except:
+        return default
+
+
+
 class chainagesDialog(QDialog):
     
     def __init__(self,runsModel=None,gpsModel=None,parent=None):
@@ -112,8 +120,8 @@ class chainagesDialog(QDialog):
             self.setWindowTitle('Add run')
         else:
             self.setWindowTitle('Edit frames for run {run}'.format(run=row+1))
-            self.startChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('start_frame')).data())
-            self.endChainage.setValue(self.runsModel.index(row,self.runsModel.fieldIndex('end_frame')).data())
+            self.startChainage.setValue(asFloat(self.runsModel.index(row,self.runsModel.fieldIndex('start_frame')).data()))
+            self.endChainage.setValue(asFloat(self.runsModel.index(row,self.runsModel.fieldIndex('end_frame')).data()))
             
             
     def show(self):

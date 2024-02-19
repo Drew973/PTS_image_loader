@@ -40,6 +40,11 @@ class runsView(QTreeView):
         return -1
 
 
+    def selectedPks(self):
+        return [index.data() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))]
+
+
+
     def setChainage(self):
         self.chainagesDialog.setRow(self.minSelected())
         self.chainagesDialog.show()
@@ -71,8 +76,6 @@ class runsView(QTreeView):
         
     
     def dropRuns(self):
-        pks = [index.data() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))]
-   #     print(pks)
-        self.model().dropRuns(pks)
+        self.model().dropRuns(self.selectedPks())
 
     

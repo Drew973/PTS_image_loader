@@ -22,7 +22,7 @@ from image_loader.gps_interface import gpsInterface
 K = 3
 S = 0
 
-N = 5
+N = 2
 
 import numpy as np
 
@@ -79,6 +79,7 @@ class gpsModel(gpsInterface):
             self.xDerivitive = None
             self.yDerivitive = None
             
+    # array[[x,y]] or []
     def point(self,mo):
         if self.hasGps():
             m = mo[:,0]
@@ -91,9 +92,12 @@ class gpsModel(gpsInterface):
             r[:,0] = r[:,0] + perps[:,0] * offsets
             r[:,1] = r[:,1] + perps[:,1] * offsets
             return r
+        return []
     
     
     def line(self,startM,endM,startOffset = 0,endOffset = 0):
+        
+        
         
         if startM <= endM:
             s = startM
@@ -106,29 +110,43 @@ class gpsModel(gpsInterface):
             e = startM
             eo = startOffset
             
-        
+            
         #along centerline. perpendicular line joining to startOffset and endOffset 
-        m = [s,s]
-        q = runQuery('select m from original_points where m > :s and m < :e order by m limit 1000',values = {':s':s,':e':e})
+        m = [s,s]#want point at s,0 and s,so
+        q = runQuery('select m from original_points where m > :s and m < :e order by m limit 1000',values = {':s':float(s),':e':float(e)})
+     #   print('s',s,'e',e)
         while q.next():
             m.append(q.value(0))
         m += [e,e]
+        
+       # print('m',m)
         if len(m) > 2:
             mo = np.zeros((len(m),2))
             mo[:,0] = m
             mo[0,1] = so
             mo[-1,1] = eo
+            
+        #    print('mo',mo)
+            
             xy = self.point(mo)
-            return QgsGeometry.fromPolylineXY([QgsPointXY(row[0],row[1]) for row in xy])
+            if len(xy)>0:
+                if startM <= endM:
+                    return QgsGeometry.fromPolylineXY([QgsPointXY(row[0],row[1]) for row in xy])
+                else:
+                    return QgsGeometry.fromPolylineXY([QgsPointXY(row[0],row[1]) for row in xy[::-1]])
+
         return QgsGeometry()
     
     
-    def locate(self,point,maxDist = 20):
+    def locate(self,point,mRange = (0,MAX) ,maxDist = 20):
         #find line segments within buffer of points
         #numerical methods to find closest point of splines to points
-        qs = 'select start_m,end_m from original_lines where st_distance(line,makePoint(:x,:y,27700)) < :md order by start_m'
+        qs = '''select max(start_m,:s),min(end_m,:e) from original_lines 
+        where st_distance(line,makePoint(:x,:y,27700)) < :md and start_m <= :e and end_m >= :s
+        order by start_m
+        '''
     #    q = runQuery('select m,st_x(pt),st_y(pt) from original_points order by m')
-        q = runQuery(qs,values = {':md':maxDist,':x':point.x(),':y':point.y()})
+        q = runQuery(qs,values = {':md':maxDist,':x':point.x(),':y':point.y(),':s':mRange[0],':e':mRange[1]})
         
         last = None
         ranges = []
@@ -241,8 +259,8 @@ class gpsModel(gpsInterface):
             mo = np.zeros((N*2,2)) * np.nan
             mo[:,0][0:N] = np.linspace(startM,endM,N)
             mo[:,0][N:] = np.linspace(startM,endM,N)
-            mo[:,1][0:N] = offset - WIDTH/2
-            mo[:,1][N:] = offset + WIDTH/2
+            mo[:,1][0:N] = offset + WIDTH/2
+            mo[:,1][N:] = offset - WIDTH/2
        #     print('mo',mo)
             xy = self.point(mo)
             

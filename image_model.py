@@ -118,7 +118,7 @@ class imageModel(QSqlQueryModel):
            # print('commands',georeferenceCommands)
             if georeferenceCommands:
                 layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-                print(georeferenceCommands[0])
+                #print(georeferenceCommands[0])
                 run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
 
 
@@ -200,12 +200,12 @@ class imageModel(QSqlQueryModel):
         del progress
         
      
-
-    def makeVrt(self,pks):
+    @staticmethod
+    def makeVrt(pks,folder = '',parent=None):
         
         
         vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
-        progress = QProgressDialog("Preparing...","Cancel", 0, 1,parent = self.parent())#QObjectwithout parent gets deleted like normal python object
+        progress = QProgressDialog("Preparing...","Cancel", 0, 1)#QObjectwithout parent gets deleted like normal python object
 
         #use something unlikey to be in file name as seperator.
         
@@ -216,8 +216,8 @@ class imageModel(QSqlQueryModel):
             files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
            # print(files)        
             if files:
-                if os.path.isdir(self.fields['folder']):
-                    destFolder = os.path.join(self.fields['folder'],'Combined Images',query.value(2))
+                if os.path.isdir(folder):
+                    destFolder = os.path.join(folder,'Combined Images',query.value(2))
                 else:
                     destFolder = os.path.commonpath(files) 
                 vrtFile = os.path.join(destFolder,

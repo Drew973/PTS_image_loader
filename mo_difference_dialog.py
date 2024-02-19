@@ -7,12 +7,12 @@ Created on Tue Jan 16 12:00:19 2024
 
 
 QDataWidgetMapper only sets start chainage.
-because model calls select()?
+because model calls select() and changes row count?
 
 """
 
 
-from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,QHBoxLayout,QPushButton,QLabel,QDataWidgetMapper
+from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,QHBoxLayout,QPushButton,QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
@@ -20,6 +20,8 @@ from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsPro
 from qgis.utils import iface
 from image_loader.dims import MAX
 from image_loader.combobox_dialog import comboBoxDialog
+import numpy as np
+
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
 def fromCanvasCrs(point):
@@ -83,7 +85,7 @@ class moDifferenceDialog(QDialog):
         self.startOffset.setRange(-99,99)
         self.startOffset.valueChanged.connect(self.recalcDifference)
 
-        self.layout().addRow('Start chainage,offset',horizontalLayout([self.startM,self.startOffset,self.startButton]))
+        self.layout().addRow('Current chainage,offset',horizontalLayout([self.startM,self.startOffset,self.startButton]))
         
         self.endM =  QDoubleSpinBox(self)
         self.endM.setMaximum(MAX)
@@ -94,7 +96,7 @@ class moDifferenceDialog(QDialog):
 
         self.endButton.clicked.connect(self.endButtonClicked)
         self.endOffset.valueChanged.connect(self.recalcDifference)
-        self.layout().addRow('End chainage,offset',horizontalLayout([self.endM,self.endOffset,self.endButton]))
+        self.layout().addRow('New chainage,offset',horizontalLayout([self.endM,self.endOffset,self.endButton]))
 
         self.result = QLabel(self)
         self.result.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -112,8 +114,12 @@ class moDifferenceDialog(QDialog):
                                                off = self.endOffset.value()-self.startOffset.value()))
 
         if hasattr(self.gpsModel,'line'):
-            line = self.gpsModel.line(startM = self.startM.value(),
-                                      startOffset = self.startOffset.value(),
+            
+            startMO = self.model.unCorrectMO(np.array([[self.startM.value(),self.startOffset.value()]]))
+           # print('startMO',startMO)
+            
+            line = self.gpsModel.line(startM = startMO[0,0],
+                                      startOffset = startMO[0,1],
                                       endM = self.endM.value(),
                                       endOffset = self.endOffset.value())
             self.markerLine.setToGeometry(line,crs=crs)
@@ -129,27 +135,51 @@ class moDifferenceDialog(QDialog):
         iface.mapCanvas().setMapTool(self.mapTool)
         
         
+        
+    def chooseOpt(self,opts):
+        self.optionsDialog.box.clear()
+        self.optionsDialog.box.addItems([str(row) for row in opts])
+        r = self.optionsDialog.exec()
+        if r == QDialog.Accepted:
+            i = self.optionsDialog.box.currentIndex()
+            if i != -1:
+                return (opts[i,0],opts[i,1])
+        return (0.0,0.0)                   
+        
+        
     def mapClicked(self,pt):
        # print('pt',pt)
      #   print('gpsModel',self.gpsModel)
-        if hasattr(self.gpsModel,'locate'):
-            p = fromCanvasCrs(pt)
-            opts = self.gpsModel.locate(p)
-     #       print('opts',opts)
-            if len(opts)>0:
-                self.optionsDialog.box.clear()
-                self.optionsDialog.box.addItems([str(row) for row in opts])
-                r = self.optionsDialog.exec()
-                if r == QDialog.Accepted:
-                    i = self.optionsDialog.box.currentIndex()
-                    if i != -1:
-                        if self.lastButton == 0:
-                            self.startM.setValue(opts[i,0])
-                            self.startOffset.setValue(opts[i,1])
-                        if self.lastButton == 1:
-                            self.endM.setValue(opts[i,0])
-                            self.endOffset.setValue(opts[i,1])
+        if hasattr(self.model,'locate'):
+            p = fromCanvasCrs(pt)            
+            #self.model.index(self.model.fieldIndex('start_frame')).data
+           # rg = self.model.chainageRange(self.row)
+        #    print('rg',rg)
+            
+            
+            if self.lastButton == 0:
+                opts = self.model.locate(row=self.row,pt=p,corrected = False)
+                opts = self.model.correctMO(opts)
+                
+                if len(opts) == 1:
+                    self.startM.setValue(opts[0,0])
+                    self.startOffset.setValue(opts[0,1])
+                if len(opts) >1:
+                    m,off = self.chooseOpt(opts)
+                    self.startM.setValue(m)
+                    self.startOffset.setValue(off)
 
+                    
+            if self.lastButton == 1:
+                opts = self.model.locate(row=self.row,pt=p,corrected = False)
+                if len(opts) == 1:
+                    self.endM.setValue(opts[0,0])
+                    self.endOffset.setValue(opts[0,1])
+                if len(opts) >1:
+                    m,off = self.chooseOpt(opts)
+                    self.endM.setValue(m)
+                    self.endOffset.setValue(off)            
+            
 
     def setModel(self,model):
         self.model = model
@@ -164,11 +194,11 @@ class moDifferenceDialog(QDialog):
         model = self.model
         
         #name:str->float
-        def val(name):
+        def val(name,default = 0.0):
             d = model.index(row,model.fieldIndex(name)).data()
             if isinstance(d,float):
                 return d
-            return 0.0
+            return default
         
         self.startM.setValue(val('correction_start_m'))
         self.endM.setValue(val('correction_end_m'))

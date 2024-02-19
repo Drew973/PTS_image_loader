@@ -110,4 +110,16 @@ gps_model.
 	
 	
 	
+reload vrt when images changed.
+run,type from images
+
+add georeference run action
+
+Qgis not releasing file locks.
+	use iface.addVectorLayer() instead of QgsVectorLayer?
 	
+
+include frame in correction.
+	preview button and filePath combobox to remake and reload image.
+
+		

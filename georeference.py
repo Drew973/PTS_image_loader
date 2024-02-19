@@ -7,19 +7,15 @@ Created on Tue May 16 13:28:48 2023
 
 import os
 import argparse
-
-
 from osgeo import gdal,osr,gdalconst
+
 
 
 def warpedFileName(origonalFile):
     return os.path.splitext(origonalFile)[0] + '_warped.tif'
 
-
 noData = 255
-WIDTH = 4.0
-PIXELS = 1038
-LINES = 1250
+
 
 
 '''
@@ -47,7 +43,11 @@ def georeferenceFile(file,warpedFile,gcps):
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(27700)
         srs = srs.ExportToWkt()
-        translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
+       # translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
+        translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.tif'
+  
+        
+        #in memory File
        # translatedFile = os.path.splitext(file)[0] + '_translated.vrt'
         translated = gdal.Translate(translatedFile,
                                     file,
