@@ -44,7 +44,7 @@ from image_loader import view_gps_layer
 from image_loader import db_functions
 from image_loader.gps_model_4 import gpsModel
 from image_loader import runs_model
-
+from image_loader.run_commands import commandsDialog
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -60,9 +60,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
         db_functions.createDb()
 
-        self.model = imageModel(parent=self)
-        self.model.fields = self.layersDialog
-        self.imagesView.setModel(self.model)
+        self.imagesModel = imageModel(parent=self)
+        self.imagesModel.fields = self.layersDialog
+        self.imagesView.setModel(self.imagesModel)
         self.initTopMenu()
         self.gpsModel = gpsModel()
         
@@ -76,23 +76,36 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def loadImages(self):
-        self.model.loadImages(self.imagesView.selectedPks())
+        self.imagesModel.loadImages(self.imagesView.selectedPks())
 
 
     def createOverviews(self):
-        self.model.createOverviews()
+        self.imagesModel.createOverviews()
         
    
     def georeferenceImages(self):
         if self.gpsModel.hasGps():
-            self.model.georeference(self.gpsModel,pks = self.imagesView.selectedPks())
+            progress = commandsDialog(title = 'Georeferencing',parent = self)
+            progress.show()
+            self.imagesModel.georeference(self.gpsModel,pks = self.imagesView.selectedPks(),progress=progress)
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
         
 
     def processRuns(self):
         if self.gpsModel.hasGps():
-            self.runsModel.georeference(gpsModel = self.gpsModel,pks = self.runsWidget.selectedPks())
+            progress = commandsDialog(parent = self)
+            progress.setLabelText('Georeferencing')
+            progress.show()
+            pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
+       #     print('pks',pks)
+            self.imagesModel.georeference(gpsModel = self.gpsModel,pks=pks,progress = progress)
+            
+            
+            progress.setLabelText('Remaking VRTs')
+            self.imagesModel.makeVrt(pks=pks,progress = progress)
+
+           # self.runsModel.georeference(gpsModel = self.gpsModel,pks = self.runsWidget.selectedPks(),progress = progress)
         else:
             iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)        
 
@@ -111,10 +124,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         mode = QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
         selectionModel = self.imagesView.selectionModel()
         selectionModel.clear()
-        col = self.model.fieldIndex('frame_id')
+        col = self.imagesModel.fieldIndex('frame_id')
         top = None
-        for i in range(self.model.rowCount()):
-            index = self.model.index(i,col)
+        for i in range(self.imagesModel.rowCount()):
+            index = self.imagesModel.index(i,col)
             if s<= index.data() and index.data() <= e:
                 selectionModel.select(index, mode)
                 if top is None:
@@ -124,7 +137,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
 
     def new(self):
-        self.model.clear()
+        self.imagesModel.clear()
         self.gpsModel.clear()
         self.runsModel.clear()
 
@@ -135,7 +148,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             file = f[0]
             if file:
                 db_functions.loadFile(file)
-                self.model.select()
+                self.imagesModel.select()
                 self.runsModel.select()
         
         
@@ -246,7 +259,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def makeVrt(self):
-        self.model.makeVrt(pks = self.imagesView.selectedPks(),folder = self.model.fields['folder'])
+        progress = commandsDialog(title = 'Remaking VRT files',parent = self)
+        progress.show()
+        self.imagesModel.makeVrt(pks = self.imagesView.selectedPks(),progress = progress)
 
 
     def loadGps(self):
@@ -274,21 +289,21 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
         if f:
            # self.setFile(f)
-            self.model.loadRIL(f)    
+            self.imagesModel.loadRIL(f)    
             
             
     def openCorrections(self):
         f = getFile(folder = os.path.join(self.layersDialog['folder'],'Processed Data') , filt = '*;;*.csv')
        # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
         if f:
-            self.model.runsModel.select()
+            self.imagesModel.runsModel.select()
         
             
     #save all tables to sqlite database.
     def saveAs(self):
         f = QFileDialog.getSaveFileName(caption = 'Save details',filter = 'sqlite database (*.db)')[0]
         if f:
-            self.model.save(f)
+            self.imagesModel.save(f)
             iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
 
 
@@ -298,7 +313,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if f:
            # progress = QProgressDialog("Finding image details...","Cancel",0,0,self)
          #   progress.setWindowModality(Qt.WindowModal)
-            self.model.addFolder(f)
+            self.imagesModel.addFolder(f)
            # progress.deleteLater()
 
 

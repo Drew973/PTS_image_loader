@@ -56,7 +56,7 @@ class gpsModel(gpsInterface):
         
         
     def download(self):
-        q = runQuery('select m,st_x(pt),st_y(pt) from original_points order by m')
+        q = runQuery('select m,st_x(pt),st_y(pt) from original_points group by m having count(m)=1  order by m')
         m = []
         x = []
         y = []
@@ -138,7 +138,7 @@ class gpsModel(gpsInterface):
         return QgsGeometry()
     
     
-    def locate(self,point,mRange = (0,MAX) ,maxDist = 20):
+    def locate(self,point,mRange = (0,MAX) ,maxDist = 10):
         #find line segments within buffer of points
         #numerical methods to find closest point of splines to points
         qs = '''select max(start_m,:s),min(end_m,:e) from original_lines 

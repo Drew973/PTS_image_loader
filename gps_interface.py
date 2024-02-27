@@ -60,7 +60,7 @@ class gpsInterface:
         db.transaction()
         runQuery(query='delete from original_points', db=db)
         q = QSqlQuery(db)
-        if not q.prepare('insert into original_points(m,pt) values (:m,makePoint(:x,:y,27700))'):
+        if not q.prepare('insert or ignore into original_points(m,pt) values (cast(:m as int),makePoint(:x,:y,27700))'):
             raise queryPrepareError(q)
         for i, v in enumerate(vals):
             try:
@@ -72,6 +72,8 @@ class gpsInterface:
             except Exception as e:
                 message = 'error loading row {r} : {err}'.format(r=i, err=e)
                 print(message)
+                
+        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
         runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         #runQuery('insert into corrected_points(m,id,next_id,next_m,pt) select m,id,next_id,next_m,pt from original_points', db=db)

@@ -15,6 +15,13 @@ from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
 from image_loader.image_model import imageModel
 
 
+def tryFloat(v,default = 0.0):
+    try:
+        return float(v)
+    except Exception:
+        return default
+
+
 def parseCsv(file):
     with open(file,'r', newline='') as f:
         reader = csv.reader(f,dialect='excel',delimiter = '\t')
@@ -22,9 +29,20 @@ def parseCsv(file):
         for row in reader:
             #print(row)
             try:
-                startFrame = int(row[0])
+                startFrame = int(row[0].strip())
                 endFrame = int(row[1])
-                yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':0.0,'offset':0.0}
+                
+                try:
+                    chainageShift = float(row[2].strip())
+                except Exception:
+                    chainageShift = 0.0
+                    
+                try:
+                    offset = float(row[3].strip())
+                except Exception:
+                    offset = 0.0                    
+                
+                yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':chainageShift,'offset':offset}
                                
             except Exception as e:
                 print(e)
@@ -66,7 +84,8 @@ class runsTableModel(QSqlQueryModel):
         db = self.database()
         db.transaction()
         for r in runs:
-            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)',db=db,values = {':s':r['start_frame'],':e':r['end_frame']})    
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)',
+                     db=db,values = {':s':r['start_frame'],':e':r['end_frame']})    
         db.commit()
         self.select()
         
@@ -105,7 +124,9 @@ class runsTableModel(QSqlQueryModel):
     
     
     def setCorrection(self,pk,startM,endM,startOffset,endOffset):
-        qs = 'update runs set correction_start_m = :s , correction_end_m = :e , correction_start_offset = :so, correction_end_offset = :eo where pk = :pk'
+        qs = '''update runs set correction_start_m = :s - correction_end_m +correction_start_m , 
+        correction_start_offset = :so - correction_end_offset + correction_start_offset, 
+        correction_end_m = :e , correction_end_offset = :eo where pk = :pk'''
         runQuery(query = qs,values = {':pk':pk,':s':startM,':e':endM,':so':startOffset,':eo':endOffset})
         self.select()
 
@@ -119,8 +140,25 @@ class runsTableModel(QSqlQueryModel):
         self.select()
         
         
+        
+    def imagePks(self,runPks):
+        qs = '''
+select distinct(images.pk) from runs
+inner join images on frame_id >= start_frame and frame_id <= end_frame
+and runs.pk in ({pks})
+        '''.format(pks = ','.join([str(pk) for pk in runPks]))
+     #   print(qs)
+    
+        q = runQuery(qs)
+        imageKeys = []
+        while q.next():
+            imageKeys.append(q.value(0))        
+        return imageKeys
+        
+        
+    
     def georeference(self,gpsModel,pks):
-        print('run pks',pks)
+    #    print('run pks',pks)
         qs = '''
 select distinct(images.pk) from runs_view
 inner join images on frame_id >= start_frame and frame_id <= end_frame
@@ -150,10 +188,17 @@ and runs_view.pk in ({pks})
         
     
     def loadCsv(self,file):
-        data = [row for row in parseCsv(file)]
-        print('data',data)
-        self.addRuns(data)
+       # data = [row for row in parseCsv(file)]
+    #    print('data',data)
+        db = self.database()
+        db.transaction()
+        runQuery(query = 'delete from runs', db=db)            
         
+        for r in parseCsv(file):
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_end_m,correction_end_offset) values (:s,:e,:shift,:off)',
+                     db=db,values = {':s':r['start_frame'],':e':r['end_frame'],':shift':r['chainage_shift'],':off':r['offset']})    
+        db.commit()
+        self.select()
         
     def locate(self,row,pt,corrected):
         rg = self.chainageRange(row)

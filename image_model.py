@@ -95,13 +95,14 @@ class imageModel(QSqlQueryModel):
     
     @staticmethod
         #load images into qgis
-    def georeference(gpsModel,pks = []):
+    def georeference(gpsModel,pks = [],progress = None):
        # print('pks',pks)
         if pks:
+
             georeferenceCommands = []
             sources = []
-            p = ','.join([str(pk) for pk in pks])
-            t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=p)
+            pkStr = ','.join([str(pk) for pk in pks])
+            t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
             q = db_functions.runQuery(t)
             while q.next():
                 frame = q.value(0)
@@ -115,18 +116,34 @@ class imageModel(QSqlQueryModel):
                                                                                                              new = newFile,
                                                                                                              gcps = gcp
                                                                                                              ))
-           # print('commands',georeferenceCommands)
+        #    progress.setLabelText('Unloading Tif files')
+            layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+          
+           #ramove VRT files containing images
+         #   progress.setLabelText('Unloading VRT files')
+            vrtFiles = []
+            qs = 'select image_type,run,group_concat(original_file) from images_view where pk in ({pks}) and run is not null group by image_type,run'.format(pks = pkStr)
+            q = db_functions.runQuery(qs)
+            while q.next():
+                vrtFiles.append(imageModel.vrtFile(q.value(1),q.value(0),str(q.value(2)).split(',')))
+           # print('vrtFiles',vrtFiles)
+            layer_functions.removeSources(vrtFiles)#remove layers to allow file to be edited.
+
+
+       #     print('georeferenceCommands',georeferenceCommands)
             if georeferenceCommands:
-                layer_functions.removeSources(sources)#remove layers to allow file to be edited.
                 #print(georeferenceCommands[0])
-                run_commands.runCommands(commands = georeferenceCommands,labelText = 'Writing files...')
-
-
-    def setData(self,index,value,role = Qt.EditRole):
-        if index.column() == self.fieldIndex('marked'):
-            if role == Qt.EditRole:
-                self.mark([index],value)
-        return True
+                run_commands.runCommands(commands = georeferenceCommands,progress = progress)
+   
+    
+    @staticmethod        
+    def vrtFile(run,imageType,files):
+        if len(files) ==1 :
+            folder = os.path.dirname(files[0])
+        else:
+            folder = os.path.commonpath(files)
+        return os.path.join(folder,'{tp}_{run}.vrt'.format(run = run,tp = imageType))
+        
     
     
     def flags(self,index):
@@ -199,82 +216,76 @@ class imageModel(QSqlQueryModel):
         progress.deleteLater()
         del progress
         
+        
+
      
     @staticmethod
-    def makeVrt(pks,folder = '',parent=None):
+    def makeVrt(pks,progress,folder = ''):
         
-        
-        vrtData = namedtuple('vrtData', ['files', 'vrtFile', 'tempFile','imageType','run'])
-        progress = QProgressDialog("Preparing...","Cancel", 0, 1)#QObjectwithout parent gets deleted like normal python object
-
         #use something unlikey to be in file name as seperator.
-        
         p = ','.join([str(pk) for pk in pks])
         query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
-        data = []
-        while query.next():
-            files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
-           # print(files)        
-            if files:
-                if os.path.isdir(folder):
-                    destFolder = os.path.join(folder,'Combined Images',query.value(2))
-                else:
-                    destFolder = os.path.commonpath(files) 
-                vrtFile = os.path.join(destFolder,
-                                       '{tp}_{run}.vrt'.format(run = str(query.value(1)),tp = query.value(2)))
-                tempFile = vrtFile + '.txt'
-                data.append(vrtData(files,vrtFile,tempFile,query.value(2),query.value(1)))
-                
-        progress.setLabelText('removing layers')
-     #   print([v.vrtFile for v in data])
-        layer_functions.removeSources([v.vrtFile for v in data])                
-        progress.close()
-      
+        
+        d = {}
         buildCommands = []
         overviewCommands = []
+        tempFiles = []
         
-        for v in run_commands.updateProgress(listLike = data , labelText = 'Preparing...'):
-            vrtFile = v.vrtFile
-           #create directory for vrt file if necessary
-            if not os.path.isdir(os.path.dirname(v.vrtFile)):
-                os.makedirs(os.path.dirname(v.vrtFile))
+        while query.next():
             
-            with open(v.tempFile,'w') as tf:                
-                tf.write('\n'.join(['{f}'.format(f=file) for file in v.files]))
+            run = query.value(1)
+            tp = query.value(2)
             
-            #remove overview if exists
-            overview = v.vrtFile+'.ovr'
-            if os.path.isfile(overview):
-                os.remove(overview)
+            # existing warped files
+            files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
+           # print(files)
+            if files:
                 
-            buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = v.tempFile,f=v.vrtFile))
-            c = 'gdaladdo -ro "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = v.vrtFile)
-            
-            overviewCommands.append(c)
+                vrtFile = imageModel.vrtFile(run = run,imageType = tp, files = files)
+                tempFile = vrtFile + '.txt'
+                folder = os.path.dirname(vrtFile)
+                #print('folder',folder)
+                if not os.path.isdir(folder):
+                    os.makedirs(folder)
+                
+                
+                #write tempuary file to get around console charactor limit.
+                tempFile = vrtFile + '.txt'
+                with open(tempFile,'w') as tf:                
+                    tf.write('\n'.join(['{f}'.format(f=file) for file in files]))
+              
+                tempFiles.append(tempFile)
+                
+                #remove overview if exists
+                overview = vrtFile+'.ovr'
+                if os.path.isfile(overview):
+                    os.remove(overview)
+                
+                buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = tempFile,f=vrtFile))
+                overviewCommands.append('gdaladdo -ro "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = vrtFile))
 
-        run_commands.runCommands(commands = buildCommands , labelText = 'Writing VRT files...')
-        run_commands.runCommands(commands = overviewCommands , labelText = 'Creating overviews...')
+                groups = ['image_loader', 'combined VRT', tp, run]
+                d[vrtFile] = groups
 
-        for v in run_commands.updateProgress(listLike = data , labelText = 'Loading layers...'):
-            #os.remove(data[vrtFile][0])
-            
-            groups = ['image_loader',
-                       'combined VRT',
-                       v.imageType,
-                       v.run
-                       ]
-            loadImage(file = v.vrtFile,groups=groups)
-            os.remove(v.tempFile)
-    
-    
+    #    print('d',d)
+        layer_functions.removeSources(d.keys())           
+        run_commands.runCommands(commands = buildCommands , progress = progress)
+        run_commands.runCommands(commands = overviewCommands , progress = progress)
+
+        for tempFile in tempFiles:
+            os.remove(tempFile)
+        
+        for k in d:
+            loadImage(file = k,groups=d[k])
+
+
+
     def addFolder(self,folder):
         #pattern = folder+'/**/*.jpg'
        # pattern = folder+'/**/*.jpg'
         files = [str(f) for f in Path(folder).glob("**/*.jpg")]
-        print('files',files)
-     
+    #    print('files',files)
         self._add([_image(origonalFile = str(f)) for f in files])
-        
         #self._add([_image(origonalFile = f) for f in glob.glob(pattern,recursive=True)])
     
     

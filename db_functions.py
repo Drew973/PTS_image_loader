@@ -329,7 +329,7 @@ def createDb(file = dbFile()):
     db.setDatabaseName(file)
     if not db.open():
         raise ValueError('could not open database')
-    initDb(db)
+#    initDb(db)
     return db
 
 

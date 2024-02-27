@@ -68,7 +68,9 @@ def georeferenceFile(file,warpedFile,gcps):
                  resampleAlg = 'near',
              #    tps = True,
                  dstalpha = True,
-                 warpOptions = ['SKIP_NOSOURCE=YES']
+             #    warpOptions = ['SKIP_NOSOURCE=YES']
+                 warpOptions = ['SKIP_NOSOURCE=YES,overwrite=YES']
+
         )
             
             #rewrite vrt replacing translated with original file. hacky but effective.

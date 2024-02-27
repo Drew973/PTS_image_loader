@@ -20,7 +20,7 @@ from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsPro
 from qgis.utils import iface
 from image_loader.dims import MAX
 from image_loader.combobox_dialog import comboBoxDialog
-import numpy as np
+#import numpy as np
 
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
@@ -115,11 +115,11 @@ class moDifferenceDialog(QDialog):
 
         if hasattr(self.gpsModel,'line'):
             
-            startMO = self.model.unCorrectMO(np.array([[self.startM.value(),self.startOffset.value()]]))
+         #  startMO = self.model.unCorrectMO(np.array([[self.startM.value(),self.startOffset.value()]]))
            # print('startMO',startMO)
             
-            line = self.gpsModel.line(startM = startMO[0,0],
-                                      startOffset = startMO[0,1],
+            line = self.gpsModel.line(startM = self.startM.value(),
+                                      startOffset = self.startOffset.value(),
                                       endM = self.endM.value(),
                                       endOffset = self.endOffset.value())
             self.markerLine.setToGeometry(line,crs=crs)
@@ -159,7 +159,7 @@ class moDifferenceDialog(QDialog):
             
             if self.lastButton == 0:
                 opts = self.model.locate(row=self.row,pt=p,corrected = False)
-                opts = self.model.correctMO(opts)
+            #    opts = self.model.correctMO(opts)
                 
                 if len(opts) == 1:
                     self.startM.setValue(opts[0,0])
@@ -218,8 +218,10 @@ class moDifferenceDialog(QDialog):
     def hideMarker(self):
         self.markerLine.hide()
         #iface.mapCanvas().scene().removeItem(self.markerLine)
-        
-        
+        if iface.mapCanvas().mapTool() == self.mapTool:
+            iface.mapCanvas().setMapTool(None,clean = True)
+
+
     def showMarker(self):
         self.markerLine.show()
         
@@ -228,6 +230,11 @@ class moDifferenceDialog(QDialog):
         self.showMarker()
         super().show()
         
+        
+    def hide(self):
+        self.hideMarker()
+        return super().hide()
+
         
     def reject(self):
         self.hideMarker()
