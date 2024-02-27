@@ -1,0 +1,37 @@
+
+--define offset direction.
+--calculate correction to move m,o to x,y
+
+for corrections ui need
+x,y <-> frame,pixel,line for anywhere within georeferenced image.
+outside images not necessary.
+
+for georeferencing need frame -> x,y,pixel,line.
+	same as corrections
+
+
+rectangular acceptable.
+1 chainage/offset shift per run acceptable.
+
+should images be scaled?
+if not need 1 mo shift/run
+
+frame,x,y <-> corrected x,y
+	scaling happens...
+	piecewise affine transform to map corrected <-> uncorrected points?
+
+
+frame,pixel,line <-> m,o <-correctionsModel-> corrected m,o <-gpsModel-> corrected x,y,frame
+better to specify shift. easier for user to see when wrong run.
+
+
+vs
+frame,pixel,line <-> m,o <-gpsModel-> x,y,frame <-correctionsModel-> corrected x,y,frame
+
+
+gpsModel:
+	finding m values when nearest point is vertex? spline required? get closest known point then optimize m?
+
+
+corrections model:
+select * from runs where start_frame <= 2720 and end_frame > 2720

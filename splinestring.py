@@ -30,7 +30,6 @@ def leftPerp(vect):
 
 class points:
     def __init__(self,m,x,y):
-        self.m = numpy.array([mVal for mVal in m])
         self.x = numpy.array([xVal for xVal in x])
         self.y = numpy.array([yVal for yVal in y])
         
@@ -63,21 +62,6 @@ class splineStringM:
         return numpy.stack((x, y))
     
 
-    def rechainage(self,interval):
-        if self.m is not None:
-            last = None
-            length = 0.0
-            mVals = []
-            for i,m in enumerate(self.m):
-                if last is None:
-                    last = m
-                else:
-                    length += self.length(m,last,50)
-                    last = m
-                mVals.append(length)
-        self.setPoints(points(mVals,self.x,self.y))
-        
-        
     #length between m1 and m2. 
     #n = number of points
     def length(self,m1,m2,n):
@@ -99,26 +83,3 @@ class splineStringM:
         p = self.leftPerps(m)
         return numpy.array([p[0,0],p[0,1]])
     
-    
-    
-    def residual(self,points,mShift):
-        newM = points.m + mShift
-        dx = self.xSpline(newM) - points.x
-        dy = self.ySpline(newM) - points.y
-        return numpy.sum(dx*dx+dy*dy)+0.05*mShift*mShift#small factor so converges at lowest shift        
-        
-        
-    #return m shift that minimizes distance to points
-    def bestMShift(self,points,mVals=None,maxShift = 100):
-        def res(mShift):
-            return self.residual(points,mShift)
-        
-        if mVals is None:
-            d = numpy.max(self.m)-numpy.min(self.m)
-            return minimize_scalar(res,bounds=(max([-d,-maxShift]), min([d,maxShift])), method='bounded').x
-   
-    
-    
-    def addMShift(self,mShift):
-        self.setPoints(points(self.m+mShift,self.x,self.y))
-        

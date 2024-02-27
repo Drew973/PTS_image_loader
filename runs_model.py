@@ -1,129 +1,269 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jun 22 15:18:48 2023
+Created on Mon Oct  9 11:12:37 2023
 
 @author: Drew.Bennett
 """
 
-from PyQt5.QtCore import Qt,QModelIndex
-from PyQt5.QtGui import QColor
-from PyQt5.QtGui import QStandardItemModel
-from image_loader import db_functions
+from PyQt5.QtSql import QSqlQueryModel
+from PyQt5.QtCore import Qt
+import numpy as np
+import csv
+
+from image_loader.dims import mToFrame,MAX,frameToM
+from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
+from image_loader.image_model import imageModel
 
 
-
-'''
-QSQLQueryModel always seems to change row count when query set.
-this causes runBox to change currentIndex.
-results in changing to 1st run whenever updating data.
-
-replaced with QStandardItemModel to prevent this.
-might also make natural sort easier.
-'''
+def tryFloat(v,default = 0.0):
+    try:
+        return float(v)
+    except Exception:
+        return default
 
 
+def parseCsv(file):
+    with open(file,'r', newline='') as f:
+        reader = csv.reader(f,dialect='excel',delimiter = '\t')
+        
+        for row in reader:
+            #print(row)
+            try:
+                startFrame = int(row[0].strip())
+                endFrame = int(row[1])
+                
+                try:
+                    chainageShift = float(row[2].strip())
+                except Exception:
+                    chainageShift = 0.0
+                    
+                try:
+                    offset = float(row[3].strip())
+                except Exception:
+                    offset = 0.0                    
+                
+                yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':chainageShift,'offset':offset}
+                               
+            except Exception as e:
+                print(e)
 
-#bool -> QColor
-def color(marked):
-    if marked:
-        return QColor('yellow')
-    else:
-        return QColor('white')   
+
+class runsTableModel(QSqlQueryModel):
     
-import numpy
-
-    
-    
-
-class runsModel(QStandardItemModel):
-    
-    
-    def __init__(self,parent=None):
+    def __init__(self,db=None,parent=None):
         super().__init__(parent)
-        self.setColumnCount(1)
-
-
+        self.select()
+        self.gpsModel = None
+        
+      
+    def database(self):
+        return defaultDb()
+    
+    
+    def fieldIndex(self,field):
+        return self.record().indexOf(field)
+    
+    
+    def fieldName(self,field):
+       return self.record().fieldName(field)
+    
+    
+    def flags(self,index):
+        if index.column() == self.fieldIndex('number'):
+            return Qt.ItemIsSelectable|Qt.ItemIsEnabled
+        return Qt.ItemIsEnabled|Qt.ItemIsSelectable|Qt.ItemIsEditable
+        
+    
     def clear(self):
-        super().clear()
-        self.setColumnCount(1)
-
-
-   # def addRun(self,run):
-    #    existing = [self.index(row,0).data() for row in range(self.rowCount())]        
-     #   if not run in existing:
-       #     self.appendRow()
+        runQuery('delete from runs')
+        self.select()
         
-        
-
+    
+    #[{start_frame,end_frame}]
     def addRuns(self,runs):
-        runs = numpy.unique(numpy.array([str(run) for run in runs]))
-        existing = [self.index(row,0).data() for row in range(self.rowCount())]        
-        toAdd = [run for run in runs if not run in existing]        
-        if toAdd:
-            rc = self.rowCount()            
-            self.insertRows(rc,len(toAdd),QModelIndex())#row,count,parent #True
-            for i,run in enumerate(toAdd):
-                index = self.index(i+rc,0,QModelIndex())
-                self.setData(index,str(run))
-       
+        db = self.database()
+        db.transaction()
+        for r in runs:
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)',
+                     db=db,values = {':s':r['start_frame'],':e':r['end_frame']})    
+        db.commit()
+        self.select()
         
         
-     #sych with database... 
     def select(self):
-        q = '''
-       select run
-        ,max(marked) = 1 as has_marked
-        from images group by run 
-        '''
-        #union
-        #select run,False from corrections group by run
-        #order by run
-        query = db_functions.runQuery(q)
+        #q = 'select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk ,start_frame,end_frame,chainage_correction,left_offset from runs order by start_frame,end_frame'
+        q = 'select number,pk ,start_frame,end_frame,chainage_shift,offset,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset from runs_view order by start_frame,end_frame'       
+        self.setQuery(q,self.database())
         
-        data = {}
+     
+  #  #def data(self,index,role=Qt.DisplayRole):
+      #  if role in (Qt.EditRole,Qt.DisplayRole) and index.column() == self.fieldIndex('number'):
+       #     d = super().data(index,role)
+       #     return int(d)
+     #   return super().data(index,role)        
         
-        while query.next():
-            data[str(query.value(0))] = bool(query.value(1))
+    
+    def setData(self,index,value,role=Qt.EditRole):
+        if role == Qt.EditRole and value != index.data():
+        #    print('setData',index.row(),index.column(),value)
+             
+            pk = self.index(index.row(),self.fieldIndex('pk')).data()
+            q = 'update runs set {col} = :val where pk = :pk'.format(col = self.fieldName(index.column()))
 
-        for row in reversed(range(self.rowCount())):
-            index = self.index(row,0)
-            run = index.data()
-            if run in data:
-                self.setData(index,color(data[run]),Qt.BackgroundColorRole)#BackgroundColorRole
-                del data[run]
-            else:
-                self.takeRow(row)
-        
-        #print(data)
-        #existing runs already removed from data
-        self.insertRows(0,len(data))
-        for i,run in enumerate(data):
-            index = self.index(i,0)
-            self.setData(index,run)
-            self.setData(index,color(data[run]),Qt.BackgroundColorRole)
+            if index.column() == self.fieldIndex('chainage_shift'):
+                q = 'update runs set correction_start_m = 0.0, correction_end_m = :val where pk = :pk'
+           
+            if index.column() == self.fieldIndex('offset'):
+                q = 'update runs set correction_start_offset = 0.0, correction_end_offset = :val where pk = :pk'
+                
+          #  print(q,'val',value,'pk',pk)
+            runQuery(query = q,values = {':pk':pk,':val':value})
+            self.select()
+            return True
+        return super().setData(index,value,role)
+    
+    
+    def setCorrection(self,pk,startM,endM,startOffset,endOffset):
+        qs = '''update runs set correction_start_m = :s - correction_end_m +correction_start_m , 
+        correction_start_offset = :so - correction_end_offset + correction_start_offset, 
+        correction_end_m = :e , correction_end_offset = :eo where pk = :pk'''
+        runQuery(query = qs,values = {':pk':pk,':s':startM,':e':endM,':so':startOffset,':eo':endOffset})
+        self.select()
 
-       # self.sort(0)# todo: natural sort
+    
+    def dropRuns(self,pks):
+   #     print('pks',pks)
+        pks = [str(pk) for pk in pks]
+        q = 'delete from runs where pk in ({pks})'.format(pks = ','.join(pks))
+        #print(q)
+        runQuery(q)
+        self.select()
+        
+        
+        
+    def imagePks(self,runPks):
+        qs = '''
+select distinct(images.pk) from runs
+inner join images on frame_id >= start_frame and frame_id <= end_frame
+and runs.pk in ({pks})
+        '''.format(pks = ','.join([str(pk) for pk in runPks]))
+     #   print(qs)
+    
+        q = runQuery(qs)
+        imageKeys = []
+        while q.next():
+            imageKeys.append(q.value(0))        
+        return imageKeys
+        
+        
+    
+    def georeference(self,gpsModel,pks):
+    #    print('run pks',pks)
+        qs = '''
+select distinct(images.pk) from runs_view
+inner join images on frame_id >= start_frame and frame_id <= end_frame
+and runs_view.pk in ({pks})
+        '''.format(pks = ','.join([str(pk) for pk in pks]))
+     #   print(qs)
+    
+        q = runQuery(qs)
+        imageKeys = []
+        while q.next():
+            imageKeys.append(q.value(0))
+        
+        imageModel.georeference(gpsModel = self.gpsModel , pks = imageKeys)
+        imageModel.makeVrt(imageKeys)
+        
+   #     qs = '
+#select number,image_type from runs_view
+#inner join images on frame_id >= start_frame and frame_id <= end_frame
+#and runs_view.pk in ({pks})
+#group by runs_view.pk,image_type
+#        '.format(pks = ','.join([str(pk) for pk in pks]))
+        
+        
+   #     q = runQuery(qs)
+  #      while q.next():
+    #        imageKeys.append(q.value(0))
+        
+    
+    def loadCsv(self,file):
+       # data = [row for row in parseCsv(file)]
+    #    print('data',data)
+        db = self.database()
+        db.transaction()
+        runQuery(query = 'delete from runs', db=db)            
+        
+        for r in parseCsv(file):
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_end_m,correction_end_offset) values (:s,:e,:shift,:off)',
+                     db=db,values = {':s':r['start_frame'],':e':r['end_frame'],':shift':r['chainage_shift'],':off':r['offset']})    
+        db.commit()
+        self.select()
+        
+    def locate(self,row,pt,corrected):
+        rg = self.chainageRange(row)
+        print('rg',rg)
+        opts = self.gpsModel.locate(pt,mRange = rg)
+        if corrected and len(opts) > 0:
+            opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
+            opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
+        return opts
+        
+        
+    def saveCsv(self,file):
+        with open(file,'w',newline='') as f:
+            writer = csv.writer(f,dialect='excel',delimiter = '\t')
+            writer.writerow(('start_frame','end_frame','chainage_shift','offset'))
+            q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
+            while q.next():
+                writer.writerow((q.value(0),q.value(1),q.value(2),q.value(3)))
             
-
-            
         
-def test():
-    from PyQt5.QtWidgets import QComboBox
-    
-   # db_functions.createDb()
-    m = runsModel()
-   # m.select()
-    
-    #m.setStringList(['a','b','c'])
-    #m.setData(m.index(1,0),QColor('yellow'),Qt.EditRole)
-    
-    b = QComboBox()
-    b.setModel(m)
-    m.addRuns(['a','b'])
-    m.addRuns(['b','c'])
+    def chainageRange(self,row,additional = 50.0):
+        s = 0.0
+        e = MAX
+        startFrame = self.index(row,self.fieldIndex('start_frame')).data()
+        endFrame = self.index(row,self.fieldIndex('end_frame')).data()
+        #  extra = abs(endFrame=startFrame) * additional
 
-    b.show()
-    return b
+        if isinstance(startFrame,int):
+            s = frameToM(startFrame) - additional
+        if isinstance(endFrame,int):
+            e = frameToM(endFrame) + additional
+        return (s,e)
+        
     
-if __name__ in ('__main__','__console__'):
-    b = test()
+    #array -> array
+    @staticmethod
+    def correctMO(mo):
+        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
+        r = np.empty((len(mo),2),dtype = float) * np.nan
+        for i,row in enumerate(mo):
+            q.bindValue(':f',int(mToFrame(row[0])))
+            if not q.exec():
+                raise queryError(q)
+            while q.next():
+                r[i,0] = mo[i,0] + q.value(0)
+                r[i,1] = mo[i,1] + q.value(1)
+        return r
+        
+    
+    
+    #array -> array
+    @staticmethod
+    def unCorrectMO(mo):
+        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
+        r = np.empty((len(mo),2),dtype = float) * np.nan
+        for i,row in enumerate(mo):
+            q.bindValue(':f',int(mToFrame(row[0])))
+            if not q.exec():
+                raise queryError(q)
+            while q.next():
+                r[i,0] = mo[i,0] - q.value(0)
+                r[i,1] = mo[i,1] - q.value(1)
+        return r
+        
+    
+    
+    
+    

@@ -3,10 +3,23 @@
 Created on Tue Sep 12 11:44:13 2023
 
 @author: Drew.Bennett
+
+
+need:
+frame,pixel,line <-> corrected x,y for corrections.
+chainage limits for chainage dialogs.
+originalLine for displaying chainage ranges.
+
+apply_corrections() to update corrected_points table
+
+updateGCP() to update gcp table.
+
 """
 
 from image_loader.splinestring import splineStringM,points
 from image_loader.db_functions import defaultDb,runQuery,queryError,queryPrepareError
+from image_loader import geometry_functions
+
 from qgis.core import QgsPointXY,QgsGeometry,QgsPoint
 from PyQt5.QtSql import QSqlQuery
 import csv
@@ -75,7 +88,6 @@ def _line(m,frame):
 
 def _offsetToPixel(offset):
     return round(PIXELS * 0.5 - offset * PIXELS / WIDTH )
-#offset -> width/2 pixel->0
 
 
 def _pixelToOffset(pixel):
@@ -116,32 +128,6 @@ class gpsModel:
             #self.rechainage()
     
     
-    #update gcps table
-    def updateGCP(self):
-        if self.geom is not None:
-            db = defaultDb()
-            db.transaction()
-            runQuery('delete from gcp',db=db)
-            runQuery('insert into gcp (frame,pixel,line,pt) select frame_id,pixel,line,makePoint(new_x,new_y,27700) from corrections',db=db)
-            imagesQuery = runQuery('select frame_id from images',db=db)#could add where marked here.
-            q = QSqlQuery(db)
-            if not q.prepare('insert into gcp(frame,pixel,line,pt) values (:frame,:pixel,:line,makePoint(:x,:y,27700))'):
-                raise queryError(q)
-            while imagesQuery.next():
-                frameId = imagesQuery.value(0)
-                for line in [0,LINES]:
-                    for pixel in [0,PIXELS]:
-                        pt = self.getPoint(frameId,pixel,line)
-                        q.bindValue(':frame',frameId)
-                        q.bindValue(':pixel',pixel)
-                        q.bindValue(':line',round(line))
-                        q.bindValue(':x',pt.x())
-                        q.bindValue(':y',pt.y())
-                        if not q.exec():
-                            raise queryError(q)
-            db.commit()
-
-
     def clear(self):
         runQuery('delete from corrected_points')
         runQuery('delete from original_points')
@@ -172,26 +158,60 @@ class gpsModel:
             xy = self.originalGeom.interpolatePoints([m],[offset])
             return QgsPointXY(xy[0],xy[1])
         
+        
+    @staticmethod                
+    def originalPoint(m,offset):
+        q = 'select Line_Interpolate_Point(line,(:m-start_m)/(end_m-start_m)) from corrected_lines where start_m<=:m and end_m <= :m'
+        query = runQuery(query = q , values = {':m':m})
+        while query.next():
+            return q.value(1)
     
-    #corrected position
-    def getFrame(self,point):
-        if self.run is not None:
-            mQuery = '''
-            select start_m+(end_m-start_m)*Line_Locate_Point(line,makePoint(:x,:y,27700))  
-            from corrected_lines where start_m <= (select max(frame_id)*5-5 from images where run = :run) 
-                                                   and end_m>=  (select min(frame_id)*5-5 from images where run = :run) 
-                                                   order by ST_Distance(line,makePoint(:x,:y,27700)) 
-                                                   limit 1
-            '''
-            q = runQuery(mQuery,values = {':run':self.run,':x':point.x(),':y':point.y()})
-            while q.next():
-                m = asFloat(q.value(0))
-                if m is not None:
-                    return numpy.floor(m/HEIGHT)+1
-        else:
-            print('getFrame: no run set')
-            
-            
+    
+    @staticmethod        
+    def getFrame(point,minM=0,maxM=99999999999999999999999):
+        m = gpsModel.closestCorrectedM(point,minM,maxM)
+        if m is not None:
+            return numpy.floor(m/HEIGHT)+1
+        
+    @staticmethod        
+    def closestCorrectedM(point,minM=0,maxM=99999999999999999999999):
+        mQuery = '''select st_z(st_closestPoint(line,makePoint(:x,:y,27700)))
+        from corrected_lines where end_m >= :s and start_m <= :e 
+        order by ST_Distance(line,makePoint(:x,:y,27700)) limit 1'''
+        q = runQuery(mQuery,values = {':x':point.x(),':y':point.y(),':s':minM,':e':maxM})
+        while q.next():
+           return asFloat(q.value(0))
+
+
+    #(chainage,offset)
+    #direction for offset left perpedicular to line joining closest m -+HEIGHT/2
+    @staticmethod                
+    def originalChainage(point,minM=0,maxM=99999999999999999999999):
+        m = gpsModel.closestOriginalM(point,minM,maxM)
+        line = gpsModel.originalLine(m-HEIGHT/2,m+HEIGHT/2)
+        forward = geometry_functions.asVector(line)
+        perp = geometry_functions.unitVector(geometry_functions.leftPerp(forward))
+        shortest = geometry_functions.asVector(line.shortestLine(QgsGeometry.fromPointXY(point)))
+        offset = numpy.dot(shortest,perp)
+        return (m,offset)
+
+
+  #  @staticmethod                
+  #  def pixelLine(self,frameId,point):
+   #     m,off = gpsModel.originalChainage(point)
+        
+        
+    #-> float
+    @staticmethod        
+    def closestOriginalM(point,minM=0,maxM=99999999999999999999999):
+        mQuery = '''select st_z(st_closestPoint(line,makePoint(:x,:y,27700)) )
+        from lines where end_m >= :s and start_m <= :e 
+        order by ST_Distance(line,makePoint(:x,:y,27700)) limit 1'''
+        q = runQuery(mQuery,values = {':x':point.x(),':y':point.y(),':s':minM,':e':maxM})
+        while q.next():
+           return asFloat(q.value(0))
+    
+    
     #corrected position
     def getOriginalChainage(self,point):
         if self.originalGeom is not None:
@@ -245,6 +265,56 @@ class gpsModel:
         self.run = run
     
     
+    
+    
+    @staticmethod
+    def applyChainageCorrections():
+        db = defaultDb()
+        db.transaction()
+        
+        runQuery(query = 'delete from corrected_points',db = db)
+        
+        #-- left perp of x,y is -y,x
+        insertQuery = '''
+insert into corrected_points(id,next_id,m,pt)
+
+select id
+,next_id
+,m-chainage_correction
+,makePoint(st_x(pt) + left_offset*perp_x/sqrt(perp_x*perp_x + perp_y*perp_y)
+	,st_y(pt) + left_offset*perp_y/sqrt(perp_x*perp_x + perp_y*perp_y),
+	27700)
+
+from
+(select id,next_id,m,pt,chainage_correction,left_offset
+
+
+,(select st_x(Line_Interpolate_Point(line,(m+2.5+start_m)/(end_m-start_m)))
+        from lines where start_m <= m+2.5 and end_m >= m+2.5
+)
+-
+(select st_x(Line_Interpolate_Point(line,(m-2.5-start_m)/(end_m-start_m)))
+        from lines where start_m <= m-2.5 and end_m >= m-2.5
+) as perp_y
+
+,(select st_y(Line_Interpolate_Point(line,(m-2.5-start_m)/(end_m-start_m)))
+        from lines where start_m <= m-2.5 and end_m >= m-2.5
+)
+-
+(select st_y(Line_Interpolate_Point(line,(m+2.5+start_m)/(end_m-start_m)))
+    from lines where start_m <= m+2.5 and end_m >= m+2.5
+)
+as perp_x		
+		
+from original_points inner join runs on start_chainage<=m and m <= end_chainage
+)
+    
+'''    
+        runQuery(query = insertQuery,db=db)
+        db.commit()
+    
+    
+    
     #update corrected_points.
     #update gcps table.
     
@@ -272,43 +342,6 @@ class gpsModel:
     #find m shift that minimises distance to point and neiboring corrections.
     
     
-    
-    def oldapplyCorrections(self):
-        if self.geom is not None:
-            correctionQuery = '''select 5*(frame_id-line/1250.0) as m
-            ,new_x
-            ,new_y
-            ,pixel
-            from corrections
-            order by m
-            '''
-            m = []
-            newX = []
-            newY = []
-            offset = []
-            q = runQuery(correctionQuery)
-            while q.next():
-                m.append(q.value(0))
-                newX.append(q.value(1))
-                newY.append(q.value(2))
-                offset.append(_pixelToOffset(q.value(3)))
-                
-            if len(m)>0:    
-                m = numpy.array(m)
-                newPoints = numpy.stack([numpy.array(newX),numpy.array(newY)])
-                
-                #shift = self.geom.bestMShift(points(m = m,x = newX,y=newY))
-                #print('best shift',shift)
-                
-                oldPoints = self.geom.interpolatePoints(m,offset)#2 rows top is x bottom is y.
-                XYShifts = newPoints - oldPoints
-                #print('x',self.geom.x + numpy.interp(self.geom.m,m,XYShifts[0]))
-                self.geom.setPoints(points(m = self.geom.m,
-                                           x = self.geom.x + numpy.interp(self.geom.m,m,XYShifts[0]),
-                                           y = self.geom.y + numpy.interp(self.geom.m,m,XYShifts[1])))
-                self._uploadGeom()
-
-
     def rechainage(self,resolution=0.01):
         if self.geom is not None:
             self.geom.rechainage(resolution)
@@ -372,18 +405,38 @@ class gpsModel:
 
     
     
-    #linestring of original_points from startM to endM. ends interpolated.      
+    #linestring of original_points from startM to endM. ends interpolated. reverse direction where startM>endM 
     #->QgsGeometry
     @staticmethod
-    def originalLine(startM,endM):
+    def originalLine(startM,endM,maxPoints = 2000):
+        #MakeLine returns null with CastToXY. bug in spatialite?
         lineQuery = '''
-        select st_asText(st_linemerge(ST_Collect(Line_Substring(line,(:s-start_m)/(end_m-start_m),(:e-start_m)/(end_m-start_m)))))
-        from lines where :s <=end_m and start_m<= :e'''
-        q = runQuery(query = lineQuery,values = {':s':startM,':e':endM})
+        select
+        st_asText(MakeLine(pt)),count(pt)
+        from
+        (
+        select m,pt from original_points where :s < m and m < :e
+        union 
+        select :s as m,makePoint(st_x(Line_Interpolate_Point(line,(:s-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(line,(:s-start_m)/(end_m-start_m))),27700) as pt 
+        from lines where start_m <= :s and end_m >= :s
+        UNION
+        select :e as m,makePoint(st_x(Line_Interpolate_Point(line,(:e-start_m)/(end_m-start_m))),st_y(Line_Interpolate_Point(line,(:e-start_m)/(end_m-start_m))),27700) as pt 
+        from lines where start_m <= :e and end_m >= :e order by m {d}) a
+        '''
+        if startM>endM:
+            v = {':s':endM,':e':startM}
+            lineQuery = lineQuery.format(d = 'desc')
+        else:
+            v = {':s':startM,':e':endM}
+            lineQuery = lineQuery.format(d = 'asc')
+     #   print(lineQuery)
+        q = runQuery(query = lineQuery,values = v)
         while q.next():
             wkt = q.value(0)
-            if isinstance(wkt,str):
-                return QgsGeometry.fromWkt(wkt)
+            if q.value(1) < maxPoints:
+             #   print('wkt',wkt)
+                if isinstance(wkt,str):
+                    return QgsGeometry.fromWkt(wkt)
         return QgsGeometry()
     
     
@@ -408,14 +461,6 @@ class gpsModel:
             r.append((q.value(0),q.value(1)))
         return r
     
-    @staticmethod
-    #->float or None
-    def chainageLimits(run):
-        q = runQuery('select coalesce (min(m),0),coalesce (max(m),0) from original_points')
-        while q.next():
-           return (q.value(0),q.value(1))
-    
-   
         
         
 #can call static methods like function with ClassName.method_name()

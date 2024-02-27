@@ -11,12 +11,12 @@
     <h3 id="home">Image loader</h3>
 
 
-<p>Tool for georeferencing and loading images into QGIS.</p>
+<p>Plugin for georeferencing and loading images into QGIS.</p>
 
 
-<h3 id="loading details">Tell plugin where images are.</h3>
+<h3 id="loading details">Images infomation</h3>
     <p>"Tools","Find images from folder..." will add a row to the images table for every .jpg file in folder and subfolders.</p>
-	<p>The tool can also find image details from a 'raster image load' file produced by the distress plotter macro.</p>
+	<p>The plugin can also find image details from a 'raster image load' file produced by the distress plotter macro.</p>
 	<p>project_folder/data is searched for original jpg filenames.</p>
 
 
@@ -34,21 +34,15 @@
 	
 
 <h3 id="corrections">Corrections</h3>
-<p>Corrections can be added to adjust image positions in order to align images with maps and adjacent runs.</p>
-<p>These can be viewed/edited in the Corrections tab</p>
-<p>A correction moves a position within the images to x,y.</p>
-<p>Position within images is in terms of chainage,x_offset,y_offset. Offset is difference between point within the image and point at chainage.</p>
+<p>The gps data can be inaccurate. Corrections may be needed to align images with background maps and adjacent runs.</p>
+<p>Each run can have a chainage and offset correction.</p>
+<p>A positive chainage correction moves images forward.</p>
+<p>A positive offset correction moves images to the left side of the vehicle path.</p>
 
-<!--
-<h3 id="overviews">Overviews</h3>
-<p>Overviews (aka pyramids) are lower resolution copies of an image used to speed up viewing in QGIS.</p>
-<p>They can be created through "Process,create overviews".</p>
-<p>Creating overviews uses time and disk space. Best used only when viewing is too slow.</p>
--->
 
-<h3 id="combined files">Combining files</h3>
-<p>Images can be merged into "virtual raster text" files. These are small text files containing links to 1 or more original images.</p>
-<p>Viewing the VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
+<h3 id="vrt files">VRT files</h3>
+<p>Images can effectivly be combined into "virtual raster text" files.</p>
+<p>Viewing a VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
 <p>"Process,make combined VRT" makes and loads a .vrt file per run and image type.</p>
 
 
