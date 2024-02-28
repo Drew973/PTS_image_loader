@@ -88,7 +88,7 @@ class moDifferenceDialog(QDialog):
         self.layout().addRow('Current chainage,offset',horizontalLayout([self.startM,self.startOffset,self.startButton]))
         
         self.endM =  QDoubleSpinBox(self)
-        self.endM.setMaximum(MAX)
+        self.endM.setRange(-MAX,MAX)
         self.endM.valueChanged.connect(self.recalcDifference)
         self.endOffset =  QDoubleSpinBox(self)
         self.endButton = QPushButton('From map...')

@@ -36,6 +36,9 @@
           <layout class="QGridLayout" name="gridLayout">
            <item row="1" column="0">
             <widget class="runsView" name="runsWidget">
+             <property name="selectionMode">
+              <enum>QAbstractItemView::ExtendedSelection</enum>
+             </property>
              <property name="uniformRowHeights">
               <bool>true</bool>
              </property>

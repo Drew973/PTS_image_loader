@@ -51,7 +51,7 @@ class runsView(QTreeView):
         
         
     def findCorrection(self):
-        self.correctionDialog.setRow(row = self.minSelected())
+      #  self.correctionDialog.setRow(row = self.minSelected())
         self.correctionDialog.show()
     
         
@@ -72,6 +72,8 @@ class runsView(QTreeView):
         
         
     def contextMenuEvent(self, event):
+        row = self.indexAt(event.pos()).row()
+        self.correctionDialog.setRow(row)
         self.menu.exec_(self.mapToGlobal(event.pos()))
         
     

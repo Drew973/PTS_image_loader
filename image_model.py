@@ -23,10 +23,6 @@ from image_loader.load_image import loadImage
 from image_loader import georeference
 from image_loader import run_commands
 from image_loader import layer_functions
-#from image_loader.runs_model import runsModel
-
-#from image_loader.dims import WIDTH,PIXELS,LINES,HEIGHT
-from collections import namedtuple
 from pathlib import Path
 
 
@@ -72,8 +68,9 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.setRange(0,99999999999999)
-        
+      #  self.setRange(0,99999999999999)
+        self.select()
+
     def save(self,file):
         db_functions.saveToFile(file)
         
@@ -158,9 +155,17 @@ class imageModel(QSqlQueryModel):
 
 
     def select(self):
-        q = self.query()
+        queryString = '''select pk,frame_id,original_file,image_type from images
+            order by frame_id,image_type'''
+        q = QSqlQuery(self.database())
+        q.prepare(queryString)
         q.exec()
         self.setQuery(q)
+        
+     #   self.setRange()
+      #  q = self.query()
+      #  q.exec()
+      #  self.setQuery(q)
 
         
     def clear(self):

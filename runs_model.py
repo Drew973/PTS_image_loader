@@ -195,8 +195,16 @@ and runs_view.pk in ({pks})
         runQuery(query = 'delete from runs', db=db)            
         
         for r in parseCsv(file):
-            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_end_m,correction_end_offset) values (:s,:e,:shift,:off)',
-                     db=db,values = {':s':r['start_frame'],':e':r['end_frame'],':shift':r['chainage_shift'],':off':r['offset']})    
+            
+            sm = frameToM(r['end_frame'])
+            em = sm + r['chainage_shift']
+            
+            runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:s,:e,:sm,:em,:eo)',
+                     db=db,values = {':s':r['start_frame'],
+                                     ':e':r['end_frame'],
+                                     ':sm':sm,
+                                     ':em':em,
+                                     ':eo':r['offset']})    
         db.commit()
         self.select()
         

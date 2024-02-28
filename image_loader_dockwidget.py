@@ -95,7 +95,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def processRuns(self):
         if self.gpsModel.hasGps():
             progress = commandsDialog(parent = self)
-            progress.setLabelText('Georeferencing')
+            progress.setLabelText('Processing runs...')
             progress.show()
             pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
        #     print('pks',pks)
