@@ -9,6 +9,7 @@ from PyQt5.QtSql import QSqlQueryModel
 from PyQt5.QtCore import Qt
 import numpy as np
 import csv
+import io
 
 from image_loader.dims import mToFrame,MAX,frameToM
 from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
@@ -23,29 +24,28 @@ def tryFloat(v,default = 0.0):
 
 
 def parseCsv(file):
-    with open(file,'r', newline='') as f:
-        reader = csv.reader(f,dialect='excel',delimiter = '\t')
+    reader = csv.reader(file,dialect='excel',delimiter = '\t')
         
-        for row in reader:
+    for row in reader:
             #print(row)
+        try:
+            startFrame = int(row[0].strip())
+            endFrame = int(row[1])
+                
             try:
-                startFrame = int(row[0].strip())
-                endFrame = int(row[1])
-                
-                try:
-                    chainageShift = float(row[2].strip())
-                except Exception:
-                    chainageShift = 0.0
+                chainageShift = float(row[2].strip())
+            except Exception:
+                chainageShift = 0.0
                     
-                try:
-                    offset = float(row[3].strip())
-                except Exception:
-                    offset = 0.0                    
+            try:
+                offset = float(row[3].strip())
+            except Exception:
+                offset = 0.0                    
                 
-                yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':chainageShift,'offset':offset}
+            yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':chainageShift,'offset':offset}
                                
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(e)
 
 
 class runsTableModel(QSqlQueryModel):
@@ -185,28 +185,38 @@ and runs_view.pk in ({pks})
    #     q = runQuery(qs)
   #      while q.next():
     #        imageKeys.append(q.value(0))
-        
+       
+    
+    def loadText(self,text):
+        f = io.StringIO(text)
+        self.addRows(parseCsv(f))
+    
     
     def loadCsv(self,file):
-       # data = [row for row in parseCsv(file)]
-    #    print('data',data)
+        with open(file,'r', newline='') as f:
+            self.addRows(parseCsv(f))
+            
+          
+        
+        
+    def addRows(self,data,clear = False):
         db = self.database()
         db.transaction()
-        runQuery(query = 'delete from runs', db=db)            
-        
-        for r in parseCsv(file):
-            
+        if clear:
+            runQuery(query = 'delete from runs', db=db)
+        for r in data:
             sm = frameToM(r['end_frame'])
             em = sm + r['chainage_shift']
-            
+                
             runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:s,:e,:sm,:em,:eo)',
-                     db=db,values = {':s':r['start_frame'],
-                                     ':e':r['end_frame'],
-                                     ':sm':sm,
-                                     ':em':em,
-                                     ':eo':r['offset']})    
+                        db=db,values = {':s':r['start_frame'],
+                                         ':e':r['end_frame'],
+                                         ':sm':sm,
+                                         ':em':em,
+                                         ':eo':r['offset']})            
         db.commit()
-        self.select()
+        self.select()        
+        
         
     def locate(self,row,pt,corrected):
         rg = self.chainageRange(row)

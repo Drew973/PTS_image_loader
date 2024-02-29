@@ -21,8 +21,12 @@ def removeSources(sources):
     for layer in QgsProject.instance().mapLayers().values():
         if os.path.normpath(layer.source()) in sources:
             toRemove.append(layer.id())
-        QgsProject.instance().removeMapLayers(toRemove)
-    time.sleep(2)# don't know when/how long QGIS takes to release file locks. inelegant solution is to wait 1 second.
+    QgsProject.instance().removeMapLayers(toRemove)
+    
+    #"The specified layers will be removed from the registry. 
+    #If the registry has ownership of any layers these layers will also be deleted."
+    
+    #time.sleep(2)# don't know when/how long QGIS takes to release file locks. inelegant solution is to wait 1 second.
     
     
     

@@ -48,14 +48,14 @@ class gpsInterface:
 
 
     @staticmethod
-    def loadFile(file):
+    def loadFile(file,startAtZero=True):
         ext = os.path.splitext(file)[1]
         if ext == '.csv':
-            gpsInterface.setValues(parseCsv(file))
+            gpsInterface.setValues(vals = parseCsv(file),startAtZero=startAtZero)
 
 
     @staticmethod
-    def setValues(vals):
+    def setValues(vals,startAtZero = True):
         db = defaultDb()
         db.transaction()
         runQuery(query='delete from original_points', db=db)
@@ -73,7 +73,9 @@ class gpsInterface:
                 message = 'error loading row {r} : {err}'.format(r=i, err=e)
                 print(message)
                 
-        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
+        if startAtZero:
+            runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
+            
         runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         #runQuery('insert into corrected_points(m,id,next_id,next_m,pt) select m,id,next_id,next_m,pt from original_points', db=db)

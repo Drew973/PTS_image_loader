@@ -26,11 +26,11 @@ import os
 
 from qgis.PyQt import QtWidgets, uic
 from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel
-#,Qt
+
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QApplication
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
 
@@ -223,6 +223,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         runsMenu = topMenu.addMenu("Runs")
         processRunsAct = runsMenu.addAction('Process selected runs')
         processRunsAct.triggered.connect(self.processRuns)
+        pasteRunsAct = runsMenu.addAction('Paste from clipboard')
+        pasteRunsAct.triggered.connect(self.pasteRuns)
+
 
         processMenu = topMenu.addMenu("Images")
         
@@ -258,6 +261,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 loadFrameData(f[0])
 
 
+    def pasteRuns(self):
+        t = QApplication.clipboard().text()
+        self.runsModel.loadText(t)
+
+
     def makeVrt(self):
         progress = commandsDialog(title = 'Remaking VRT files',parent = self)
         progress.show()
@@ -273,7 +281,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
         if f:
             if f[0]:
-                self.gpsModel.loadFile(f[0])
+                startAtZero = self.layersDialog.startAtZero.isChecked()
+                self.gpsModel.loadFile(f[0],startAtZero = startAtZero)
                 iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
 
 

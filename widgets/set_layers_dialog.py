@@ -48,6 +48,20 @@ class setLayersDialog(QDialog):
        # self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
         
+        
+        self.startAtZero = QCheckBox()
+        t = '''
+        Leave checked to put the uncorrected image closer to where it should be.
+        Leave unchecked where compatibility with versions < 3.36 and collator required.
+        '''
+        
+        self.startAtZero.setToolTip(t)   
+        self.startAtZero.setChecked(True)
+        self.layout().addRow('Shift chainages to start at 0 when loading GPS',self.startAtZero)
+        
+        
+        
+        
       #  self.useRectangle = QCheckBox()
      #   self.useRectangle.setChecked(True)
        # self.layout().addRow('Treat images as rectangle',self.useRectangle)      

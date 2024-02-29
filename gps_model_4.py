@@ -45,8 +45,8 @@ class gpsModel(gpsInterface):
         self.download()
 
 
-    def loadFile(self,file):
-        super().loadFile(file)
+    def loadFile(self,file,startAtZero = True):
+        super().loadFile(file = file,startAtZero = startAtZero)
         self.download()
         
         

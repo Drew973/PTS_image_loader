@@ -38,13 +38,19 @@ def loadImage(filePath,run=None,imageId=None,name=None,groups=None,show=True,exp
            
            
         layer = QgsRasterLayer(filePath, name)
-        layer.setCrs(crs)
+    #    layer.setCrs(crs)
         
         group = group_functions.getGroup(groups)
         group.addLayer(layer)
                 
-        QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
-            
+       # QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
+        
+        QgsProject.instance().addMapLayer(layer,True)#want registry to take ownership of layer
+        #so that file locks released when layer closed
+
+        #addToLegend    
+        
+        
         node = group.findLayer(layer)
         node.setItemVisibilityChecked(show)
         node.setExpanded(expand)

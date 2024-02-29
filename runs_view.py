@@ -5,9 +5,11 @@ Created on Tue Oct 17 13:41:52 2023
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QMenu,QTreeView#QTableView
+from PyQt5.QtWidgets import QMenu,QTreeView,QApplication,QShortcut
 from image_loader.chainages_dialog import chainagesDialog
 from image_loader.mo_difference_dialog import moDifferenceDialog
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtCore import Qt
 
 
 class runsView(QTreeView):
@@ -24,13 +26,35 @@ class runsView(QTreeView):
         findChainageAct.triggered.connect(self.setChainage)
         findCorrectionAct = self.menu.addAction('Find correction...')
         findCorrectionAct.triggered.connect(self.findCorrection)
-        dropRunsAct = self.menu.addAction('Drop run')
+        dropRunsAct = self.menu.addAction('Drop selected runs')
         dropRunsAct.triggered.connect(self.dropRuns)
-
+        copyAct = self.menu.addAction('Copy')
+        shortcut = QShortcut(QKeySequence.Copy,self,self.copy, context=Qt.WidgetShortcut)
+       # copyAct.setShortcut(QKeySequence.Copy)#not triggering
+      #  copyAct.setShortcutContext(Qt.WidgetShortcut)
+        copyAct.triggered.connect(self.copy)
+        
+        
+    def copy(self):
+        startFrameCol = self.model().fieldIndex('start_frame')
+        endFrameCol = self.model().fieldIndex('end_frame')
+        csCol = self.model().fieldIndex('chainage_shift')
+        offsetCol = self.model().fieldIndex('offset')
+        t = ''
+        for ind in self.selectionModel().selectedRows():
+            row = ind.row()
+            startFrame = self.model().index(row,startFrameCol).data()
+            endFrame = self.model().index(row,endFrameCol).data()
+            cs = self.model().index(row,csCol).data()
+            offset = self.model().index(row,offsetCol).data()
+            t += '{sf}\t{ef}\t{cs}\t{of}\n'.format(sf = startFrame , ef = endFrame,cs = cs,of = offset)
+        QApplication.clipboard().setText(t)
+        
         
     def addRun(self):
         self.chainagesDialog.setRow(None)
         self.chainagesDialog.show()
+        
         
     #->int
     def minSelected(self):
