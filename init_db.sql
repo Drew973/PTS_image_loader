@@ -135,3 +135,23 @@ select frame
  from original_points inner join frames
 on m >= frame * 5 - 5 and m <= frame * 5
 group by frame;
+
+
+
+create table if not exists cracks(
+section_id int
+,crack_id int
+,len float
+,depth float
+,width float
+,unique(section_id,crack_id)
+);
+
+create index if not exists section_id_ind on cracks(section_id);
+
+SELECT AddGeometryColumn('cracks' , 'geom', 0, 'Linestring', 'XY');
+--x coord is chainage , y is offset.
+
+create view if not exists cracks_view as
+select section_id,crack_id,len,depth,width,geom,chainage_shift,offset
+from cracks inner join runs_view on start_frame <= section_id and end_frame >= section_id

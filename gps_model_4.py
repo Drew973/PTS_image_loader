@@ -5,7 +5,7 @@ Created on Mon Sep 11 10:52:57 2023
 @author: Drew.Bennett
 
 
-linestringM with cubic spline. 
+linestringM with quadratic or cubic spline. 
 
 1 point: 1 m+offset since derivitive is continuous
 
@@ -21,7 +21,6 @@ from image_loader.gps_interface import gpsInterface
 
 K = 3
 S = 0
-
 N = 2
 
 import numpy as np
@@ -36,6 +35,10 @@ def unitVector(vector):
 def leftPerp(vect):
     return np.array([vect[1],-vect[0]])
 
+
+#[(x,y)] or ()
+def to2DArray(x,y):
+    return np.array([[x,y]],dtype = float)
 
 
 class gpsModel(gpsInterface):
@@ -94,11 +97,18 @@ class gpsModel(gpsInterface):
             return r
         return []
     
+    #convert geometry in terms of m,offset to x,y
+    #QgsGeometry
+    def moGeomToXY(self,geom,mShift = 0.0,offset = 0.0):
+        g = QgsGeometry(geom)
+        for i,v in enumerate(g.vertices()):
+            p = to2DArray(v.x()+mShift,v.y()+offset)
+            new = self.point(p)
+            g.moveVertex(new[0,0],new[0,1],i)
+        return g
+    
     
     def line(self,startM,endM,startOffset = 0,endOffset = 0):
-        
-        
-        
         if startM <= endM:
             s = startM
             so = startOffset

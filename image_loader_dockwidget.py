@@ -25,26 +25,26 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
-from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel
+from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel,QSettings
 
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QApplication
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QApplication,QProgressDialog
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
 
 from image_loader.image_model import imageModel
+from image_loader.settings_dialog import settingsDialog
 
-from image_loader.functions.load_frame_data import loadFrameData
-from image_loader.functions.load_cracking import loadCracking
-from image_loader.widgets import set_layers_dialog
-
-from image_loader import view_gps_layer
+from image_loader import download_gps
 from image_loader import db_functions
 from image_loader.gps_model_4 import gpsModel
 from image_loader import runs_model
 from image_loader.run_commands import commandsDialog
+from image_loader.download_cracks import downloadCracks
+
+
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -57,11 +57,13 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def __init__(self, parent=None):        
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
-        self.layersDialog = set_layers_dialog.setLayersDialog(parent=self)
+        
+        self.settings = QSettings("pts","image_loader")
+        self.settingsDialog = settingsDialog(parent=self)
         db_functions.createDb()
 
         self.imagesModel = imageModel(parent=self)
-        self.imagesModel.fields = self.layersDialog
+        self.imagesModel.fields = self.settingsDialog
         self.imagesView.setModel(self.imagesModel)
         self.initTopMenu()
         self.gpsModel = gpsModel()
@@ -140,6 +142,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.imagesModel.clear()
         self.gpsModel.clear()
         self.runsModel.clear()
+        db_functions.clear()
 
 
     def load(self):
@@ -196,6 +199,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         loadGpsAct = openMenu.addAction('Open GPS...')
         loadGpsAct.triggered.connect(self.loadGps)
+
+
+        loadXMLAct = openMenu.addAction('Open XML...')
+        loadXMLAct.triggered.connect(self.loadXML)
+        
         
         ######################load
         toolsMenu = topMenu.addMenu("Tools")
@@ -204,21 +212,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         viewMenu = toolsMenu.addMenu('View')
 
-        #layersMenu = topMenu.addMenu("Load layers")
-        loadFramesAct = viewMenu.addAction('View Spatial Frame Data...')
-        loadFramesAct.triggered.connect(self.loadFrames)
+        loadGpsAct = viewMenu.addAction('View GPS data')
+        loadGpsAct.triggered.connect(lambda:download_gps.loadGps(corrected = False))
         
-        loadGpsAct = viewMenu.addAction('View original GPS data...')
-        loadGpsAct.triggered.connect(lambda:view_gps_layer.loadGps(corrected = False))
+        loadCracksAct = viewMenu.addAction('View Cracking Data')
+        loadCracksAct.triggered.connect(self.downloadCracks)     
         
-     #   loadCorrectedGpsAct = viewMenu.addAction('View corrected GPS data...')
-     #   loadCorrectedGpsAct.triggered.connect(lambda:view_gps_layer.loadGps(corrected = True))
-        
-        loadCracksAct = viewMenu.addAction('View Cracking Data...')
-        loadCracksAct.triggered.connect(self.loadCracks)     
+      #  loadCracksAct = viewMenu.addAction('View runs')
+      #  loadCracksAct.triggered.connect(self.downloadRuns)     
         
         setLayers = toolsMenu.addAction('Settings...')
-        setLayers.triggered.connect(self.layersDialog.exec_)
+        setLayers.triggered.connect(self.settingsDialog.exec_)
        
         runsMenu = topMenu.addMenu("Runs")
         processRunsAct = runsMenu.addAction('Process selected runs')
@@ -234,10 +238,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         georeferenceAct = processMenu.addAction('Georeference selected images')
         georeferenceAct.triggered.connect(self.georeferenceImages)
-        
-       # overviewsAct = processMenu.addAction('Create overviews for selected images')
-      #  overviewsAct.triggered.connect(self.createOverviews)
-        
+    
         vrtAct = processMenu.addAction('Make combined VRTs for selected images')
         vrtAct.triggered.connect(self.makeVrt)
         
@@ -253,14 +254,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         helpPath = 'file:///'+os.path.abspath(helpPath)
         QtGui.QDesktopServices.openUrl(QUrl(helpPath))
         
-
-    def loadFrames(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load Spatial Frame Data',filter = 'txt (*.txt)')
-        if f:
-            if f[0]:
-                loadFrameData(f[0])
-
-
+        
     def pasteRuns(self):
         t = QApplication.clipboard().text()
         self.runsModel.loadText(t)
@@ -273,7 +267,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def loadGps(self):
-        p = os.path.join(self.layersDialog['folder'],'Hawkeye Exported Data')
+        p = os.path.join(self.settingsDialog['folder'],'Hawkeye Exported Data')
         if os.path.isdir(p):
             d = p
         else:
@@ -281,18 +275,38 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
         if f:
             if f[0]:
-                startAtZero = self.layersDialog.startAtZero.isChecked()
+                startAtZero = self.settingsDialog.startAtZero.isChecked()
                 self.gpsModel.loadFile(f[0],startAtZero = startAtZero)
                 iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
 
 
-    def loadCracks(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load Crack data Data',filter = 'txt (*.txt)')
-        if f:
-            if f[0]:
-                loadCracking(f[0])
+    def downloadCracks(self):
+        cc = db_functions.crackCount()
+        if cc:
+            progress = QProgressDialog(parent = self)
+            progress.setLabelText('Loading cracks...')
+            progress.show()
+            downloadCracks(gpsModel = self.gpsModel,progress = progress)   
                 
-
+         
+    def downloadRuns(self):
+        pass
+         
+    
+    def loadXML(self):
+        files = QFileDialog.getOpenFileNames(caption = 'open XML',filter = '*.xml')[0]
+        if len(files)>0:
+            print('files',files)
+            progress = QProgressDialog(parent = self)
+            progress.setLabelText('Loading XML files...')
+            progress.setRange(0,len(files))
+            progress.show()
+            for i,f in enumerate(files):
+                if not progress.wasCanceled():
+                    progress.setValue(i+1)
+                    db_functions.uploadXML(files = [f])
+                              
+                    
     #open dialog and load csv/sqlite file
     def openRilFile(self):
         f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv;;*.txt')[0]
@@ -302,7 +316,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             
             
     def openCorrections(self):
-        f = getFile(folder = os.path.join(self.layersDialog['folder'],'Processed Data') , filt = '*;;*.csv')
+        f = getFile(folder = os.path.join(self.settingsDialog['folder'],'Processed Data') , filt = '*;;*.csv')
        # f = QFileDialog.getOpenFileName(caption = 'open',filter = '*;;*.csv')[0]
         if f:
             self.imagesModel.runsModel.select()

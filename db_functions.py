@@ -24,6 +24,7 @@ column syntax as an error and will report that the database schema is corrupt"
 """
 import os
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
+from image_loader import parse_xml
 
 
 class queryError(Exception):
@@ -356,12 +357,41 @@ def runChainages(run):
     return (s,e)
 
 
-def setStartChainage(run,m):
-    runQuery(query = "INSERT OR REPLACE INTO run_changes(m,next_run values (m = :m where next_run  = :run",values = {':run':run,':m':m})
+#def setStartChainage(run,m):
+ #   runQuery(query = "INSERT OR REPLACE INTO run_changes(m,next_run values (m = :m where next_run  = :run",values = {':run':run,':m':m})
 
 
-def setEndChainage(run,m):
-    runQuery(query = "update run_changes set m = :m where last_run  = :run",values = {':run':run,':m':m})
+#def setEndChainage(run,m):
+  #  runQuery(query = "update run_changes set m = :m where last_run  = :run",values = {':run':run,':m':m})
+
+
+
+def uploadXML(files):
+    db = defaultDb()
+    q = prepareQuery('INSERT OR ignore into cracks(section_id,crack_id,len,depth,width,geom) values (?,?,?,?,?,ST_LineFromText(?,0))',db)
+    for f in files:
+        print('uploading ' + f)
+        db.transaction()
+        for row in parse_xml.parseXML(f):
+            q.bindValue(0,row[0])
+            q.bindValue(1,row[1])
+            q.bindValue(2,row[2])
+            q.bindValue(3,row[3])
+            q.bindValue(4,row[4])
+            q.bindValue(5,row[5])
+            q.exec()
+        db.commit()
+
+#->int
+def crackCount():
+    q = runQuery('select count(crack_id) from cracks')
+    while q.next():
+        return q.value(0)
+
+def clear():
+    db = defaultDb()
+    runQuery('delete from cracks',db=db)
+
 
 
 if __name__ == '__console__':
