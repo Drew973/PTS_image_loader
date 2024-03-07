@@ -388,6 +388,7 @@ def crackCount():
     while q.next():
         return q.value(0)
 
+
 def clear():
     db = defaultDb()
     runQuery('delete from cracks',db=db)

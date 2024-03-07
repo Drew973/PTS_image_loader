@@ -262,13 +262,16 @@ class imageModel(QSqlQueryModel):
                 tempFiles.append(tempFile)
                 
                 #remove overview if exists
-                overview = vrtFile+'.ovr'
-                if os.path.isfile(overview):
-                    os.remove(overview)
+            #    overview = vrtFile+'.ovr'
+           #     if os.path.isfile(overview):
+            #        os.remove(overview)
                 
                 buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = tempFile,f=vrtFile))
-                overviewCommands.append('gdaladdo -ro "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = vrtFile))
+               # overviewCommands.append('gdaladdo -ro "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = vrtFile))
+                overviewCommands.append('gdaladdo -ro -clean "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = vrtFile))
 
+
+#
                 groups = ['image_loader', 'combined VRT', tp, run]
                 d[vrtFile] = groups
 

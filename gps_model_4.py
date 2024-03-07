@@ -14,6 +14,14 @@ linestringM with quadratic or cubic spline.
 from scipy import interpolate
 from scipy.optimize import minimize_scalar
 from qgis.core import QgsGeometry, QgsPointXY
+from qgis.core import QgsFeature,QgsGeometry,edit
+from qgis.utils import iface
+from image_loader import db_functions
+from image_loader.layer_styles.styles import centerStyle
+from image_loader.dims import HEIGHT
+
+
+
 from image_loader.db_functions import runQuery
 from image_loader.dims import (HEIGHT,LINES,PIXELS,offsetToPixel, pixelToOffset,WIDTH,frameToM,mToFrame,MAX,clamp,vectorizedMToLine,vectorizedOffsetToPixel)
 
@@ -123,7 +131,7 @@ class gpsModel(gpsInterface):
             
         #along centerline. perpendicular line joining to startOffset and endOffset 
         m = [s,s]#want point at s,0 and s,so
-        q = runQuery('select m from original_points where m > :s and m < :e order by m limit 1000',values = {':s':float(s),':e':float(e)})
+        q = runQuery('select m from original_points where m > :s and m < :e order by m limit 2000',values = {':s':float(s),':e':float(e)})
      #   print('s',s,'e',e)
         while q.next():
             m.append(q.value(0))
@@ -289,7 +297,33 @@ class gpsModel(gpsInterface):
         return len(self.m) > 0
 
 
+    def makeLayer(self,corrected = False):
+        uri = "LineString?crs=epsg:27700&field=run:int&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes"
+        if corrected:
+            name = 'corrected_GPS'
+        else:
+            name = 'original_GPS'
+        layer = iface.addVectorLayer(uri, name, "memory")
+        fields = layer.fields()
+            
+        def features():
+            for i in range(0,int(self.maxM()/HEIGHT)+1):
+                frame = i+1
+                startChain = i * HEIGHT
+                endChain = startChain + HEIGHT
+                geom = self.line(startChain,endChain)
+                f = QgsFeature(fields)
+               # f['run'] = q.value(0)
+                f['frame'] = frame
+                f['start_chain'] = startChain
+                f['end_chain'] = endChain
+                f.setGeometry(geom)
+                if f.isValid():
+                    yield f
     
+        with edit(layer):
+             layer.addFeatures(features())
+        layer.loadNamedStyle(centerStyle)    
     
 if __name__ in ('__console__'):
     m = gpsModel()

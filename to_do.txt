@@ -14,83 +14,27 @@ alternative to QSqlTableModel with sqlite3?
     create application defined functions. not that useful as can't use in views,triggers,constraints...
     use more recent sqlite version? seems same.
 
-run:
-	number text unique
-	uncorrected_start_chainage
-	uncorrected_end_chainage
-	line geometry(linestring)
-
 
 might want to switch to using gps shapefile.
 view with lines?
+
 
 only need corrected centerline to find gcps.
 m,corrected_x,corrected_y
 
 
-image shape:
-	collator treats as rectangle. causes some warping at corners.
-	trapezium? 
-	polygon?
-	
-
 corrections:
-	move centerline so that specified m,offset at x,y
-	want to shift image along vehicle path ie chainage shift.	
-	collator uses 1 chainage shift + offset shift/run.
-	possible to get best chainage shift for group of corrections.
-	for collator m correction for next run tends to be opposite sign. implies x,y shift needed
-	chainages from shapefile(from geometry) higher than csv
-	csv appears to have more accurate chainages.
-	try chainage,offset shift per correction.
-
-	choosing between possible new chainages for correction?
-	minimize distance to neiboring corrections?
+	mo best as gps tends to lag.
 	
 
-dialog for chainage shift from point?
-	QComboxBox of chainage,offset within distance.
-	display linestring from start to new chainage. QgsRubberBand.
-	
-	
 runs vs no runs:
 	could have 1 shift/offset per run like collator does
 	better if don't need to spend time splitting into runs
 		
 		
-
-	
-
-
-rectangular vs curved images:
-	length changed for curved
-	offsets > radius of curvature don't work for curved
-	could just write worldfile for rectangular. affine transform.
-	gaps and overlap between images if rectangular.
-	unclear how GDAL maps point to pixel.
-	positions between images. problem?
-	
-	
-	
-
 gps_model.
 
 	finding chainage,offset <-> x,y:
-
-	need to define direction for offset.
-	depends on what path does between known points.
-	
-		Cubic spline:
-		has continous derivitive.
-		Causing problems due to lack of smoothing?
-		probabaly more accurate representation pf where vehicle actualy was
-		
-		make forward vector from m-W to m+W:
-			
-		
-		
-	images end up shrunk/elongated where centerline curved and offset != 0
-
 
 	handle all geospatial parts?
 	spatialite vs sqlite vs scipy interp1d
@@ -108,10 +52,14 @@ gps_model.
 	less problem with users clicking wrong run.
 	
 	
-	
+test out loading gps from geom.csv
+	see if any more accurate
+
 	
 reload vrt when images changed.
 run,type from images
+
+store gcps and only gereference where changed or image doesn't exist?
 
 add georeference run action
 
@@ -122,4 +70,17 @@ Qgis not releasing file locks.
 include frame in correction.
 	preview button and filePath combobox to remake and reload image.
 
-		
+	
+copy/paste runs to clipboard?
+
+
+Chainages and chainage corrections for versions >= 3.36 are different to previous versions.
+To convert from old chainage to new subtract the lowest chainage in the rutacd CSV.
+This was added to make the chainages start at 0 and put the uncorrected image closer to where it should be.
+
+
+
+
+
+
+	

@@ -26,7 +26,7 @@ def removeSources(sources):
     #"The specified layers will be removed from the registry. 
     #If the registry has ownership of any layers these layers will also be deleted."
     
-    #time.sleep(2)# don't know when/how long QGIS takes to release file locks. inelegant solution is to wait 1 second.
+    time.sleep(1)# don't know when/how long QGIS takes to release file locks. inelegant solution is to wait 1 second.
     
     
     

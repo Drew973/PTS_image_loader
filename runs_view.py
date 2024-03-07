@@ -34,6 +34,10 @@ class runsView(QTreeView):
       #  copyAct.setShortcutContext(Qt.WidgetShortcut)
         copyAct.triggered.connect(self.copy)
         
+        pasteAct = self.menu.addAction('Paste')
+        shortcut = QShortcut(QKeySequence.Paste,self,self.paste, context=Qt.WidgetShortcut)
+        pasteAct.triggered.connect(self.paste)
+
         
     def copy(self):
         startFrameCol = self.model().fieldIndex('start_frame')
@@ -49,6 +53,11 @@ class runsView(QTreeView):
             offset = self.model().index(row,offsetCol).data()
             t += '{sf}\t{ef}\t{cs}\t{of}\n'.format(sf = startFrame , ef = endFrame,cs = cs,of = offset)
         QApplication.clipboard().setText(t)
+       
+        
+    def paste(self):
+        t = QApplication.clipboard().text()
+        self.model().loadText(t)
         
         
     def addRun(self):

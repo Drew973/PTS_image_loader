@@ -37,13 +37,12 @@ from PyQt5.QtSql import QSqlDatabase
 from image_loader.image_model import imageModel
 from image_loader.settings_dialog import settingsDialog
 
-from image_loader import download_gps
 from image_loader import db_functions
 from image_loader.gps_model_4 import gpsModel
 from image_loader import runs_model
 from image_loader.run_commands import commandsDialog
 from image_loader.download_cracks import downloadCracks
-
+from image_loader import upload_xml
 
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -85,31 +84,49 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.imagesModel.createOverviews()
         
    
+    #tests if has gps and display message if not. -> bool
+    def checkGps(self):
+        r = self.gpsModel.hasGps()
+        if not r:
+            iface.messageBar().pushMessage("Image_loader", "No GPS. Is GPS data loaded?", level=Qgis.Info)
+        return r
+            
+    #tests if has runs and display message if not. -> bool
+    def checkRuns(self):
+        r = self.runsModel.rowCount()>0
+        if not r:
+            iface.messageBar().pushMessage("Image_loader", "No Runs.", level=Qgis.Info)
+        return r
+
+    
     def georeferenceImages(self):
-        if self.gpsModel.hasGps():
+        if self.checkGps():
             progress = commandsDialog(title = 'Georeferencing',parent = self)
             progress.show()
             self.imagesModel.georeference(self.gpsModel,pks = self.imagesView.selectedPks(),progress=progress)
-        else:
-            iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)
+        
         
 
     def processRuns(self):
-        if self.gpsModel.hasGps():
+        if self.checkGps() and self.checkRuns():
             progress = commandsDialog(parent = self)
             progress.setLabelText('Processing runs...')
             progress.show()
             pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
        #     print('pks',pks)
             self.imagesModel.georeference(gpsModel = self.gpsModel,pks=pks,progress = progress)
-            
-            
             progress.setLabelText('Remaking VRTs')
             self.imagesModel.makeVrt(pks=pks,progress = progress)
 
-           # self.runsModel.georeference(gpsModel = self.gpsModel,pks = self.runsWidget.selectedPks(),progress = progress)
-        else:
-            iface.messageBar().pushMessage("Image_loader", "GPS data required", level=Qgis.Info)        
+       
+    def makeRunsVrt(self):
+        if self.checkRuns():
+            progress = commandsDialog(parent = self)
+            progress.setLabelText('Making VRT files...')
+            progress.show()
+            pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
+            self.imagesModel.makeVrt(pks=pks,progress = progress)
+
 
 
     #scroll images to run and select in widget
@@ -213,7 +230,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         viewMenu = toolsMenu.addMenu('View')
 
         loadGpsAct = viewMenu.addAction('View GPS data')
-        loadGpsAct.triggered.connect(lambda:download_gps.loadGps(corrected = False))
+        loadGpsAct.triggered.connect(self.
+                                     downloadGps)
         
         loadCracksAct = viewMenu.addAction('View Cracking Data')
         loadCracksAct.triggered.connect(self.downloadCracks)     
@@ -227,9 +245,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         runsMenu = topMenu.addMenu("Runs")
         processRunsAct = runsMenu.addAction('Process selected runs')
         processRunsAct.triggered.connect(self.processRuns)
-        pasteRunsAct = runsMenu.addAction('Paste from clipboard')
-        pasteRunsAct.triggered.connect(self.pasteRuns)
 
+        runsVrtAct = runsMenu.addAction('Make VRT files for selected runs')
+        runsVrtAct.triggered.connect(self.makeRunsVrt)
 
         processMenu = topMenu.addMenu("Images")
         
@@ -248,6 +266,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.mainWidget.layout().setMenuBar(topMenu)
 
 
+    def downloadGps(self):
+        if self.checkGps():
+          #  download_gps.loadGps(corrected = False)
+            self.gpsModel.makeLayer(corrected = False)
+            
 #opens help/index.html in default browser
     def openHelp(self):
         helpPath = os.path.join(os.path.dirname(__file__),'help','help.html')
@@ -255,11 +278,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QtGui.QDesktopServices.openUrl(QUrl(helpPath))
         
         
-    def pasteRuns(self):
-        t = QApplication.clipboard().text()
-        self.runsModel.loadText(t)
-
-
     def makeVrt(self):
         progress = commandsDialog(title = 'Remaking VRT files',parent = self)
         progress.show()
@@ -282,13 +300,25 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def downloadCracks(self):
         cc = db_functions.crackCount()
-        if cc:
-            progress = QProgressDialog(parent = self)
-            progress.setLabelText('Loading cracks...')
-            progress.show()
-            downloadCracks(gpsModel = self.gpsModel,progress = progress)   
-                
-         
+        if cc == 0:
+            iface.messageBar().pushMessage("Image_loader", "No crack data. Are XML files loaded?", level=Qgis.Info)
+            return
+        
+        if self.runsModel.rowCount() == 0:
+            iface.messageBar().pushMessage("Image_loader", "No runs. This only shows cracks within runs.", level=Qgis.Info)
+            return
+        
+        
+        if not self.checkGps():
+            return
+        
+        progress = QProgressDialog(parent = self)
+        progress.setLabelText('Loading cracks...')
+        progress.show()
+        downloadCracks(gpsModel = self.gpsModel,progress = progress)   
+        progress.close()
+            
+
     def downloadRuns(self):
         pass
          
@@ -304,8 +334,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             for i,f in enumerate(files):
                 if not progress.wasCanceled():
                     progress.setValue(i+1)
-                    db_functions.uploadXML(files = [f])
-                              
+                    upload_xml.uploadXML(files = [f])
+            iface.messageBar().pushMessage("Image_loader", "loaded XML files", level=Qgis.Info)
+
                     
     #open dialog and load csv/sqlite file
     def openRilFile(self):

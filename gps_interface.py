@@ -82,6 +82,13 @@ class gpsInterface:
         db.commit()
     
     
+    @staticmethod    
+    def maxM():
+        q = runQuery('select max(m) from original_points')
+        while q.next():
+            return q.value(0)
+        
+    
     @staticmethod
   # performance unimportant here.
     def line(startM, endM, maxPoints=2000, corrected=False):

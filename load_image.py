@@ -21,7 +21,7 @@ def loadImage(file,groups):
     layer = QgsRasterLayer(file,name)        
     layer.setContrastEnhancement(QgsContrastEnhancement.NoEnhancement)#remove contrast enhancement. end up with same pixel value showing as different color.
     group.addLayer(layer)
-   # group.setExpanded(False)    
+    group.setExpanded(False)    
         #addLayer
     QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
     node = group.findLayer(layer)
