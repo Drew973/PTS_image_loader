@@ -41,7 +41,7 @@ from image_loader import db_functions
 from image_loader.gps_model_4 import gpsModel
 from image_loader import runs_model
 from image_loader.run_commands import commandsDialog
-from image_loader.download_cracks import downloadCracks
+from image_loader.download_cracks import downloadCracks,downloadRuts
 from image_loader import upload_xml
 
 
@@ -91,6 +91,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             iface.messageBar().pushMessage("Image_loader", "No GPS. Is GPS data loaded?", level=Qgis.Info)
         return r
             
+    
     #tests if has runs and display message if not. -> bool
     def checkRuns(self):
         r = self.runsModel.rowCount()>0
@@ -104,7 +105,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             progress = commandsDialog(title = 'Georeferencing',parent = self)
             progress.show()
             self.imagesModel.georeference(self.gpsModel,pks = self.imagesView.selectedPks(),progress=progress)
-        
         
 
     def processRuns(self):
@@ -236,6 +236,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadCracksAct = viewMenu.addAction('View Cracking Data')
         loadCracksAct.triggered.connect(self.downloadCracks)     
         
+        loadRutsAct = viewMenu.addAction('View Rutting Data')
+        loadRutsAct.triggered.connect(self.downloadRuts)     
+        
       #  loadCracksAct = viewMenu.addAction('View runs')
       #  loadCracksAct.triggered.connect(self.downloadRuns)     
         
@@ -303,21 +306,34 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if cc == 0:
             iface.messageBar().pushMessage("Image_loader", "No crack data. Are XML files loaded?", level=Qgis.Info)
             return
-        
         if self.runsModel.rowCount() == 0:
             iface.messageBar().pushMessage("Image_loader", "No runs. This only shows cracks within runs.", level=Qgis.Info)
             return
-        
-        
         if not self.checkGps():
             return
-        
         progress = QProgressDialog(parent = self)
         progress.setLabelText('Loading cracks...')
         progress.show()
         downloadCracks(gpsModel = self.gpsModel,progress = progress)   
         progress.close()
             
+
+    def downloadRuts(self):
+        rc = db_functions.rutCount()
+        if rc == 0:
+            iface.messageBar().pushMessage("Image_loader", "No rut data. Are XML files loaded?", level=Qgis.Info)
+            return
+        if not self.checkGps():
+            return
+        if self.runsModel.rowCount() == 0:
+            iface.messageBar().pushMessage("Image_loader", "No runs. This only shows rutting within runs.", level=Qgis.Info)
+            return
+        progress = QProgressDialog(parent = self)
+        progress.setLabelText('Loading ruts...')
+        progress.show()
+        downloadRuts(gpsModel = self.gpsModel,progress = progress)
+        progress.close()
+        
 
     def downloadRuns(self):
         pass
@@ -327,7 +343,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         files = QFileDialog.getOpenFileNames(caption = 'open XML',filter = '*.xml')[0]
         if len(files)>0:
             print('files',files)
-            progress = QProgressDialog(parent = self)
+            progress = QProgressDialog(parent = iface.mainWindow())
             progress.setLabelText('Loading XML files...')
             progress.setRange(0,len(files))
             progress.show()

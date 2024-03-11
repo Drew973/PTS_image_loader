@@ -69,96 +69,41 @@ class commandRunner(QObject):
         super().__init__(parent=parent)
         self.progress = progress
         self.progress.canceled.connect(self.abort)
-        self.completedCount = 0
-        self.processes = {}
-        self.commands = []
-        self.commandCompleted.connect(progress.commandCompleted)
+        self.toDo = []
+        self.process1 = None
+        self.command1 = None
+       
+
+        
+    def process1Finished(self):
+        e = self.process1.readAllStandardError()
+        e = str(e.data(), encoding='utf-8')
+        self.commandCompleted.emit(str(self.command1),e)
+        self.startProcess1()
+
+    
+        
+    def startProcess1(self):
+        self.process1 = QProcess(parent = None)
+        self.process1.finished.connect(self.process1Finished)
+        if len(self.toDo) > 0 and not self.progress.wasCanceled():
+            self.command1 = self.toDo.pop()
+            self.process1.start(self.command1)#obsolete. should change this?
+            self.process1.waitForStarted()
+            
         
     def runCommands(self,commands):
-   #     print('runCommands',commands)
-        self.processes = {}
-        self.progress.setRange(0,len(commands))
-        self.progress.setValue(0)
-        self.nextInd = 0
-        self.commands = commands
-        self.completedCount = 0
-        for i in [0,1,2,3]:
-            self._startNext(i)
+        self.toDo = commands
+        self.startProcess1()
+        
 
     def abort(self):
     #    print('abort')
-        self.commands = []
-        for p in self.processes.values():
-            p.close()
-        #self.wait()
+        self.toDo = []
+        self.process1.close()
 
 
-
-    def _startNext(self,number):
-        if self.nextInd < len(self.commands) and not self.progress.wasCanceled():
-            
-            self.processes[number] = QProcess(parent = None)
-            
-            if number == 0:
-                print('number0')
-                self.processes[number].finished.connect(self.process0Completed)
-            
-            if number == 1:
-                self.processes[number].finished.connect(self.process1Completed)     
-                
-            if number == 2:
-                self.processes[number].finished.connect(self.process2Completed)    
-                
-            if number == 3:
-                self.processes[number].finished.connect(self.process3Completed)
-                
-       #     self.processes[number] = process
-#
-            print('_startNext',number)
-           # command = r'python "C:\\Users\\drew.bennett\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\image_loader\\georeference.py" "D:\RAF_BENSON\Data\2024-01-08\MFV1_007\Run 7\LCMS Module 1\Images\IntensityWithoutOverlay\2024-01-08 13h29m23s LCMS Module 1 000045.jpg" "D:\RAF_BENSON\Data\2024-01-08\MFV1_007\Run 7\LCMS Module 1\Images\IntensityWithoutOverlay\2024-01-08 13h29m23s LCMS Module 1 000045_warped.tif" "[(462817.25451149343, 191031.18473576196, 0, 1250), (462814.636631912, 191027.20938695985, 0, 0), (462814.00135534233, 191033.51217535444, 1038, 1250), (462811.25700605544, 191029.34904325698, 1038, 0)]"'
-            command  = self.commands[self.nextInd]
-            self.processes[number].start(command)#obsolete. should change this?
-            self.processes[number].waitForStarted()
-            
-            state = self.processes[number].state()
-            print('state',state)
-            
-       #     e = self.processes[number].error()
-        #    print('e',e)
-            
-          #  self.processes[number].waitForFinished()
-           # QApplication.processEvents()
-            self.nextInd += 1
-
-
-
-    def process0Completed(self):
-     #   print('process0Completed')
-        self._processCompleted(0)
-
-    def process1Completed(self):
-        self._processCompleted(1)
-        
-    def process2Completed(self):
-        self._processCompleted(2)
-        
-    def process3Completed(self):
-        self._processCompleted(3)
-                
-    def _processCompleted(self,number):
- #       print('_processCompleted',number)
-        process = self.processes[number]
-        self.completedCount += 1
-       # command = self.commands[number]
-        e = process.readAllStandardError()
-        self.progress.setValue(self.completedCount)
-        e = str(e.data(), encoding='utf-8')
-        command = process.arguments()
-        self.commandCompleted.emit(self.completedCount,str(command),e)
-        self._startNext(number)
-        
            
-
 '''
 run iterable of commands as subprocess in paralell.
 update progress dialog and allow cancelling

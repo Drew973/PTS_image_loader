@@ -155,3 +155,43 @@ SELECT AddGeometryColumn('cracks' , 'geom', 0, 'Linestring', 'XY');
 create view if not exists cracks_view as
 select section_id,crack_id,len,depth,width,geom,chainage_shift,offset
 from cracks inner join runs_view on start_frame <= section_id and end_frame >= section_id
+
+
+
+create table if not exists joints(
+frame int
+,joint_id int
+,off float
+,faulting int
+,width float
+,unique(frame,joint_id)
+);
+
+create index if not exists section_id_ind on joints(joint_id);
+
+SELECT AddGeometryColumn('joints' , 'geom', 0, 'POLYGON', 'XY');
+--x coord is chainage , y is offset.
+
+drop table if exists rut;
+
+create table if not exists rut(
+frame int
+,chainage float
+,wheelpath text
+,depth float
+,width float
+,x_section float
+,type INT
+,deform float
+,unique(frame,chainage,wheelpath)
+);
+
+create index if not exists frame_ind on rut(frame);
+
+SELECT AddGeometryColumn('rut' , 'geom', 0, 'POLYGON', 'XY');
+--x coord is chainage , y is offset.
+
+
+create view if not exists rut_view as
+select frame,chainage,wheelpath,depth,width,type,deform,geom,chainage_shift,offset
+from rut inner join runs_view on start_frame <= frame and end_frame >= frame

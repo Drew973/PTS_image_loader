@@ -366,25 +366,17 @@ def runChainages(run):
 
 
 
-def uploadXML(files):
-    db = defaultDb()
-    q = prepareQuery('INSERT OR ignore into cracks(section_id,crack_id,len,depth,width,geom) values (?,?,?,?,?,ST_LineFromText(?,0))',db)
-    for f in files:
-        print('uploading ' + f)
-        db.transaction()
-        for row in parse_xml.parseXML(f):
-            q.bindValue(0,row[0])
-            q.bindValue(1,row[1])
-            q.bindValue(2,row[2])
-            q.bindValue(3,row[3])
-            q.bindValue(4,row[4])
-            q.bindValue(5,row[5])
-            q.exec()
-        db.commit()
+
 
 #->int
 def crackCount():
     q = runQuery('select count(crack_id) from cracks')
+    while q.next():
+        return q.value(0)
+
+#->int
+def rutCount():
+    q = runQuery('select count(frame) from rut')
     while q.next():
         return q.value(0)
 
