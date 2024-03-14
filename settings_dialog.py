@@ -18,6 +18,7 @@ class settingsDialog(QDialog):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.setLayout(QFormLayout(self))
+        self.settings = QSettings("pts","image_loader")
         self.folder = QLineEdit()
        # self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
@@ -27,12 +28,14 @@ class settingsDialog(QDialog):
         Untick if compatibility with versions < 3.36 and collator required.
         '''
         self.startAtZero.setToolTip(t)   
-        self.startAtZero.setChecked(True)
+        self.startAtZero.setChecked(bool(self.settings.value('startAtZero')))
         self.layout().addRow('Shift chainages to start at 0 when loading GPS',self.startAtZero)
-        self.settings = QSettings("pts","image_loader")
-        v = self.settings.value('startAtZero')
-        print('startAtZero',v)
         
+     
+    def closeEvent(self,event):
+        self.settings.setValue('startAtZero',self.startAtZero.isChecked())
+        super().closeEvent(event)
+     
         
     #dict like.
     def __getitem__ (self,key):

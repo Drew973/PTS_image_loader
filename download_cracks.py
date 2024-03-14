@@ -5,18 +5,45 @@ Created on Thu Feb 29 15:39:58 2024
 @author: Drew.Bennett
 """
 
-from image_loader.db_functions import runQuery
+from image_loader.db_functions import runQuery,prepareQuery,defaultDb,dbFile
 from image_loader.layer_styles import styles
+from qgis import processing
 
-from qgis.core import QgsFeature,QgsGeometry,edit,QgsWkbTypes,QgsTask
+from qgis.core import QgsFeature,QgsGeometry,edit,QgsWkbTypes
 from qgis.utils import iface
 #from image_loader import db_functions
 #from image_loader.layer_styles.styles import centerStyle
-from PyQt5.QtCore import QThread,pyqtSignal
+from PyQt5.QtCore import QByteArray,QProcess
+from PyQt5.QtWidgets import QProgressDialog,QApplication
+
+
+
+
+from itertools import islice
+
+#split generator into chunks
+def chunk(gen, k):
+    """Efficiently split `gen` into chunks of size `k`.
+
+       Args:
+           gen: Iterator to chunk.
+           k: Number of elements per chunk.
+
+       Yields:
+           Chunks as a list.
+    """ 
+    while True:
+        chunk = [*islice(gen, 0, k)]
+        if chunk:
+            yield chunk
+        else:
+            break
+
 
 
 
 def downloadCracks(gpsModel,progress):
+    interval = 50
     uri = "Linestring?crs=epsg:27700&field=frame:int&field=crack_id:int&field=length:real&field=width:real&field=depth:real&index=yes"
     layer = iface.addVectorLayer(uri, 'cracking', "memory")
     fields = layer.fields()
@@ -30,7 +57,9 @@ def downloadCracks(gpsModel,progress):
         i = 0
         q = runQuery('select section_id,crack_id,len,depth,width,st_asText(geom),chainage_shift,offset from cracks_view')
         while q.next() and not progress.wasCanceled():
-            progress.setValue(i+1)
+            if i%interval == 0:
+                progress.setValue(i)
+                QApplication.processEvents()
             wkt = q.value(5)
             g = QgsGeometry.fromWkt(wkt)
            # r = g.translate(dx = q.value(6), dy = q.value(7))#add mo correction
@@ -54,143 +83,88 @@ def downloadCracks(gpsModel,progress):
     with edit(layer):
          layer.addFeatures(features())
     layer.loadNamedStyle(styles.crackStyle)
+    progress.setValue(progress.maximum())
+    progress.close()
     
-    
-class layerLoader(QThread):
-    
-    
-    countChanged = pyqtSignal(int)
-    
-    
-    def __init__(self,gpsModel,progress,parent = None):
-        super().__init__(parent=parent)
-        self.gpsModel = gpsModel
-        self.progress = progress
-
-    def run(self):
-        downloadRuts()
 
 
+class downloadRutDialog(QProgressDialog):
+    def __init__(self,parent = None):
+        super().__init__(parent)
+        self.setAutoClose(False)
+        self.setLabelText('Recalculating rutting geometry...')
 
-class downloadRutsTask(QgsTask):
-        
-    def run(self,gpsModel):
-     
-        #taskCompleted.connect
-        uri = "Polygon?crs=epsg:27700&field=frame:int&field=chainage:real&field=wheelpath:string&field=depth:real&field=width:real&field=x_section:real&field=type:int&field=deform:real&index=yes"
-        layer = iface.addVectorLayer(uri, 'Rutting', "memory")
-        fields = layer.fields()
+
+    def downloadRuts(self,gpsModel,saveTo,chunkSize = 100):
+        db = defaultDb()
+        db.transaction()
+        q = runQuery('select count(frame) from rut_view',db = db)
        
-        q = runQuery('select count(frame) from rut_view')
+        #set range
         while q.next():
             count = q.value(0)
-            
-            
-        def features():
-            i = 0
-            q = runQuery('select frame,chainage,wheelpath,width,depth,type,deform,chainage_shift,offset,st_asText(geom) from rut_view')##########test
-            while q.next():
-                if self.isCanceled():
-                    return False
-            
-                self.setProgress(int(i/count * 100))
-                
-                wkt = q.value(9)
-                g = QgsGeometry.fromWkt(wkt)
-               # r = g.translate(dx = q.value(6), dy = q.value(7))#add mo correction
-               # if not r:
-                #    print('failed to translate',r,g,mShift = q.value(6),offset = q.value(7))
-                geom = gpsModel.moGeomToXY(g,mShift = q.value(7),offset = q.value(8))
-                i += 1
-                if i == 1:
-                    print(geom.asWkt())
-                    print('type',geom.type())
-                    
-                if True:
-              #  if geom.type() == QgsWkbTypes.LineGeometry:
-                    #not QgsWkbTypes.LineString for some reason
-                    f = QgsFeature(fields)
-                    f['frame'] = q.value(0)
-                    f['chainage'] = q.value(1)
-                    f['wheelpath'] = q.value(2)
-                    f['width'] = q.value(3)
-                    f['depth'] = q.value(4)
-                    f['type'] = q.value(5)
-                    f['deform'] = q.value(6)
-                    f.setGeometry(geom)
-                    yield f
-                    
-                    
-        #split into several parts to allow cancelling?
-        with edit(layer):
-             layer.addFeatures(features())
-      #  layer.loadNamedStyle(styles.crackStyle)
-        return True
-
-
-
-
-
-def downloadRuts(gpsModel,progress):
-    task = downloadRutsTask()
-    progress.setRange(0,100)
-    task.progressChanged.connect(progress.setValue)
-    progress.canceled.connect(task.cancel)
-    task.run(gpsModel = gpsModel)
-    
-    
-    
-
-def old___downloadRuts(gpsModel,progress):
-    uri = "Polygon?crs=epsg:27700&field=frame:int&field=chainage:real&field=wheelpath:string&field=depth:real&field=width:real&field=x_section:real&field=type:int&field=deform:real&index=yes"
-    layer = iface.addVectorLayer(uri, 'Rutting', "memory")
-    fields = layer.fields()
-   
-    q = runQuery('select count(frame) from rut_view')
-    while q.next():
-        count = q.value(0)
-        progress.setRange(0,count)
+        self.setRange(0,count+100)
         
-    def features():
+        #update geom column of rut
+        q = runQuery('select pk,chainage_shift,offset,mo_wkb from rut_view',db=db)##########test
+        updateQuery = prepareQuery('update rut set geom = PolygonFromWKB(?,27700) where pk = ?', db= db)##########test
+        
         i = 0
-        q = runQuery('select frame,chainage,wheelpath,width,depth,type,deform,chainage_shift,offset,st_asText(geom) from rut_view where frame = 10')##########test
-        while q.next() and not progress.wasCanceled():
-            progress.setValue(i+1)
-            wkt = q.value(9)
-            g = QgsGeometry.fromWkt(wkt)
-           # r = g.translate(dx = q.value(6), dy = q.value(7))#add mo correction
-           # if not r:
-            #    print('failed to translate',r,g,mShift = q.value(6),offset = q.value(7))
-            geom = gpsModel.moGeomToXY(g,mShift = q.value(7),offset = q.value(8))
-            i += 1
-            if i == 1:
-                print(geom.asWkt())
-                print('type',geom.type())
+        while q.next():
+            g = QgsGeometry()
+            wkb = q.value(3)
+            if isinstance(wkb,QByteArray):
+                g.fromWkb(wkb)
+                geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
                 
-            if True:
-          #  if geom.type() == QgsWkbTypes.LineGeometry:
-                #not QgsWkbTypes.LineString for some reason
-                f = QgsFeature(fields)
-                f['frame'] = q.value(0)
-                f['chainage'] = q.value(1)
-                f['wheelpath'] = q.value(2)
-                f['width'] = q.value(3)
-                f['depth'] = q.value(4)
-                f['type'] = q.value(5)
-                f['deform'] = q.value(6)
-                f.setGeometry(geom)
-                yield f
+                if i == 0:
+                    print('g',g,'geom',geom)
                 
-    with edit(layer):
-         layer.addFeatures(features())
-    layer.loadNamedStyle(styles.crackStyle)
+                updateQuery.bindValue(0,geom.asWkb())
+                updateQuery.bindValue(1,int(q.value(0)))
+                updateQuery.exec()
+            self.setValue(i)
+            if i%chunkSize == 0:
+                QApplication.processEvents()
+            i+=1            
+        db.commit()   
         
+        #copy rut table to geopackage
+       # to = r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\ruts.gpkg'
+     #   command = 'ogr2ogr "{to}" "{db}" -sql "select frame,chainage,wheelpath,width,depth,type,deform,x_section,geom from rut_view" -t_srs EPSG:27700 -s_srs EPSG:27700 -nln rutting -overwrite'.format(to = saveTo,
+                                                                                                                                                                                                            # db = dbFile())
+       # print(command)
+    #    p = QProcess()
+    #    p.start(command)
+     #   p.waitForFinished()#~5s
+        
+        #load it
+      #  source = saveTo + '|layername=rutting'
+       # layer = iface.addVectorLayer(source, "rutting", "ogr")
+        #  layer.loadNamedStyle(styles.crackStyle)    
+        
+        #run processing algorithm. can make tempuary layer this way.
+        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"runs_view\"'.format(db = dbFile()), 'OPTIONS' : '-sql \"select frame,chainage,wheelpath,width,depth,type,deform,x_section,geom from rut_view\" -t_srs EPSG:27700 -s_srs EPSG:27700 -nln rutting -overwrite', 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+        r = processing.run('gdal:convertformat',params)
+        layer = iface.addVectorLayer(r['OUTPUT'], "Rutting", "ogr")
+        layer.setName('Rutting')
+        self.setValue(self.maximum())
+        return
+            
+
+#import cProfile
+
+def downloadRuts(gpsModel,saveTo = None):
+   # pr = cProfile.Profile()
+   # pr.enable()
     
-    
-    
-    
-    
-    
+    d = downloadRutDialog()
+    d.downloadRuts(gpsModel = gpsModel,saveTo=saveTo)
+    d.close()
+  #  pr.disable()
+  #  pr.dump_stats(r"C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof")
+    #   snakeviz C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof
+  
     
     
     

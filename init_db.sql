@@ -172,10 +172,9 @@ create index if not exists section_id_ind on joints(joint_id);
 SELECT AddGeometryColumn('joints' , 'geom', 0, 'POLYGON', 'XY');
 --x coord is chainage , y is offset.
 
-drop table if exists rut;
-
 create table if not exists rut(
-frame int
+pk INTEGER primary key
+,frame int
 ,chainage float
 ,wheelpath text
 ,depth float
@@ -183,15 +182,15 @@ frame int
 ,x_section float
 ,type INT
 ,deform float
+,mo_wkb blob
 ,unique(frame,chainage,wheelpath)
 );
-
 create index if not exists frame_ind on rut(frame);
 
-SELECT AddGeometryColumn('rut' , 'geom', 0, 'POLYGON', 'XY');
---x coord is chainage , y is offset.
+SELECT AddGeometryColumn('rut' , 'geom', 27700, 'POLYGON', 'XY');
 
 
+drop view if exists rut_view;
 create view if not exists rut_view as
-select frame,chainage,wheelpath,depth,width,type,deform,geom,chainage_shift,offset
-from rut inner join runs_view on start_frame <= frame and end_frame >= frame
+select rut.pk as pk,frame,chainage,wheelpath,depth,width,type,deform,x_section,mo_wkb,geom,chainage_shift,offset
+from rut inner join runs_view on start_frame <= frame and end_frame >= frame;

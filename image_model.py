@@ -192,17 +192,11 @@ class imageModel(QSqlQueryModel):
   
     #load images into qgis
     def loadImages(self,pks = []):
-        
         p = ','.join([str(pk) for pk in pks])
-
-        
         progress = createProgressDialog(parent=self.parent(),labelText = "Loading images...")
-        
         t = 'select original_file,run,image_type from images_view where pk in ({pks}) and not original_file is null'.format(pks = p)
-        
       #  query = db_functions.runQuery('select original_file,run,image_type from images_view where marked and not original_file is null')
         query = db_functions.runQuery(t)
-
         progress.setRange(0,query.size())
         i = 0
         while query.next():

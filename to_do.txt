@@ -31,26 +31,6 @@ runs vs no runs:
 	could have 1 shift/offset per run like collator does
 	better if don't need to spend time splitting into runs
 		
-		
-gps_model.
-
-	finding chainage,offset <-> x,y:
-
-	handle all geospatial parts?
-	spatialite vs sqlite vs scipy interp1d
-	define perpendicular direction by making vector from m+-d?
-	left_offset = dot_product(perp,shortest_line)
-	want to store and load in database for easier debugging.
-	chainages from original_points table
-	GCPs and (frame,pixel,line)
-	from corrected_points table/view.
-
-	seperate into original and corrected?
-	
-	use XY corrections.
-	easier ui than chainage,offset
-	less problem with users clicking wrong run.
-	
 	
 test out loading gps from geom.csv
 	see if any more accurate

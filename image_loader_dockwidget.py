@@ -94,12 +94,19 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
     #tests if has runs and display message if not. -> bool
     def checkRuns(self):
-        r = self.runsModel.rowCount()>0
+        r = self.runsModel.rowCount() > 0
         if not r:
             iface.messageBar().pushMessage("Image_loader", "No Runs.", level=Qgis.Info)
         return r
 
-    
+
+    def checkImages(self):
+        r = self.imagesModel.rowCount() > 0
+        if not r:
+            iface.messageBar().pushMessage("Image_loader", "No Image details.", level=Qgis.Info)
+        return r        
+
+
     def georeferenceImages(self):
         if self.checkGps():
             progress = commandsDialog(title = 'Georeferencing',parent = self)
@@ -108,12 +115,14 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
 
     def processRuns(self):
-        if self.checkGps() and self.checkRuns():
+        if self.checkImages() and self.checkRuns() and self.checkGps():
             progress = commandsDialog(parent = self)
             progress.setLabelText('Processing runs...')
             progress.show()
-            pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
-       #     print('pks',pks)
+            selectedRuns = self.runsWidget.selectedPks()
+         #   print('selectedRuns',selectedRuns)
+            pks = self.runsModel.imagePks(selectedRuns)
+         #   print('pks',pks)
             self.imagesModel.georeference(gpsModel = self.gpsModel,pks=pks,progress = progress)
             progress.setLabelText('Remaking VRTs')
             self.imagesModel.makeVrt(pks=pks,progress = progress)
@@ -201,8 +210,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         saveRuns.triggered.connect(self.saveRuns)        
         
         openMenu = fileMenu.addMenu('Open')
-        openAct = openMenu.addAction('Open...')
-        openAct.triggered.connect(self.load)
+       # openAct = openMenu.addAction('Open...')
+      #  openAct.triggered.connect(self.load)
         
         loadRunsCsvAct = openMenu.addAction('Open runs csv...')
         loadRunsCsvAct.triggered.connect(self.loadRunsCsv)
@@ -218,7 +227,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadGpsAct.triggered.connect(self.loadGps)
 
 
-        loadXMLAct = openMenu.addAction('Open XML...')
+        loadXMLAct = openMenu.addAction('Open XML files...')
         loadXMLAct.triggered.connect(self.loadXML)
         
         
@@ -328,30 +337,17 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if self.runsModel.rowCount() == 0:
             iface.messageBar().pushMessage("Image_loader", "No runs. This only shows rutting within runs.", level=Qgis.Info)
             return
-        progress = QProgressDialog(parent = self)
-        progress.setLabelText('Loading ruts...')
-        progress.show()
-        downloadRuts(gpsModel = self.gpsModel,progress = progress)
-        progress.close()
         
-
-    def downloadRuns(self):
-        pass
-         
+       # f = QFileDialog.getSaveFileName(caption = 'Save ruts to',filter = 'geopackage (*.gpkg)')[0]
+        #if f:
+        downloadRuts(gpsModel = self.gpsModel,saveTo = None)
+       # progress.close()
+        
     
     def loadXML(self):
-        files = QFileDialog.getOpenFileNames(caption = 'open XML',filter = '*.xml')[0]
+        files = QFileDialog.getOpenFileNames(caption = 'open XML files',filter = '*.xml')[0]
         if len(files)>0:
-            print('files',files)
-            progress = QProgressDialog(parent = iface.mainWindow())
-            progress.setLabelText('Loading XML files...')
-            progress.setRange(0,len(files))
-            progress.show()
-            for i,f in enumerate(files):
-                if not progress.wasCanceled():
-                    progress.setValue(i+1)
-                    upload_xml.uploadXML(files = [f])
-            iface.messageBar().pushMessage("Image_loader", "loaded XML files", level=Qgis.Info)
+            upload_xml.uploadXML(files = files,parent=self)    
 
                     
     #open dialog and load csv/sqlite file

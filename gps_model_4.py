@@ -107,6 +107,8 @@ class gpsModel(gpsInterface):
     
     #convert geometry in terms of m,offset to x,y
     #QgsGeometry
+    # x as m. y as offset
+    
     def moGeomToXY(self,geom,mShift = 0.0,offset = 0.0):
         g = QgsGeometry(geom)
         for i,v in enumerate(g.vertices()):
