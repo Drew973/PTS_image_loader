@@ -12,7 +12,7 @@ from PyQt5.QtSql import QSqlQuery
 from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError,prepareQuery
 from osgeo.osr import SpatialReference, CoordinateTransformation, OAMS_TRADITIONAL_GIS_ORDER
 from qgis.core import QgsGeometry, QgsPointXY
-
+import numpy as np
 
 # transform for parsing csv
 epsg4326 = SpatialReference()
@@ -48,10 +48,49 @@ class gpsInterface:
 
 
     @staticmethod
-    def loadFile(file,startAtZero=True):
+    def loadFile(file,startAtZero=True,interval = 5):
         ext = os.path.splitext(file)[1]
         if ext == '.csv':
-            gpsInterface.setValues(vals = parseCsv(file),startAtZero=startAtZero)
+            #gpsInterface.setValues(vals = parseCsv(file),startAtZero=startAtZero)
+
+            d = np.array([r for r in parseCsv(file)])
+        
+        if d is not None:
+            #interpolate and resample at intervals. every 1m excessive and not smooth?
+            if interval is not None:
+                
+                m = d[:,0]
+                if startAtZero:
+                    m -= min(m)
+                
+                
+                x = d[:,1]
+                y = d[:,2]
+                
+                #start at multiple of interval after start
+                s = min(m)
+                if s%interval != 0:
+                    s = s + interval - s % interval
+                
+                e = max(m)
+                if e%interval != 0:
+                    e = e - e % interval        
+                
+                newM = np.arange(s,e,interval)
+                #ynew = np.interp(xnew, x, y)
+                    
+                print('data',m,x,y)
+                print('newM',newM)
+        
+                newX = np.interp(newM, m, x)
+                newY = np.interp(newM, m, y)
+        
+                r = np.transpose((newM,newX,newY))
+               # print('r',r)
+            else:
+                r = d
+           
+            gpsInterface.setValues(vals = r,startAtZero=startAtZero)
 
 
     @staticmethod
@@ -64,9 +103,9 @@ class gpsInterface:
             raise queryPrepareError(q)
         for i, v in enumerate(vals):
             try:
-                q.bindValue(':m', v[0])
-                q.bindValue(':x', v[1])
-                q.bindValue(':y', v[2])
+                q.bindValue(':m', float(v[0]))
+                q.bindValue(':x', float(v[1]))
+                q.bindValue(':y', float(v[2]))
                 if not q.exec():
                     raise queryError(q)
             except Exception as e:

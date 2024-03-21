@@ -1,8 +1,4 @@
 
-
-spline interpolation causing problems?
-
-
 create/load database explicitly on starting plugin?
 
 constraints:
@@ -22,10 +18,8 @@ view with lines?
 only need corrected centerline to find gcps.
 m,corrected_x,corrected_y
 
-
 corrections:
 	mo best as gps tends to lag.
-	
 
 runs vs no runs:
 	could have 1 shift/offset per run like collator does
@@ -35,31 +29,33 @@ runs vs no runs:
 test out loading gps from geom.csv
 	see if any more accurate
 
-	
-reload vrt when images changed.
-run,type from images
-
 store gcps and only gereference where changed or image doesn't exist?
-
-add georeference run action
 
 Qgis not releasing file locks.
 	use iface.addVectorLayer() instead of QgsVectorLayer?
 	
 
-include frame in correction.
+include frame in correction?
 	preview button and filePath combobox to remake and reload image.
 
-	
-copy/paste runs to clipboard?
+
+
 
 
 Chainages and chainage corrections for versions >= 3.36 are different to previous versions.
 To convert from old chainage to new subtract the lowest chainage in the rutacd CSV.
 This was added to make the chainages start at 0 and put the uncorrected image closer to where it should be.
 
+add transverse joint faulting data.
 
+transverse. concrete only.
 
+read hawkeye database?
+need ms sql server? how is it currently being done?
+0.4 GB vs 4.8 Gb of hawkeye exported xml files + time
+
+	
+.acdx file is actualy gzip file.
 
 
 

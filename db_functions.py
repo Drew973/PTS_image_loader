@@ -216,15 +216,30 @@ def rutCount():
     q = runQuery('select count(frame) from rut')
     while q.next():
         return q.value(0)
+    
+#->int
+def faultingCount():
+    q = runQuery('select count(frame) from transverse_joint_faulting')
+    while q.next():
+        return q.value(0)
 
 
 def clear():
+    clearDistresses()
+    
+
+def clearDistresses():
     db = defaultDb()
+    db.transaction()
+    runQuery('delete from transverse_joint_faulting',db=db)
     runQuery('delete from cracks',db=db)
     runQuery('delete from rut',db=db)
-    runQuery('VACUUM',db=db)#reclaim space
-
-
-
+    db.commit()
+    try:
+        runQuery('VACUUM')#reclaim space
+    except:
+        pass
+    
+    
 if __name__ == '__console__':
     print(sqliteVersion)

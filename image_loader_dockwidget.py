@@ -30,7 +30,7 @@ from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel,QSettings
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QApplication,QProgressDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
 
@@ -41,9 +41,8 @@ from image_loader import db_functions
 from image_loader.gps_model_4 import gpsModel
 from image_loader import runs_model
 from image_loader.run_commands import commandsDialog
-from image_loader.download_cracks import downloadCracks,downloadRuts
+from image_loader.download_distress import downloadCracks,downloadRuts,downloadFaulting
 from image_loader import upload_xml
-
 
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'image_loader_dockwidget_base.ui'))
@@ -227,7 +226,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadGpsAct.triggered.connect(self.loadGps)
 
 
-        loadXMLAct = openMenu.addAction('Open XML files...')
+        loadXMLAct = openMenu.addAction('Open Distress files...')
         loadXMLAct.triggered.connect(self.loadXML)
         
         
@@ -246,7 +245,10 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadCracksAct.triggered.connect(self.downloadCracks)     
         
         loadRutsAct = viewMenu.addAction('View Rutting Data')
-        loadRutsAct.triggered.connect(self.downloadRuts)     
+        loadRutsAct.triggered.connect(self.downloadRuts)   
+        
+        loadFaultingAct = viewMenu.addAction('View Transverse joint faulting(concrete)')
+        loadFaultingAct.triggered.connect(self.downloadFaulting)   
         
       #  loadCracksAct = viewMenu.addAction('View runs')
       #  loadCracksAct.triggered.connect(self.downloadRuns)     
@@ -344,9 +346,27 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
        # progress.close()
         
     
+    def downloadFaulting(self):
+        rc = db_functions.faultingCount()
+        if rc == 0:
+            iface.messageBar().pushMessage("Image_loader", "No joint faulting data. Are XML files loaded?", level=Qgis.Info)
+            return
+        if not self.checkGps():
+            return
+        if self.runsModel.rowCount() == 0:
+            iface.messageBar().pushMessage("Image_loader", "No runs. This only shows faulting within runs.", level=Qgis.Info)
+            return
+        
+       # f = QFileDialog.getSaveFileName(caption = 'Save ruts to',filter = 'geopackage (*.gpkg)')[0]
+        #if f:
+        downloadFaulting(gpsModel = self.gpsModel)
+       # progress.close()
+    
+    
     def loadXML(self):
-        files = QFileDialog.getOpenFileNames(caption = 'open XML files',filter = '*.xml')[0]
+        files = QFileDialog.getOpenFileNames(caption = 'open XML files',filter = '*.xml;;*.acdx')[0]
         if len(files)>0:
+            db_functions.clearDistresses()
             upload_xml.uploadXML(files = files,parent=self)    
 
                     

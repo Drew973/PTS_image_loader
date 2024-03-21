@@ -154,23 +154,8 @@ SELECT AddGeometryColumn('cracks' , 'geom', 0, 'Linestring', 'XY');
 
 create view if not exists cracks_view as
 select section_id,crack_id,len,depth,width,geom,chainage_shift,offset
-from cracks inner join runs_view on start_frame <= section_id and end_frame >= section_id
+from cracks inner join runs_view on start_frame <= section_id and end_frame >= section_id;
 
-
-
-create table if not exists joints(
-frame int
-,joint_id int
-,off float
-,faulting int
-,width float
-,unique(frame,joint_id)
-);
-
-create index if not exists section_id_ind on joints(joint_id);
-
-SELECT AddGeometryColumn('joints' , 'geom', 0, 'POLYGON', 'XY');
---x coord is chainage , y is offset.
 
 create table if not exists rut(
 pk INTEGER primary key
@@ -194,3 +179,61 @@ drop view if exists rut_view;
 create view if not exists rut_view as
 select rut.pk as pk,frame,chainage,wheelpath,depth,width,type,deform,x_section,mo_wkb,geom,chainage_shift,offset
 from rut inner join runs_view on start_frame <= frame and end_frame >= frame;
+
+
+
+
+
+create table if not exists joints(
+frame int
+,joint_id int
+,off float
+,faulting int
+,width float
+,mo_wkb blob
+,unique(frame,joint_id)
+);
+
+create index if not exists section_id_ind on joints(joint_id);
+
+SELECT AddGeometryColumn('joints' , 'geom', 0, 'POLYGON', 'XY');
+--x coord is chainage , y is offset.
+
+
+
+create table if not exists transverse_joints(
+frame int
+,joint_id int
+,length float
+,average_depth_bad_seal float
+,average_depth_good_seal float
+,min_depth_seal float
+,max_depth_seal float
+,mo_wkb blob
+,unique(frame,joint_id)
+);
+
+
+SELECT AddGeometryColumn('transverse_joints' , 'geom', 0, 'Linestring', 'XY');
+--x coord is chainage , y is offset.
+
+
+
+
+create table if not exists transverse_joint_faulting(
+frame int
+,joint_id int
+,joint_offset int
+,faulting float
+,width float
+,mo_wkb blob
+,PRIMARY KEY (frame,joint_id,joint_offset)
+);
+
+
+SELECT AddGeometryColumn('transverse_joint_faulting' , 'geom', 27700, 'POLYGON', 'XY');
+--x coord is chainage , y is offset.
+
+create view if not exists faulting_view as
+select frame,joint_id,joint_offset,faulting,width,geom,mo_wkb,chainage_shift,runs_view.offset as left_offset from transverse_joint_faulting
+inner join runs_view on start_frame <= frame and end_frame >= frame;

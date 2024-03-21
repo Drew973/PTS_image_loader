@@ -111,10 +111,14 @@ class gpsModel(gpsInterface):
     
     def moGeomToXY(self,geom,mShift = 0.0,offset = 0.0):
         g = QgsGeometry(geom)
+        mo = []
         for i,v in enumerate(g.vertices()):
-            p = to2DArray(v.x()+mShift,v.y()+offset)
-            new = self.point(p)
-            g.moveVertex(new[0,0],new[0,1],i)
+            mo.append([v.x()+mShift,v.y()+offset])
+           # p = to2DArray(v.x()+mShift,v.y()+offset)
+        mo = np.array(mo)
+        new = self.point(mo)
+        for i,row in enumerate(new):
+            g.moveVertex(row[0],row[1],i)
         return g
     
     
