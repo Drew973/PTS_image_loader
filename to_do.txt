@@ -54,9 +54,6 @@ read hawkeye database?
 need ms sql server? how is it currently being done?
 0.4 GB vs 4.8 Gb of hawkeye exported xml files + time
 
-	
-.acdx file is actualy gzip file.
-
-
 
 	
+Rut Right (mm)

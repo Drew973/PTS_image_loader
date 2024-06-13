@@ -79,8 +79,8 @@ class gpsInterface:
                 newM = np.arange(s,e,interval)
                 #ynew = np.interp(xnew, x, y)
                     
-                print('data',m,x,y)
-                print('newM',newM)
+              #  print('data',m,x,y)
+              # print('newM',newM)
         
                 newX = np.interp(newM, m, x)
                 newY = np.interp(newM, m, y)

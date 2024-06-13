@@ -10,11 +10,12 @@ from PyQt5.QtCore import Qt
 import numpy as np
 import csv
 import io
+from qgis.core import QgsPointXY
 
 from image_loader.dims import mToFrame,MAX,frameToM
 from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
 from image_loader.image_model import imageModel
-
+from typing import Tuple
 
 def tryFloat(v,default = 0.0):
     try:
@@ -218,10 +219,13 @@ and runs_view.pk in ({pks})
         self.select()        
         
         
-    def locate(self,row,pt,corrected):
-        rg = self.chainageRange(row)
-        print('rg',rg)
-        opts = self.gpsModel.locate(pt,mRange = rg)
+    def locate(self,row:int,pt:QgsPointXY,corrected:bool)->np.array:
+        minM,maxM = self.chainageRange(row)
+      #  print('rg',rg)
+        opt = self.gpsModel.locate(pt,minM = minM,maxM = maxM)
+        opts = np.array([opt])
+        
+        
         if corrected and len(opts) > 0:
             opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
             opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
@@ -237,7 +241,7 @@ and runs_view.pk in ({pks})
                 writer.writerow((q.value(0),q.value(1),q.value(2),q.value(3)))
             
         
-    def chainageRange(self,row,additional = 50.0):
+    def chainageRange(self,row:int,additional:float = 50.0)->Tuple[float,float]:
         s = 0.0
         e = MAX
         startFrame = self.index(row,self.fieldIndex('start_frame')).data()

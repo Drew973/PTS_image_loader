@@ -11,20 +11,11 @@ linestringM with quadratic or cubic spline.
 
 
 """
-from scipy import interpolate
-from scipy.optimize import minimize_scalar
-from qgis.core import QgsGeometry, QgsPointXY
-from qgis.core import QgsFeature,QgsGeometry,edit
+from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY
 from qgis.utils import iface
-from image_loader import db_functions
 from image_loader.layer_styles.styles import centerStyle
-from image_loader.dims import HEIGHT
-
-
-
 from image_loader.db_functions import runQuery
 from image_loader.dims import (HEIGHT,LINES,PIXELS,offsetToPixel, pixelToOffset,WIDTH,frameToM,mToFrame,MAX,clamp,vectorizedMToLine,vectorizedOffsetToPixel)
-
 from image_loader.gps_interface import gpsInterface
 
 K = 3
@@ -32,32 +23,21 @@ S = 0
 N = 2
 
 import numpy as np
-
-#numpy array. m,x,y
-#numpy.array -> numpy.array
-def unitVector(vector):
-    return vector/(vector**2).sum()**0.5
+from image_loader.splinestring import splineString
 
 
 
-def leftPerp(vect):
-    return np.array([vect[1],-vect[0]])
 
 
-#[(x,y)] or ()
-def to2DArray(x,y):
-    return np.array([[x,y]],dtype = float)
-
-
-class gpsModel(gpsInterface):
+class gpsModel(gpsInterface,splineString):
     
     
     def __init__(self):
+        splineString.__init__(self)
         self.download()
 
-
     def loadFile(self,file,startAtZero = True):
-        super().loadFile(file = file,startAtZero = startAtZero)
+        gpsInterface.loadFile(file = file,startAtZero = startAtZero)
         self.download()
         
         
@@ -75,52 +55,9 @@ class gpsModel(gpsInterface):
             m.append(q.value(0))
             x.append(q.value(1))
             y.append(q.value(2))
-        self.m = np.array(m)
-        self.x = np.array(x)
-        self.y = np.array(y)
-        
-        if len(self.m) >= K:
-            self.xSpline = interpolate.UnivariateSpline(self.m, self.x , s = S, ext='const', k = K)
-            self.ySpline = interpolate.UnivariateSpline(self.m, self.y , s = S, ext='const', k = K)
-            self.xDerivitive = self.xSpline.derivative(1)
-            self.yDerivitive = self.ySpline.derivative(1)    
-        else:
-            self.xSpline = None
-            self.ySpline = None
-            self.xDerivitive = None
-            self.yDerivitive = None
-            
-    # array[[x,y]] or []
-    def point(self,mo):
-        if self.hasGps():
-            m = mo[:,0]
-            r = np.zeros((len(m),2)) * np.nan
-            r[:,0] =  self.xSpline(m)
-            r[:,1] = self.ySpline(m)
-            offsets = mo[:,1]
-          #  if not np.any(offsets):
-            perps = self.leftPerp(m)#([x],[y])
-            r[:,0] = r[:,0] + perps[:,0] * offsets
-            r[:,1] = r[:,1] + perps[:,1] * offsets
-            return r
-        return []
-    
-    #convert geometry in terms of m,offset to x,y
-    #QgsGeometry
-    # x as m. y as offset
-    
-    def moGeomToXY(self,geom,mShift = 0.0,offset = 0.0):
-        g = QgsGeometry(geom)
-        mo = []
-        for i,v in enumerate(g.vertices()):
-            mo.append([v.x()+mShift,v.y()+offset])
-           # p = to2DArray(v.x()+mShift,v.y()+offset)
-        mo = np.array(mo)
-        new = self.point(mo)
-        for i,row in enumerate(new):
-            g.moveVertex(row[0],row[1],i)
-        return g
-    
+        splineString.setValues(self,np.transpose(np.array([m,x,y],dtype = float)))#gpsInterface also has setValues method
+    #    print('downloaded',self.xSpline)
+      
     
     def line(self,startM,endM,startOffset = 0,endOffset = 0):
         if startM <= endM:
@@ -160,80 +97,7 @@ class gpsModel(gpsInterface):
                     return QgsGeometry.fromPolylineXY([QgsPointXY(row[0],row[1]) for row in xy[::-1]])
 
         return QgsGeometry()
-    
-    
-    def locate(self,point,mRange = (0,MAX) ,maxDist = 10):
-        #find line segments within buffer of points
-        #numerical methods to find closest point of splines to points
-        qs = '''select max(start_m,:s),min(end_m,:e) from original_lines 
-        where st_distance(line,makePoint(:x,:y,27700)) < :md and start_m <= :e and end_m >= :s
-        order by start_m
-        '''
-    #    q = runQuery('select m,st_x(pt),st_y(pt) from original_points order by m')
-        q = runQuery(qs,values = {':md':maxDist,':x':point.x(),':y':point.y(),':s':mRange[0],':e':mRange[1]})
-        
-        last = None
-        ranges = []
-        while q.next():
-            startM = q.value(0)
-            endM = q.value(1)
-            if last != startM:
-                ranges.append([startM,endM])
-            else:
-                ranges[-1][1] = endM
-            last = endM
-        
-     #   print('ranges',ranges)
-        
-        def _dist(m):
-            mo = np.array([[m,0]])
-         #   print('mo',mo)
-            p = self.point(mo)
-         #   print('p',p)
-            if len(p)>0:
-                pt = QgsPointXY(p[0,0],p[0,1])
-                return pt.distance(point)
-           # print('dist',pt.distance(point))
-            return MAX
-        
-        
-        
-        r = np.zeros((len(ranges),3))
-        for i,row in enumerate(ranges):
-            res = minimize_scalar(_dist,bounds = (row[0],row[1]),method='bounded')
-            m = res.x
-            r[i,0] = m
-        
-        #vector from centerLine to point
-        centerVect = self.point(r)
-        centerVect[:,0] = point.x() - centerVect[:,0]
-        centerVect[:,1] = point.y() - centerVect[:,1]
-        
-        perps = self.leftPerp(r[:,0])
-        
-        for i,row in enumerate(perps):
-            r[i,1] = np.dot(row,centerVect[i])
-        r[:,2] = abs(r[:,1])
-    #    print('r',r)
-        r = r[r[:, 2].argsort()]# sort by column 2        
-        return r[:,[0,1]]
-
    
-
-        
-    
-        
-    #perpendicular unit vectors at m
-    def leftPerp(self,m):
-        if self.hasGps():
-            r = np.zeros((len(m),2)) * np.nan
-            dx = self.xDerivitive(m)
-            dy = self.yDerivitive(m)
-            magnitudes = np.sqrt(dx*dx+dy*dy)
-            r[:,0] = -dy/magnitudes
-            r[:,1] = dx/magnitudes
-            return r
-
 
     #start of uncorrected frame
     #->int
@@ -279,7 +143,6 @@ class gpsModel(gpsInterface):
             chainageShift,offset = self.getCorrection(frame)
             startM = frameToM(frame) + chainageShift
             endM = startM + HEIGHT
-            
             mo = np.zeros((N*2,2)) * np.nan
             mo[:,0][0:N] = np.linspace(startM,endM,N)
             mo[:,0][N:] = np.linspace(startM,endM,N)
@@ -287,7 +150,6 @@ class gpsModel(gpsInterface):
             mo[:,1][N:] = offset - WIDTH/2
        #     print('mo',mo)
             xy = self.point(mo)
-            
             r = np.zeros((N*2,4)) * np.nan
             r[:,0:2] = xy
             r[:,2][0:N] = 0
@@ -295,13 +157,12 @@ class gpsModel(gpsInterface):
             r[:,3][0:N] = np.linspace(LINES,0,N)
             r[:,3][N:] = np.linspace(LINES,0,N)
          #   print('gcps.r',r)
-            
             return [(row[0],row[1],int(row[2]),int(row[3])) for row in r]
         
  
     def hasGps(self):
-        return len(self.m) > 0
-
+        return self.hasPoints()
+    
 
     def makeLayer(self,corrected = False):
         uri = "LineString?crs=epsg:27700&field=run:int&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes"
@@ -318,6 +179,7 @@ class gpsModel(gpsInterface):
                 startChain = i * HEIGHT
                 endChain = startChain + HEIGHT
                 geom = self.line(startChain,endChain)
+                #print('geom',geom)
                 f = QgsFeature(fields)
                # f['run'] = q.value(0)
                 f['frame'] = frame
