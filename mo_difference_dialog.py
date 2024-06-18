@@ -160,11 +160,13 @@ class moDifferenceDialog(QDialog):
         maxOffset:float = asFloat(QSettings("pts","image_loader").value('maxOffset'),10.0)
         outsideRunDistance = asFloat(QSettings("pts","image_loader").value('outsideRunDistance'),50.0)
         
-        p = fromCanvasCrs(pt)            
-        opts = self.model.locate(row=self.row,pt=p,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
+        p = fromCanvasCrs(pt)     
         
-        if len(opts) == 0:
-            iface.messageBar().pushMessage(r'Could not find (chainage,offset) within {d}m of point and {od} m of start/end frames. Check frames and GPS data.'.format(d = maxOffset,od = outsideRunDistance ))
+        try:
+           opts = self.model.locate(row=self.row,pt=p,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
+        
+        except Exception as e:
+            iface.messageBar().pushMessage(str(e))
             return
     
         if len(opts) == 1:

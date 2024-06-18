@@ -43,11 +43,11 @@ class settingsDialog(QDialog):
         
         self.maxOffset = QDoubleSpinBox()
         self.maxOffset.setValue(asFloat(self.settings.value('maxOffset'),10.0))
-        self.layout().addRow('Maximum offset when finding chainage from map click.',self.maxOffset)
+        self.layout().addRow('Maximum offset (in meters) when finding chainage from map click.',self.maxOffset)
 
         self.outsideRunDistance = QDoubleSpinBox()
         self.outsideRunDistance.setValue(asFloat(self.settings.value('outsideRunDistance'),50.0))
-        self.layout().addRow('Allow chainages this far outside run in find correction dialog.',self.outsideRunDistance)
+        self.layout().addRow(r'Look this far (in meters) outside run start/end when finding corrections.',self.outsideRunDistance)
         
         
     def closeEvent(self,event):

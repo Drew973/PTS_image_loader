@@ -109,6 +109,9 @@ class splineString:
     #could find m more efficiently by solving d distance/dm = 0?
     #numpy uses numeric methods to solve higher order polynomials. might not be faster.
     def locate(self, point:QgsPointXY , minM:float = 0.0,maxM:float = np.inf): #-> Tuple(float,float)  
+        if not self.hasPoints():
+            raise ValueError('No GPS points')
+    
         def _dist(m):
             mo = np.array([[m,0]])
          #   print('mo',mo)

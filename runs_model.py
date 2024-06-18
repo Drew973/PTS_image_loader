@@ -225,14 +225,15 @@ and runs_view.pk in ({pks})
         
         #outside maxDist
         if abs(opt[1]) > maxOffset:
-            return []
-        
+            m = r'Could not find (chainage,offset) within {d}m of point and between {minM}m(frame{minF}) and {maxM}m(frame{maxF}). Check start/end frames and GPS data.'
+            m = m.format(d = maxOffset,minF = mToFrame(minM) , maxF = mToFrame(maxM),maxM = maxM,minM = minM)
+            raise ValueError(m)
             
         opts = np.array([opt])
     
-        if corrected and len(opts) > 0:
-            opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
-            opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
+        #if corrected and len(opts) > 0:
+       #     opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
+       #     opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
         return opts
         
         
