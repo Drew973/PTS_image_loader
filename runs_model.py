@@ -218,21 +218,25 @@ and runs_view.pk in ({pks})
         db.commit()
         self.select()        
         
+    # array of [[m,o]] ordered by distance
+    def locate(self,row:int,pt:QgsPointXY,corrected:bool, maxOffset:float = 10.0, outsideRunDistance:float = 50.0)->np.array:
+        minM,maxM = self.chainageRange(row,additional = outsideRunDistance)
+        opt = self.gpsModel.locate(pt, minM = minM, maxM = maxM)#nearest within range.
         
-    def locate(self,row:int,pt:QgsPointXY,corrected:bool)->np.array:
-        minM,maxM = self.chainageRange(row)
-      #  print('rg',rg)
-        opt = self.gpsModel.locate(pt,minM = minM,maxM = maxM)
+        #outside maxDist
+        if abs(opt[1]) > maxOffset:
+            return []
+        
+            
         opts = np.array([opt])
-        
-        
+    
         if corrected and len(opts) > 0:
             opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
             opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
         return opts
         
         
-    def saveCsv(self,file):
+    def saveCsv(self,file:str):
         with open(file,'w',newline='') as f:
             writer = csv.writer(f,dialect='excel',delimiter = '\t')
             writer.writerow(('start_frame','end_frame','chainage_shift','offset'))
@@ -241,18 +245,10 @@ and runs_view.pk in ({pks})
                 writer.writerow((q.value(0),q.value(1),q.value(2),q.value(3)))
             
         
-    def chainageRange(self,row:int,additional:float = 50.0)->Tuple[float,float]:
-        s = 0.0
-        e = MAX
-        startFrame = self.index(row,self.fieldIndex('start_frame')).data()
-        endFrame = self.index(row,self.fieldIndex('end_frame')).data()
-        #  extra = abs(endFrame=startFrame) * additional
-
-        if isinstance(startFrame,int):
-            s = frameToM(startFrame) - additional
-        if isinstance(endFrame,int):
-            e = frameToM(endFrame) + additional
-        return (s,e)
+    def chainageRange(self,row:int,additional:float = 20.0)->Tuple[float,float]:
+        startFrame = int(self.index(row,self.fieldIndex('start_frame')).data())
+        endFrame = int(self.index(row,self.fieldIndex('end_frame')).data())
+        return (frameToM(startFrame) - additional , frameToM(endFrame) + additional)
         
     
     #array -> array

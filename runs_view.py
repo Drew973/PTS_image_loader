@@ -89,7 +89,7 @@ class runsView(QTreeView):
     
         
     def setModel(self,model):
-        super().setModel(model)        
+        super().setModel(model)
         self.chainagesDialog.runsModel = model
         show = ['number','start_frame','end_frame','chainage_shift','offset']
         if hasattr(model,'fieldName'):
@@ -97,6 +97,8 @@ class runsView(QTreeView):
                 name = model.fieldName(c)
                 self.setColumnHidden(c,not name in show)
         self.correctionDialog.setModel(self.model())
+        for col in range(self.model().columnCount()):
+            self.resizeColumnToContents(col)
         
         
     def setGpsModel(self,model):

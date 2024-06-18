@@ -4,7 +4,7 @@ Created on Tue Jan 16 12:00:19 2024
 
 @author: Drew.Bennett
 
-
+dialog for finding chainage+offset difference between current position and new position
 
 QDataWidgetMapper only sets start chainage.
 because model calls select() and changes row count?
@@ -13,27 +13,29 @@ because model calls select() and changes row count?
 
 
 from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,QHBoxLayout,QPushButton,QLabel
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt,QSettings
 from PyQt5.QtGui import QColor
 from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject
+from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsPointXY
 from qgis.utils import iface
-from image_loader.dims import MAX
+from image_loader.dims import MAX,mToFrame
 from image_loader.combobox_dialog import comboBoxDialog
+from image_loader.types import asFloat
 #import numpy as np
 
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
-def fromCanvasCrs(point):
+def fromCanvasCrs(point:QgsPointXY) -> QgsPointXY:
    # print('point',point)
     transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
     return transform.transform(point)
 
 
-def toCanvasCrs(point):
+def toCanvasCrs(point:QgsPointXY) -> QgsPointXY:
    # print('point',point)
     transform = QgsCoordinateTransform(crs,QgsProject.instance().crs(),QgsProject.instance())
     return transform.transform(point)
+
 
 def horizontalLayout(widgets):
     layout = QHBoxLayout()
@@ -82,6 +84,9 @@ class moDifferenceDialog(QDialog):
         self.startButton = QPushButton('From map...')
         self.startButton.clicked.connect(self.startButtonClicked)
         self.startM.valueChanged.connect(self.recalcDifference)
+        self.startM.valueChanged.connect(lambda m: self.startM.setToolTip('Frame'+str(mToFrame(m))))
+
+        
         self.startOffset.setRange(-99,99)
         self.startOffset.valueChanged.connect(self.recalcDifference)
 
@@ -90,6 +95,9 @@ class moDifferenceDialog(QDialog):
         self.endM =  QDoubleSpinBox(self)
         self.endM.setRange(-MAX,MAX)
         self.endM.valueChanged.connect(self.recalcDifference)
+        self.endM.valueChanged.connect(lambda m: self.endM.setToolTip('Frame'+str(mToFrame(m))))
+
+        
         self.endOffset =  QDoubleSpinBox(self)
         self.endButton = QPushButton('From map...')
         self.endOffset.setRange(-99,99)
@@ -110,7 +118,8 @@ class moDifferenceDialog(QDialog):
 
 
     def recalcDifference(self):
-        self.result.setText('{m},{off}'.format(m = self.endM.value()-self.startM.value(),
+        #2 decimal places = nearest 1cm
+        self.result.setText('{m:.2f},{off:.2f}'.format(m = self.endM.value()-self.startM.value(),
                                                off = self.endOffset.value()-self.startOffset.value()))
 
         if hasattr(self.gpsModel,'line'):
@@ -147,38 +156,31 @@ class moDifferenceDialog(QDialog):
         return (0.0,0.0)                   
         
         
-    def mapClicked(self,pt):
-       # print('pt',pt)
-     #   print('gpsModel',self.gpsModel)
-        if hasattr(self.model,'locate'):
-            p = fromCanvasCrs(pt)            
-            #self.model.index(self.model.fieldIndex('start_frame')).data
-           # rg = self.model.chainageRange(self.row)
-        #    print('rg',rg)
-            
-            
-            if self.lastButton == 0:
-                opts = self.model.locate(row=self.row,pt=p,corrected = False)
-            #    opts = self.model.correctMO(opts)
-                
-                if len(opts) == 1:
-                    self.startM.setValue(opts[0,0])
-                    self.startOffset.setValue(opts[0,1])
-                if len(opts) >1:
-                    m,off = self.chooseOpt(opts)
-                    self.startM.setValue(m)
-                    self.startOffset.setValue(off)
+    def mapClicked(self , pt:QgsPointXY):
+        maxOffset:float = asFloat(QSettings("pts","image_loader").value('maxOffset'),10.0)
+        outsideRunDistance = asFloat(QSettings("pts","image_loader").value('outsideRunDistance'),50.0)
+        
+        p = fromCanvasCrs(pt)            
+        opts = self.model.locate(row=self.row,pt=p,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
+        
+        if len(opts) == 0:
+            iface.messageBar().pushMessage(r'Could not find (chainage,offset) within {d}m of point and {od} m of start/end frames. Check frames and GPS data.'.format(d = maxOffset,od = outsideRunDistance ))
+            return
+    
+        if len(opts) == 1:
+            m = opts[0,0]
+            off = opts[0,1]
 
-                    
-            if self.lastButton == 1:
-                opts = self.model.locate(row=self.row,pt=p,corrected = False)
-                if len(opts) == 1:
-                    self.endM.setValue(opts[0,0])
-                    self.endOffset.setValue(opts[0,1])
-                if len(opts) >1:
-                    m,off = self.chooseOpt(opts)
-                    self.endM.setValue(m)
-                    self.endOffset.setValue(off)            
+        if len(opts) > 1:
+            m,off = self.chooseOpt(opts)
+
+        if self.lastButton == 0:
+                self.startM.setValue(m)
+                self.startOffset.setValue(off)
+
+        if self.lastButton == 1:
+                self.endM.setValue(m)
+                self.endOffset.setValue(off)            
             
 
     def setModel(self,model):
@@ -191,19 +193,14 @@ class moDifferenceDialog(QDialog):
     #row:int
     def setRow(self,row = -1):
         self.row = row
+        self.setWindowTitle('Find correction for run {r}'.format(r = row+1))
         model = self.model
-        
-        #name:str->float
-        def val(name,default = 0.0):
-            d = model.index(row,model.fieldIndex(name)).data()
-            if isinstance(d,float):
-                return d
-            return default
-        
-        self.startM.setValue(val('correction_start_m'))
-        self.endM.setValue(val('correction_end_m'))
-        self.startOffset.setValue(val('correction_start_offset'))
-        self.endOffset.setValue(val('correction_end_offset'))
+
+        self.startM.setValue(asFloat(model.index(row,model.fieldIndex('correction_start_m')).data(),0.0))        
+        self.endM.setValue(asFloat(model.index(row,model.fieldIndex('correction_end_m')).data(),0.0))
+        self.startOffset.setValue(asFloat(model.index(row,model.fieldIndex('correction_start_offset')).data(),0.0))
+        self.endOffset.setValue(asFloat(model.index(row,model.fieldIndex('correction_end_offset')).data(),0.0))
+
         self.pk = model.index(row,model.fieldIndex('pk')).data()
 
 

@@ -5,12 +5,19 @@ Created on Fri Aug 19 10:05:27 2022
 @author: Drew.Bennett
 """
 
-from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit,QCheckBox
+from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit,QCheckBox,QDoubleSpinBox
 from PyQt5.QtCore import QSettings
 
 #from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
 #from qgis.gui import QgsMapLayerComboBox
 #from image_loader.widgets.field_box import fieldBox
+from image_loader.types import asFloat , asBool
+
+#import os
+#p = os.path.join(os.path.dirname(__file__),'settings.ini')
+#settings = QSettings("pts","image_loader")
+#settings.setPath(QSettings.IniFormat , QSettings.UserScope , p)
+
 
 
 class settingsDialog(QDialog):
@@ -19,21 +26,34 @@ class settingsDialog(QDialog):
         super().__init__(parent)
         self.setLayout(QFormLayout(self))
         self.settings = QSettings("pts","image_loader")
+        
         self.folder = QLineEdit()
        # self.folder.setText(r'D:\RAF Shawbury')####################################remove before release
         self.layout().addRow('Project folder',self.folder)
+        
+        
         self.startAtZero = QCheckBox()
         t = '''
         Tick to start images closer to where they should be.
         Untick if compatibility with versions < 3.36 and collator required.
         '''
         self.startAtZero.setToolTip(t)   
-        self.startAtZero.setChecked(bool(self.settings.value('startAtZero')))
+        self.startAtZero.setChecked(asBool(self.settings.value('startAtZero'),True))
         self.layout().addRow('Shift chainages to start at 0 when loading GPS',self.startAtZero)
         
-     
+        self.maxOffset = QDoubleSpinBox()
+        self.maxOffset.setValue(asFloat(self.settings.value('maxOffset'),10.0))
+        self.layout().addRow('Maximum offset when finding chainage from map click.',self.maxOffset)
+
+        self.outsideRunDistance = QDoubleSpinBox()
+        self.outsideRunDistance.setValue(asFloat(self.settings.value('outsideRunDistance'),50.0))
+        self.layout().addRow('Allow chainages this far outside run in find correction dialog.',self.outsideRunDistance)
+        
+        
     def closeEvent(self,event):
         self.settings.setValue('startAtZero',self.startAtZero.isChecked())
+        self.settings.setValue('maxOffset',self.maxOffset.value())
+        self.settings.setValue('outsideRunDistance',self.outsideRunDistance.value())
         super().closeEvent(event)
      
         
