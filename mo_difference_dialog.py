@@ -191,9 +191,12 @@ class moDifferenceDialog(QDialog):
         self.gpsModel = model
            
     #row:int
-    def setRow(self,row = -1):
+    def setRow(self,row:int = -1):
         self.row = row
-        self.setWindowTitle('Find correction for run {r}'.format(r = row+1))
+        if row == -1:
+            self.setWindowTitle('No run!')
+        else:
+            self.setWindowTitle('Edit correction for run {r}'.format(r = row+1))
         model = self.model
 
         self.startM.setValue(asFloat(model.index(row,model.fieldIndex('correction_start_m')).data(),0.0))        

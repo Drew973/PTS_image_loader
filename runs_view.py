@@ -22,10 +22,10 @@ class runsView(QTreeView):
         self.setGpsModel(None)
         addRunAct = self.menu.addAction('Add new run...')
         addRunAct.triggered.connect(self.addRun)
-        findChainageAct = self.menu.addAction('Find chainage range...')
-        findChainageAct.triggered.connect(self.setChainage)
-        findCorrectionAct = self.menu.addAction('Find correction...')
-        findCorrectionAct.triggered.connect(self.findCorrection)
+        self.findChainageAct = self.menu.addAction('Edit chainage range...')
+        self.findChainageAct.triggered.connect(self.setChainage)
+        self.findCorrectionAct = self.menu.addAction('Edit correction...')
+        self.findCorrectionAct.triggered.connect(self.findCorrection)
         dropRunsAct = self.menu.addAction('Drop selected runs')
         dropRunsAct.triggered.connect(self.dropRuns)
         copyAct = self.menu.addAction('Copy')
@@ -37,7 +37,7 @@ class runsView(QTreeView):
         pasteAct = self.menu.addAction('Paste')
         shortcut = QShortcut(QKeySequence.Paste,self,self.paste, context=Qt.WidgetShortcut)
         pasteAct.triggered.connect(self.paste)
-
+        self.row = -1
         
     def copy(self):
         startFrameCol = self.model().fieldIndex('start_frame')
@@ -85,6 +85,7 @@ class runsView(QTreeView):
         
     def findCorrection(self):
       #  self.correctionDialog.setRow(row = self.minSelected())
+        self.correctionDialog.setRow(self.row)
         self.correctionDialog.show()
     
         
@@ -107,8 +108,15 @@ class runsView(QTreeView):
         
         
     def contextMenuEvent(self, event):
-        row = self.indexAt(event.pos()).row()
-        self.correctionDialog.setRow(row)
+        self.row = self.indexAt(event.pos()).row() #-1 for no index
+        
+        if self.row == -1:#no run right clicked
+            self.findChainageAct.setEnabled(False)
+            self.findCorrectionAct.setEnabled(False)
+        else:
+            self.findChainageAct.setEnabled(True)
+            self.findCorrectionAct.setEnabled(True)
+        
         self.menu.exec_(self.mapToGlobal(event.pos()))
         
     
