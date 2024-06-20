@@ -221,20 +221,8 @@ and runs_view.pk in ({pks})
     # array of [[m,o]] ordered by distance
     def locate(self,row:int,pt:QgsPointXY,corrected:bool, maxOffset:float = 10.0, outsideRunDistance:float = 50.0)->np.array:
         minM,maxM = self.chainageRange(row,additional = outsideRunDistance)
-        opt = self.gpsModel.locate(pt, minM = minM, maxM = maxM)#nearest within range.
-        
-        #outside maxDist
-        if abs(opt[1]) > maxOffset:
-            m = r'Could not find (chainage,offset) within {d}m of point and between {minM}m(frame{minF}) and {maxM}m(frame{maxF}). Check start/end frames and GPS data.'
-            m = m.format(d = maxOffset,minF = mToFrame(minM) , maxF = mToFrame(maxM),maxM = maxM,minM = minM)
-            raise ValueError(m)
-            
-        opts = np.array([opt])
-    
-        #if corrected and len(opts) > 0:
-       #     opts[:,0] = opts[:,0] - self.index(row,self.fieldIndex('chainage_shift')).data()
-       #     opts[:,1] = opts[:,1] - self.index(row,self.fieldIndex('offset')).data()
-        return opts
+        opt = self.gpsModel.locate(pt, minM = minM, maxM = maxM, maxOffset = maxOffset)#nearest within range.
+        return np.array([opt])
         
         
     def saveCsv(self,file:str):

@@ -56,7 +56,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         
-        title = 'PTS image loader v{version}'.format(version = 3.42)
+        title = 'PTS image loader v{version}'.format(version = 3.43)
         self.setWindowTitle(title)
         
         self.settings = QSettings("pts","image_loader")

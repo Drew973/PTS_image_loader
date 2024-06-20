@@ -108,9 +108,9 @@ class splineString:
     #nearest m,o to point xy
     #could find m more efficiently by solving d distance/dm = 0?
     #numpy uses numeric methods to solve higher order polynomials. might not be faster.
-    def locate(self, point:QgsPointXY , minM:float = 0.0,maxM:float = np.inf): #-> Tuple(float,float)  
+    def locate(self, point:QgsPointXY , minM:float = 0.0 , maxM:float = np.inf , maxOffset:float = 20.0 , tol:float = 0.01): #-> Tuple(float,float)  
         if not self.hasPoints():
-            raise ValueError('No GPS points')
+            raise ValueError('No points loaded.')
     
         def _dist(m):
             mo = np.array([[m,0]])
@@ -123,14 +123,22 @@ class splineString:
            # print('dist',pt.distance(point))
             return MAX
         
-        res = minimize_scalar(_dist,bounds = (minM,maxM),method='bounded')
-        m = res.x
-        nearest = self.point(np.array([[m,0]]))
-        shortestLine = nearest[0] - np.array([point.x(),point.y()])
-        perp = self.leftPerp([m])[0]
-        offset = -np.dot(perp,shortestLine)
-        return (m,offset)
-
+        res = minimize_scalar(_dist,bounds = (minM,maxM),method='bounded',tol = tol)
+        
+        if res.success:
+            m = res.x
+            #distance = res.fun#distance
+            
+            nearest = self.point(np.array([[m,0]]))
+            shortestLine = nearest[0] - np.array([point.x(),point.y()])
+            perp = self.leftPerp([m])[0]
+            offset = -np.dot(perp,shortestLine)
+            if abs(offset) > maxOffset:
+                raise ValueError('Nearest point outside maximum offset.')
+            
+            return (m,offset)
+        else:
+            raise ValueError('Could not minimize distance')
 
 
 if __name__ == '__console__':

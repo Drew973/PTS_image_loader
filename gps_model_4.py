@@ -15,7 +15,7 @@ from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY
 from qgis.utils import iface
 from image_loader.layer_styles.styles import centerStyle
 from image_loader.db_functions import runQuery
-from image_loader.dims import (HEIGHT,LINES,PIXELS,offsetToPixel, pixelToOffset,WIDTH,frameToM,mToFrame,MAX,clamp,vectorizedMToLine,vectorizedOffsetToPixel)
+from image_loader.dims import (HEIGHT,LINES,PIXELS,WIDTH,frameToM,mToFrame,MAX)
 from image_loader.gps_interface import gpsInterface
 
 K = 3
@@ -192,6 +192,10 @@ class gpsModel(gpsInterface,splineString):
         with edit(layer):
              layer.addFeatures(features())
         layer.loadNamedStyle(centerStyle)    
+    
+    
+    
+    
     
 if __name__ in ('__console__'):
     m = gpsModel()

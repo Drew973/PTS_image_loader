@@ -15,26 +15,14 @@ because model calls select() and changes row count?
 from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,QHBoxLayout,QPushButton,QLabel
 from PyQt5.QtCore import Qt,QSettings
 from PyQt5.QtGui import QColor
-from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsPointXY
+from qgis.gui import QgsRubberBand
+from qgis.core import QgsCoordinateReferenceSystem,QgsPointXY
 from qgis.utils import iface
 from image_loader.dims import MAX,mToFrame
 from image_loader.combobox_dialog import comboBoxDialog
 from image_loader.types import asFloat
-#import numpy as np
+from image_loader.point_map_tool import pointMapTool
 
-
-crs = QgsCoordinateReferenceSystem("EPSG:27700")
-def fromCanvasCrs(point:QgsPointXY) -> QgsPointXY:
-   # print('point',point)
-    transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
-    return transform.transform(point)
-
-
-def toCanvasCrs(point:QgsPointXY) -> QgsPointXY:
-   # print('point',point)
-    transform = QgsCoordinateTransform(crs,QgsProject.instance().crs(),QgsProject.instance())
-    return transform.transform(point)
 
 
 def horizontalLayout(widgets):
@@ -43,7 +31,7 @@ def horizontalLayout(widgets):
         layout.addWidget(w)
     return layout
 
-
+crs = QgsCoordinateReferenceSystem("EPSG:27700")
 
 class moDifferenceDialog(QDialog):
     
@@ -62,18 +50,16 @@ class moDifferenceDialog(QDialog):
        # self.wrapper = QDataWidgetMapper()
       #  self.wrapper.setSubmitPolicy(QDataWidgetMapper.ManualSubmit)
         
-        self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
         
-        self.mapTool = QgsMapToolEmitPoint(self.canvas)
-        self.mapTool.canvasClicked.connect(self.mapClicked)
+        self.mapTool = pointMapTool(destCrs = crs)
+        self.mapTool.canvasReleased.connect(self.mapClicked)
         
         
-        self.markerLine = QgsRubberBand(self.canvas,False)
+        self.markerLine = QgsRubberBand(iface.mapCanvas(),False)
         self.markerLine.setWidth(5)
         self.markerLine.setColor(QColor('red'))
         #QColor('green')
 
-        self.canvas.setDestinationCrs(crs)
         
         self.setLayout(QFormLayout())
         self.setWindowTitle('Find chainage and offset difference')
@@ -157,16 +143,18 @@ class moDifferenceDialog(QDialog):
         
         
     def mapClicked(self , pt:QgsPointXY):
-        maxOffset:float = asFloat(QSettings("pts","image_loader").value('maxOffset'),10.0)
+        maxOffset:float = asFloat(QSettings("pts","image_loader").value('maxOffset'),30.0)
         outsideRunDistance = asFloat(QSettings("pts","image_loader").value('outsideRunDistance'),50.0)
         
-        p = fromCanvasCrs(pt)     
+        minM,maxM = self.model.chainageRange(self.row,additional = outsideRunDistance)
         
         try:
-           opts = self.model.locate(row=self.row,pt=p,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
+           opts = self.model.locate(row=self.row,pt=pt,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
         
         except Exception as e:
-            iface.messageBar().pushMessage(str(e))
+            m = 'Error finding (chainage,offset) within {d}m of ({x:.2f},{y:.2f}) and between {minM}m(frame{minF}) and {maxM}m(frame{maxF}):'
+            m = m.format(d = maxOffset,minF = mToFrame(minM) , maxF = mToFrame(maxM),maxM = maxM,minM = minM,x = pt.x(),y = pt.y())
+            iface.messageBar().pushMessage(m+str(e),duration=5)
             return
     
         if len(opts) == 1:
