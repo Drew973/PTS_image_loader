@@ -56,7 +56,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         
-        title = 'PTS image loader v{version}'.format(version = 3.43)
+        title = 'PTS image loader v{version}'.format(version = 3.44)
         self.setWindowTitle(title)
         
         self.settings = QSettings("pts","image_loader")
@@ -200,7 +200,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
     
     def initTopMenu(self):
-        topMenu = QMenuBar(self.mainWidget)     
+        topMenu = QMenuBar(self.mainWidget)
+        
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
         newAct.triggered.connect(self.new)
@@ -235,8 +236,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         ######################load
         toolsMenu = topMenu.addMenu("Tools")
-        fromFolderAct = toolsMenu.addAction('Find details from folder...')
-        fromFolderAct.triggered.connect(self.detailsFromFolder)
 
         viewMenu = toolsMenu.addMenu('View')
 
@@ -260,26 +259,34 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         setLayers.triggered.connect(self.settingsDialog.exec_)
        
         runsMenu = topMenu.addMenu("Runs")
+        runsMenu.setToolTipsVisible(True)
+
+        
         processRunsAct = runsMenu.addAction('Process selected runs')
+        processRunsAct.setToolTip('Georeferences and make VRT files')
         processRunsAct.triggered.connect(self.processRuns)
 
-        runsVrtAct = runsMenu.addAction('Make VRT files for selected runs')
+        runsVrtAct = runsMenu.addAction('Remake VRT files for selected runs')
+        runsVrtAct.setToolTip('Only useful when run start/end changed.')
         runsVrtAct.triggered.connect(self.makeRunsVrt)
 
-        processMenu = topMenu.addMenu("Images")
+        imagesMenu = topMenu.addMenu("Images")
         
-        loadAct = processMenu.addAction('Load selected images')
+        fromFolderAct = imagesMenu.addAction('Find details from folder...')
+        fromFolderAct.triggered.connect(self.detailsFromFolder)
+
+        loadAct = imagesMenu.addAction('Load selected images')
         loadAct.triggered.connect(self.loadImages)
         
-        georeferenceAct = processMenu.addAction('Georeference selected images')
+        georeferenceAct = imagesMenu.addAction('Georeference selected images')
         georeferenceAct.triggered.connect(self.georeferenceImages)
     
-        vrtAct = processMenu.addAction('Make combined VRTs for selected images')
+        vrtAct = imagesMenu.addAction('Make combined VRTs for selected images')
         vrtAct.triggered.connect(self.makeVrt)
         
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help')
-        openHelpAct.triggered.connect(self.openHelp)        
+        openHelpAct.triggered.connect(self.openHelp)
         self.mainWidget.layout().setMenuBar(topMenu)
 
 

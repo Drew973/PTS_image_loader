@@ -11,48 +11,58 @@
     <h3 id="home">Image loader</h3>
 
 
-<p>Plugin for georeferencing and loading images into QGIS.</p>
-
-
-<h3 id="loading details">Images infomation</h3>
-    <p>"Tools","Find images from folder..." will add a row to the images table for every .jpg file in folder and subfolders.</p>
-	<p>The plugin can also find image details from a 'raster image load' file produced by the distress plotter macro.</p>
-	<p>project_folder/data is searched for original jpg filenames.</p>
+<p>Plugin for georeferencing and loading images from MFV into QGIS. To use:</p>
 
 
 <h3 id="loading gps">Load GPS data</h3>
-	<p>GPS data is usually in a file named like "project_folder\Hawkeye Exported Data\MFV1_007-rutacd-1.csv".</p>
-	<p>This will need loading (through "File, open..., Open gps...") before georeferencing.</p>
+	<p>GPS data is usually in a file like "project_folder\Hawkeye Exported Data\MFV1_001-rutacd-1.csv".</p>
+	<p>GPS can be loaded through "File, Open, Open gps...".</p>
+	<p>Use "Tools", "View", "View GPS data" to view this as a QGIS layer named "original_GPS"</p>
+
+
+<h3 id="runs">Create runs</h3>
+	<p>Images need grouping into runs</p>
+	<p>There should be 1 run per time the vehicle surveyed an area of interest in a direction.</p>
+	<p>Where the vehicle changed direction should be a seperate run.</p>
+	<p>Create runs by right clicking the runs table then "Add new run...".</p>
+	<img src="runs.png" alt="creating runs">
+
+
+<h3 id="loading details">Add to images table</h3>
+    <p>The images table tells the plugin where the images to georeference are stored.</p>
+    <p>"Images","Find images from folder..." will add a row to the images table for every .jpg file in folder and subfolders.</p>
+	<p>The plugin can also find image details from a 'raster image load' file produced by the distress plotter macro. This is through "File","Open","Open raster image load file..."
+	If doing this project_folder("Tools","Settings")/data is searched for original jpg filenames.</p>
+	<img src="images_table.png" alt="Images table">
 
 
 <h3 id="georeferencing">Georeference</h3>
-    <p> Georeferencing means adding information to an image to specify it's position on a map.</p>
-    <p> This plugin does this by writing .tif files when Process... georeference selected images is clicked.</p>
-	<p>The plugin uses a <a href="https://en.wikipedia.org/wiki/Linear_referencing">linear referencing system</a> with the GPS data to find image positions.</p>
-	<p>Position of an image is defined by a start chainage and end chainage.</p>
-</ul>
+	Georeferencing creates tif files in the same folder as the original jpg files.
+	
+	"Runs","Process selected runs" Georeferences every image in every selected run of the runs table.
+	It then creates a VRT file for every run and loads it as a layer.
+	
+	"Images","Georeference selected images" is for georeferencing small numbers of images.
+	For longer runs georeferencing and finding corrections for a small number before processing the whole run can save time.
+
+	<p>"virtual raster text" files are small text files containing links to the georeferenced images.
+	Viewing a VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
+
+
+<h3 id="corrections">Find Corrections</h3>
+	The gps data can be inaccurate. Corrections may be needed to align images with background maps and adjacent runs.
+	The plugin uses a <a href="https://en.wikipedia.org/wiki/Linear_referencing">linear referencing system</a> with the GPS data to find image positions.
+	Position of an image is defined by a start chainage and end chainage.Each run can have a chainage and offset correction.
+	<p>A positive chainage correction moves images forward. A positive offset correction moves images to the left side of the vehicle path.
+	Right clicking the runs table then "Edit correction..." will display a dialog for finding corrections.</p>
+	<img src="corrections.png" alt="finding corrections">
+	
 	
 
-<h3 id="corrections">Corrections</h3>
-<p>The gps data can be inaccurate. Corrections may be needed to align images with background maps and adjacent runs.</p>
-<p>Each run can have a chainage and offset correction.</p>
-<p>A positive chainage correction moves images forward.</p>
-<p>A positive offset correction moves images to the left side of the vehicle path.</p>
-
-
-<h3 id="vrt files">VRT files</h3>
-<p>Images can effectivly be combined into "virtual raster text" files.</p>
-<p>Viewing a VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
-<p>"Process,make combined VRT" makes and loads a .vrt file per run and image type.</p>
-
-
-
-<h3 id="loading distress">Loading distress data</h3>
+<h3 id="loading distress">Load distress data</h3>
 	<p>Distress data like cracking,rutting and joint faulting is contained in a folder like 'D:\RAF_BENSON\Data\2024-01-08\MFV1_001\Run 1\LCMS Module 1\Results'</p>
 	<p>The plugin can load this from .acdx files or xml files. The xml files are simply the unzipped .acdx files from hawkeye. </p>
-	<p>Tools -> View ->... will apply corrections and make a tempuary layer in QGIS. </p>
-
-
+	<p>"Tools","View",... will apply corrections and make a tempuary layer in QGIS. </p>
 
 
 </body>
