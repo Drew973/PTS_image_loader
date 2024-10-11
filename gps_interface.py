@@ -1,27 +1,31 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 24 08:48:35 2024
-
-@author: Drew.Bennett
-"""
-
-
-import os
-import csv
 from PyQt5.QtSql import QSqlQuery
 from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError,prepareQuery
 from osgeo.osr import SpatialReference, CoordinateTransformation, OAMS_TRADITIONAL_GIS_ORDER
 from qgis.core import QgsGeometry, QgsPointXY
 import numpy as np
+import csv
+import os
+
 
 # transform for parsing csv
-epsg4326 = SpatialReference()
-epsg4326.ImportFromEPSG(4326)
-epsg4326.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER)
+#epsg4326 = SpatialReference()
+#epsg4326.ImportFromEPSG(4326)
+#epsg4326.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER)
 # without this some gdal versions expect y arg to TransformPoint before x.version dependent bad design.
-epsg27700 = SpatialReference()
-epsg27700.ImportFromEPSG(27700)
-transform = CoordinateTransformation(epsg4326, epsg27700)
+#epsg27700 = SpatialReference()
+#epsg27700.ImportFromEPSG(27700)
+#transform = CoordinateTransformation(epsg4326, epsg27700)
+
+
+from pyproj import Transformer
+transformer = Transformer.from_crs(4326,27700,always_xy=True)
+
+print('transformer:',transformer.to_wkt())
+
+def transformPoint(lon,lat):
+    return transformer.transform(lon, lat)
+
+
 
 
 
@@ -34,9 +38,10 @@ def parseCsv(file):
                 m = round(float(d['Chainage (km)'])*1000)
                 lon = float(d['Longitude (deg)'])
                 lat = float(d['Latitude (deg)'])
-                x, y, z = transform.TransformPoint(lon, lat)
+                x, y  = transformPoint(lon, lat)
                 yield m, x, y
-            except:
+            except Exception as e:
+                print(e)
                 pass
 
 class gpsInterface:
@@ -54,43 +59,45 @@ class gpsInterface:
             #gpsInterface.setValues(vals = parseCsv(file),startAtZero=startAtZero)
 
             d = np.array([r for r in parseCsv(file)])
+            #print('data:',d)
         
         if d is not None:
-            #interpolate and resample at intervals. every 1m excessive and not smooth?
-            if interval is not None:
-                
-                m = d[:,0]
-                if startAtZero:
-                    m -= min(m)
-                
-                
-                x = d[:,1]
-                y = d[:,2]
-                
-                #start at multiple of interval after start
-                s = min(m)
-                if s%interval != 0:
-                    s = s + interval - s % interval
-                
-                e = max(m)
-                if e%interval != 0:
-                    e = e - e % interval        
-                
-                newM = np.arange(s,e,interval)
-                #ynew = np.interp(xnew, x, y)
+            if d.size >0:
+                #interpolate and resample at intervals. every 1m excessive and not smooth?
+                if interval is not None:
                     
-              #  print('data',m,x,y)
-              # print('newM',newM)
-        
-                newX = np.interp(newM, m, x)
-                newY = np.interp(newM, m, y)
-        
-                r = np.transpose((newM,newX,newY))
-               # print('r',r)
-            else:
-                r = d
-           
-            gpsInterface.setValues(vals = r,startAtZero=startAtZero)
+                    m = d[:,0]
+                    if startAtZero:
+                        m -= min(m)
+                    
+                    
+                    x = d[:,1]
+                    y = d[:,2]
+                    
+                    #start at multiple of interval after start
+                    s = min(m)
+                    if s%interval != 0:
+                        s = s + interval - s % interval
+                    
+                    e = max(m)
+                    if e%interval != 0:
+                        e = e - e % interval        
+                    
+                    newM = np.arange(s,e,interval)
+                    #ynew = np.interp(xnew, x, y)
+                        
+                  #  print('data',m,x,y)
+                  # print('newM',newM)
+            
+                    newX = np.interp(newM, m, x)
+                    newY = np.interp(newM, m, y)
+            
+                    r = np.transpose((newM,newX,newY))
+                   # print('r',r)
+                else:
+                    r = d
+               
+                gpsInterface.setValues(vals = r,startAtZero=startAtZero)
 
 
     @staticmethod

@@ -12,12 +12,12 @@ Created on Thu Oct 19 14:32:58 2023
 
 """
 from PyQt5.QtWidgets import QDialog,QFormLayout,QDialogButtonBox,QSpinBox,QHBoxLayout,QPushButton
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry
+from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry,QgsWkbTypes,Qgis
 from qgis.utils import iface
 from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
 from PyQt5.QtGui import QColor
 from image_loader.dims import frameToM
-
+from image_loader.type_conversions import asInt
 
 crs = QgsCoordinateReferenceSystem("EPSG:27700")
 
@@ -25,14 +25,6 @@ def fromCanvasCrs(point):
    # print('point',point)
     transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
     return transform.transform(point)
-
-
-
-def asFloat(value,default = 0.0):
-    try:
-        return float(value)
-    except:
-        return default
 
 
 
@@ -68,7 +60,21 @@ class chainagesDialog(QDialog):
         
         
         self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
-        self.markerLine = QgsRubberBand(self.canvas,False)
+        
+        
+     #   version = Qgis.versionInt()
+        versionName = Qgis.version()        
+        #QgsRubberBand changed between qgis versions. somewhere between 3.18:3 and 3.34.        
+        #new versions
+        try:
+            self.markerLine = QgsRubberBand(self.canvas,QgsWkbTypes.GeometryType.Line)
+            print('Using new QgsRubberBand constructor for QGIS '+versionName)
+        #old versions
+        except Exception as te:
+            self.markerLine = QgsRubberBand(self.canvas,False)
+            print('Using old QgsRubberBand constructor for QGIS '+versionName)
+        
+        
         self.markerLine.setWidth(5)
         self.markerLine.setColor(QColor('red'))
         self.canvas.setDestinationCrs(crs)
@@ -120,8 +126,8 @@ class chainagesDialog(QDialog):
             self.setWindowTitle('Add run')
         else:
             self.setWindowTitle('Edit frames for run {run}'.format(run=row+1))
-            self.startChainage.setValue(asFloat(self.runsModel.index(row,self.runsModel.fieldIndex('start_frame')).data()))
-            self.endChainage.setValue(asFloat(self.runsModel.index(row,self.runsModel.fieldIndex('end_frame')).data()))
+            self.startChainage.setValue(asInt(self.runsModel.index(row,self.runsModel.fieldIndex('start_frame')).data()))
+            self.endChainage.setValue(asInt(self.runsModel.index(row,self.runsModel.fieldIndex('end_frame')).data()))
             
             
     def show(self):

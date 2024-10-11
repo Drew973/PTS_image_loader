@@ -8,15 +8,7 @@ Created on Fri Aug 19 10:05:27 2022
 from PyQt5.QtWidgets import QDialog, QFormLayout, QLineEdit,QCheckBox,QDoubleSpinBox
 from PyQt5.QtCore import QSettings
 
-#from qgis.core import QgsMapLayerProxyModel,QgsFieldProxyModel
-#from qgis.gui import QgsMapLayerComboBox
-#from image_loader.widgets.field_box import fieldBox
-from image_loader.types import asFloat , asBool
-
-#import os
-#p = os.path.join(os.path.dirname(__file__),'settings.ini')
-#settings = QSettings("pts","image_loader")
-#settings.setPath(QSettings.IniFormat , QSettings.UserScope , p)
+from image_loader.type_conversions import asFloat , asBool
 
 
 

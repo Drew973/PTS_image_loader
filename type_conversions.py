@@ -16,4 +16,13 @@ def asBool(v,default = False):
     try:
         return bool(v)
     except:
-        return default    
+        return default
+    
+    
+    
+def asInt(v,default = 0):
+    try:
+        return int(v)
+    except:
+        return default
+    

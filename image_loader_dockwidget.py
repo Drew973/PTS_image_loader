@@ -38,7 +38,7 @@ from image_loader.image_model import imageModel
 from image_loader.settings_dialog import settingsDialog
 
 from image_loader import db_functions
-from image_loader.gps_model_4 import gpsModel
+from image_loader.gps_model import gpsModel
 from image_loader import runs_model
 from image_loader.run_commands import commandsDialog
 from image_loader.download_distress import downloadCracks,downloadRuts,downloadFaulting
@@ -56,7 +56,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(imageLoaderDockWidget, self).__init__(parent)
         self.setupUi(self)
         
-        title = 'PTS image loader v{version}'.format(version = 3.44)
+        title = 'PTS image loader v{version}'.format(version = 3.45)
         self.setWindowTitle(title)
         
         self.settings = QSettings("pts","image_loader")

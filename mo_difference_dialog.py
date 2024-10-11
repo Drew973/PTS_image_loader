@@ -16,11 +16,11 @@ from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,
 from PyQt5.QtCore import Qt,QSettings
 from PyQt5.QtGui import QColor
 from qgis.gui import QgsRubberBand
-from qgis.core import QgsCoordinateReferenceSystem,QgsPointXY
+from qgis.core import QgsCoordinateReferenceSystem,QgsPointXY,QgsWkbTypes
 from qgis.utils import iface
 from image_loader.dims import MAX,mToFrame
 from image_loader.combobox_dialog import comboBoxDialog
-from image_loader.types import asFloat
+from image_loader.type_conversions import asFloat
 from image_loader.point_map_tool import pointMapTool
 
 
@@ -47,19 +47,18 @@ class moDifferenceDialog(QDialog):
         
         self.optionsDialog = comboBoxDialog(parent = self)
         
-       # self.wrapper = QDataWidgetMapper()
-      #  self.wrapper.setSubmitPolicy(QDataWidgetMapper.ManualSubmit)
-        
-        
         self.mapTool = pointMapTool(destCrs = crs)
         self.mapTool.canvasReleased.connect(self.mapClicked)
         
+        #new QGIS versions
+        try:
+            self.markerLine = QgsRubberBand(iface.mapCanvas(),QgsWkbTypes.GeometryType.Line)
+        #old QGIS versions
+        except Exception:
+            self.markerLine = QgsRubberBand(iface.mapCanvas(),False)
         
-        self.markerLine = QgsRubberBand(iface.mapCanvas(),False)
         self.markerLine.setWidth(5)
         self.markerLine.setColor(QColor('red'))
-        #QColor('green')
-
         
         self.setLayout(QFormLayout())
         self.setWindowTitle('Find chainage and offset difference')
@@ -107,11 +106,7 @@ class moDifferenceDialog(QDialog):
         #2 decimal places = nearest 1cm
         self.result.setText('{m:.2f},{off:.2f}'.format(m = self.endM.value()-self.startM.value(),
                                                off = self.endOffset.value()-self.startOffset.value()))
-
         if hasattr(self.gpsModel,'line'):
-            
-         #  startMO = self.model.unCorrectMO(np.array([[self.startM.value(),self.startOffset.value()]]))
-           # print('startMO',startMO)
             
             line = self.gpsModel.line(startM = self.startM.value(),
                                       startOffset = self.startOffset.value(),

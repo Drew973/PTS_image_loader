@@ -90,7 +90,7 @@ update progress dialog and allow cancelling
 
 
 def runCommands(commands,labelText = 'running...',progress = None):
-    
+    print(commands)
     if progress is None:
         progress = QProgressDialog(labelText,"Cancel", 0, len(commands),parent = None)#QObjectwithout parent gets deleted like normal python object
         progress.forceShow()
