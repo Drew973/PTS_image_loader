@@ -68,11 +68,11 @@ class chainagesDialog(QDialog):
         #new versions
         try:
             self.markerLine = QgsRubberBand(self.canvas,QgsWkbTypes.GeometryType.Line)
-            print('Using new QgsRubberBand constructor for QGIS '+versionName)
+         #   print('Using new QgsRubberBand constructor for QGIS '+versionName)
         #old versions
         except Exception as te:
             self.markerLine = QgsRubberBand(self.canvas,False)
-            print('Using old QgsRubberBand constructor for QGIS '+versionName)
+         #   print('Using old QgsRubberBand constructor for QGIS '+versionName)
         
         
         self.markerLine.setWidth(5)

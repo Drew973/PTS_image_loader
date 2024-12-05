@@ -29,6 +29,7 @@ from qgis.PyQt.QtWidgets import QAction
 
 # Import the code for the DockWidget
 from .image_loader_dockwidget import imageLoaderDockWidget
+from image_loader import file_locations
 import os.path
 
 
@@ -167,10 +168,8 @@ class imageLoader:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
-        icon_path = ':/plugins/image_loader/icon.png'
         self.add_action(
-            icon_path,
+            file_locations.iconPath,
             text=self.tr(u'PTS Image Loader'),
             callback=self.run,
             parent=self.iface.mainWindow())

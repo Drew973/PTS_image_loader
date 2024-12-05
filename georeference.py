@@ -1,27 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 16 13:28:48 2023
+needs to work as standalone.
 
-@author: Drew.Bennett
-"""
+have centerline. Curved line.
+shape for image on map:
+    rectangle leaves gaps. 
+    geotransform only supports rectangle
+    trapezium good compromize.
 
-import os
-import argparse
-from osgeo import gdal,osr,gdalconst
-
-
-
-def warpedFileName(origonalFile):
-    return os.path.splitext(origonalFile)[0] + '_warped.tif'
-
-noData = 255
-
-
-
-'''
 dataset should have gcps OR geotransform , not both
 geotransform is affine. Doesn't curve rectangle as it should.
-could write worldfile for original image if rectangle not big issue.
+could write worldfile for original image if rectangle.
 
 use GCPs.
 translated has weird bits like repeated image. fine after warping.
@@ -34,17 +23,36 @@ lossy compression means some 'no data' pixels not causing odd squares around bou
 -tps is thin plate transform. 
 faster with fewer gcps and without this.
 
-'''    
+translate then warp.
+
+use world file where curvature low? rendering performance?
+ /vsimem/
+gdal_translate {outputFile} {inputFile} -gcp <pixel> <line> <easting> <northing>
+
+gdalwarp.exe
+"""
+
+import os
+import argparse
+from osgeo import gdal,osr,gdalconst
+import ast
+
+gdal.UseExceptions()
+noData = 255
+
+def warpedFileName(origonalFile):
+    return os.path.splitext(origonalFile)[0] + '_warped.tif'
+
    
 #create warped vrt from file
-def georeferenceFile(file,warpedFile,gcps):
+def georeferenceFile(file : str , warpedFile : str , gcps:list , scrid : int):
     
     if os.path.exists(file):
         srs = osr.SpatialReference()
-        srs.ImportFromEPSG(27700)
+        srs.ImportFromEPSG(scrid)
         srs = srs.ExportToWkt()
-       # translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
-        translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.tif'
+        translatedFile = r'/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
+       # translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.tif'#created on disk?
   
         
         #in memory File
@@ -72,7 +80,6 @@ def georeferenceFile(file,warpedFile,gcps):
                  warpOptions = ['SKIP_NOSOURCE=YES,overwrite=YES']
 
         )
-            
             #rewrite vrt replacing translated with original file. hacky but effective.
             with open(warpedFile,'r') as f:
                 newText = f.read().replace(translatedFile,file)
@@ -88,6 +95,7 @@ def georeferenceFile(file,warpedFile,gcps):
                      tps = True,
                      creationOptions = ['QUALITY=60','COMPRESS=JPEG','OVERVIEWS=IGNORE_EXISTING'],
                      warpOptions = ['SKIP_NOSOURCE=YES'],
+                     warpMemoryLimit  = 10,#use upto 10mb. images~0.3mb
             )
             #overviews are included in these.
             
@@ -100,21 +108,27 @@ def georeferenceFile(file,warpedFile,gcps):
     else:
         raise ValueError('{file} not found'.format(file=file))
        
-
 #file:file,pixel[],line:[],x:[],y:[]
-
 #GCP like (x,y,pixel,line)
 
-if __name__ == '__main__':
-    import ast
+def parseGcpString(s:str):
+    lis = ast.literal_eval(s)
+    return [gdal.GCP(r[0],r[1],0,r[2],r[3]) for r in lis]
+
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('originalFile')
     parser.add_argument('warpedFile')
     parser.add_argument('gcp')#[(x,y,pixel,line)]
-    args = parser.parse_args()    
-    
-    #  #x,y,z,pixel,line
-    gcps = [gdal.GCP(r[0],r[1],0,r[2],r[3]) for r in ast.literal_eval(args.gcp)]
-    
-    georeferenceFile(args.originalFile,args.warpedFile,gcps)
+    parser.add_argument('srid')
+    args = parser.parse_args()
+    #x,y,z,pixel,line
+    gcps = parseGcpString(args.gcp)
+    georeferenceFile(args.originalFile , args.warpedFile , gcps , args.srid)
+
+
+if __name__ in ('__main__','__console__'):
+    #try profiling here.
+    main()
 

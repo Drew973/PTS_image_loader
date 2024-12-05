@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar 27 10:41:05 2024
-
-@author: Drew.Bennett
+similar to linestringM but models line as smooth curve through known points.
+smooth curve has well defined direction for every chainage.
 """
+
 K = 3
 S = 0
 N = 2
@@ -61,6 +61,8 @@ class splineString:
         return self.xSpline is not None
     
     # array[[x,y]] or []
+    # m in any units.
+    #offset in same units as x and y.
     def point(self,mo):
         if self.hasPoints():
             m = mo[:,0]

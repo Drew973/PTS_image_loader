@@ -1,0 +1,1 @@
+Copy test folder to external hard drive and run from there for more realistic idea of georeferencing performance.

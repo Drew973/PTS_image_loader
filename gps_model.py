@@ -15,7 +15,7 @@ from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY
 from qgis.utils import iface
 from image_loader.layer_styles.styles import centerStyle
 from image_loader.db_functions import runQuery
-from image_loader.dims import (HEIGHT,LINES,PIXELS,WIDTH,frameToM,mToFrame,MAX)
+from image_loader.dims import HEIGHT,LINES,PIXELS,WIDTH,frameToM,mToFrame
 from image_loader.gps_interface import gpsInterface
 
 K = 3

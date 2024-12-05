@@ -1,0 +1,2 @@
+rem 1:input file, 2:gcp, 3:intermediate file, 4:destination. could add && gdalmanage delete "%~3%". performance hit.
+gdal_translate "%~1" "%~3" %~2 -b 1 -colorinterp_1 gray -a_srs EPSG:27700 && gdalwarp -dstnodata 0  -r near -of COG -tps -overwrite -co quality=60 -co compress=JPEG -co OVERVIEWS=IGNORE_EXISTING -wm 10 "%~3" "%~4"

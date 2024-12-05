@@ -1,10 +1,15 @@
 from PyQt5.QtSql import QSqlQuery
-from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError,prepareQuery
-from osgeo.osr import SpatialReference, CoordinateTransformation, OAMS_TRADITIONAL_GIS_ORDER
+#from osgeo.osr import SpatialReference, CoordinateTransformation, OAMS_TRADITIONAL_GIS_ORDER
 from qgis.core import QgsGeometry, QgsPointXY
 import numpy as np
 import csv
 import os
+from PyQt5.QtCore import QSettings
+
+from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError
+from image_loader.type_conversions import asBool
+
+settings = QSettings("pts" , "image_loader")
 
 
 # transform for parsing csv
@@ -17,14 +22,10 @@ import os
 #transform = CoordinateTransformation(epsg4326, epsg27700)
 
 
-from pyproj import Transformer
-transformer = Transformer.from_crs(4326,27700,always_xy=True)
-
-print('transformer:',transformer.to_wkt())
-
-def transformPoint(lon,lat):
-    return transformer.transform(lon, lat)
-
+#from pyproj import Transformer
+#transformer = Transformer.from_crs(4326,27700,always_xy=True)
+#def transformPoint(lon,lat):
+    #return transformer.transform(lon, lat)
 
 
 
@@ -38,14 +39,13 @@ def parseCsv(file):
                 m = round(float(d['Chainage (km)'])*1000)
                 lon = float(d['Longitude (deg)'])
                 lat = float(d['Latitude (deg)'])
-                x, y  = transformPoint(lon, lat)
-                yield m, x, y
+              #  x, y  = transformPoint(lon, lat)
+                yield m, lon, lat
             except Exception as e:
                 print(e)
                 pass
 
 class gpsInterface:
-    
     
     @staticmethod
     def clear():
@@ -53,7 +53,10 @@ class gpsInterface:
 
 
     @staticmethod
-    def loadFile(file,startAtZero=True,interval = 5):
+    def loadFile(file,interval = 5):
+        
+
+        
         ext = os.path.splitext(file)[1]
         if ext == '.csv':
             #gpsInterface.setValues(vals = parseCsv(file),startAtZero=startAtZero)
@@ -66,13 +69,9 @@ class gpsInterface:
                 #interpolate and resample at intervals. every 1m excessive and not smooth?
                 if interval is not None:
                     
-                    m = d[:,0]
-                    if startAtZero:
-                        m -= min(m)
-                    
-                    
-                    x = d[:,1]
-                    y = d[:,2]
+                    m = d[:,0]                    
+                    lon = d[:,1]
+                    lat = d[:,2]
                     
                     #start at multiple of interval after start
                     s = min(m)
@@ -84,29 +83,22 @@ class gpsInterface:
                         e = e - e % interval        
                     
                     newM = np.arange(s,e,interval)
-                    #ynew = np.interp(xnew, x, y)
-                        
-                  #  print('data',m,x,y)
-                  # print('newM',newM)
+                    newLon = np.interp(newM, m, lon)
+                    newLat = np.interp(newM, m, lat)
             
-                    newX = np.interp(newM, m, x)
-                    newY = np.interp(newM, m, y)
-            
-                    r = np.transpose((newM,newX,newY))
-                   # print('r',r)
+                    r = np.transpose((newM,newLon,newLat))
                 else:
                     r = d
-               
-                gpsInterface.setValues(vals = r,startAtZero=startAtZero)
+                gpsInterface.setValues(vals = r)
 
 
     @staticmethod
-    def setValues(vals,startAtZero = True):
+    def setValues(vals):
         db = defaultDb()
         db.transaction()
         runQuery(query='delete from original_points', db=db)
         q = QSqlQuery(db)
-        if not q.prepare('insert or ignore into original_points(m,pt) values (cast(:m as int),makePoint(:x,:y,27700))'):
+        if not q.prepare('insert or ignore into original_points(m,pt) values (cast(:m as int),makePoint(:x,:y,4326))'):
             raise queryPrepareError(q)
         for i, v in enumerate(vals):
             try:
@@ -118,13 +110,11 @@ class gpsInterface:
             except Exception as e:
                 message = 'error loading row {r} : {err}'.format(r=i, err=e)
                 print(message)
-                
+        startAtZero = asBool(settings.value('startAtZero'),True)
         if startAtZero:
             runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
-            
         runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
         runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
-        #runQuery('insert into corrected_points(m,id,next_id,next_m,pt) select m,id,next_id,next_m,pt from original_points', db=db)
         db.commit()
     
     

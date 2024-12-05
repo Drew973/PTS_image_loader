@@ -22,8 +22,8 @@ read a database file that contains a generated column in its schema, then that e
 column syntax as an error and will report that the database schema is corrupt"
     
 """
-import os
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
+from image_loader.file_locations import dbFile
 
 
 class queryError(Exception):
@@ -89,10 +89,10 @@ import shutil
 
 #copy to file. keeps using same db afterwards.
 def saveToFile(file):
-   if dbFile() == ':memory:':
+   if dbFile == ':memory:':
         runQuery(query = "vacuum main into :file".replace(':file',file))#error transaction in progress... with non memory database
    else:
-       shutil.copy2(dbFile(), file)
+       shutil.copy2(dbFile, file)
 
 
 
@@ -152,12 +152,7 @@ def loadCorrections(file):
     db.commit()
     
     
-def dbFile():
-  #  return ':memory:'        
-    return os.path.join(os.path.dirname(__file__),'images.db')
-
-
-def createDb(file = dbFile(),name = 'image_loader'):
+def createDb(file = dbFile,name = 'image_loader'):
     db = QSqlDatabase.addDatabase("QSPATIALITE",name)
     db.close()
     db.setDatabaseName(file)

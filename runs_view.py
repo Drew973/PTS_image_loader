@@ -39,6 +39,7 @@ class runsView(QTreeView):
         pasteAct.triggered.connect(self.paste)
         self.row = -1
         
+        
     def copy(self):
         startFrameCol = self.model().fieldIndex('start_frame')
         endFrameCol = self.model().fieldIndex('end_frame')

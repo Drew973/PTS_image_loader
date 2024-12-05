@@ -10,4 +10,4 @@ import os
 
 
 testFolder = os.path.dirname(__file__)
-dbFile = os.path.join(testFolder,'outputs','test.sqlite')
+#dbFile = os.path.join(testFolder,'outputs','test.sqlite')

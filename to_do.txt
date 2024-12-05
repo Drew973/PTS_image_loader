@@ -41,15 +41,6 @@ include frame in correction?
 
 
 
-
-Chainages and chainage corrections for versions >= 3.36 are different to previous versions.
-To convert from old chainage to new subtract the lowest chainage in the rutacd CSV.
-This was added to make the chainages start at 0 and put the uncorrected image closer to where it should be.
-
-add transverse joint faulting data.
-
-transverse. concrete only.
-
 read hawkeye database?
 need ms sql server? how is it currently being done?
 0.4 GB vs 4.8 Gb of hawkeye exported xml files + time

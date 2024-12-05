@@ -11,45 +11,43 @@ import numpy as np
 import csv
 import io
 from qgis.core import QgsPointXY
-
-from image_loader.dims import mToFrame,MAX,frameToM
+import typing
+from image_loader.dims import mToFrame,frameToM
 from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
 from image_loader.image_model import imageModel
-from typing import Tuple
-
-def tryFloat(v,default = 0.0):
-    try:
-        return float(v)
-    except Exception:
-        return default
+from image_loader.type_conversions import asFloat
 
 
-def parseCsv(file):
-    reader = csv.reader(file,dialect='excel',delimiter = '\t')
-        
+#fields = ['RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY']
+            
+#generator {}
+def parseCsv(f:typing.TextIO , quiet : bool = False):
+    
+    lines = [line.strip().lower() for line in f.readlines()]
+    
+    #print('lines',lines)
+    if lines[0] == 'start_frame\tend_frame\tchainage_shift\toffset':
+        fieldNames = ['fromframe','toframe','chainage','offset']
+        reader = csv.DictReader(lines[1:],fieldnames=fieldNames,dialect='excel',delimiter = '\t')
+    else:
+        reader = csv.DictReader(lines,dialect='excel',delimiter = ',')
+    
     for row in reader:
-            #print(row)
+        #print(row)
         try:
-            startFrame = int(row[0].strip())
-            endFrame = int(row[1])
-                
-            try:
-                chainageShift = float(row[2].strip())
-            except Exception:
-                chainageShift = 0.0
-                    
-            try:
-                offset = float(row[3].strip())
-            except Exception:
-                offset = 0.0                    
-                
-            yield {'start_frame':startFrame,'end_frame':endFrame,'chainage_shift':chainageShift,'offset':offset}
-                               
+            yield {'start_frame':int(row.get('fromframe')),
+                   'end_frame':int(row.get('toframe')),
+                   'chainage_shift':asFloat(row.get('chainage'),0.0),
+                   'offset':asFloat(row.get('offset'),0.0)}
         except Exception as e:
-            print(e)
+            if not quiet:
+                print(row)
+                print(e)
+      
+      
 
 
-class runsTableModel(QSqlQueryModel):
+class runsModel(QSqlQueryModel):
     
     def __init__(self,db=None,parent=None):
         super().__init__(parent)
@@ -81,7 +79,7 @@ class runsTableModel(QSqlQueryModel):
         
     
     #[{start_frame,end_frame}]
-    def addRuns(self,runs):
+    def addRuns(self,runs:typing.Iterable[int]):
         db = self.database()
         db.transaction()
         for r in runs:
@@ -124,14 +122,14 @@ class runsTableModel(QSqlQueryModel):
         return super().setData(index,value,role)
     
     
-    def setCorrection(self,pk,startM,endM,startOffset,endOffset):
+    def setCorrection(self , pk:int , startM:float , endM:float , startOffset:float , endOffset:float):
         qs = '''update runs set correction_start_m = :s - correction_end_m +correction_start_m , 
         correction_start_offset = :so - correction_end_offset + correction_start_offset, 
         correction_end_m = :e , correction_end_offset = :eo where pk = :pk'''
         runQuery(query = qs,values = {':pk':pk,':s':startM,':e':endM,':so':startOffset,':eo':endOffset})
         self.select()
 
-    
+    #pks:[int]
     def dropRuns(self,pks):
    #     print('pks',pks)
         pks = [str(pk) for pk in pks]
@@ -166,38 +164,24 @@ inner join images on frame_id >= start_frame and frame_id <= end_frame
 and runs_view.pk in ({pks})
         '''.format(pks = ','.join([str(pk) for pk in pks]))
      #   print(qs)
-    
         q = runQuery(qs)
         imageKeys = []
         while q.next():
             imageKeys.append(q.value(0))
-        
         imageModel.georeference(gpsModel = self.gpsModel , pks = imageKeys)
         imageModel.makeVrt(imageKeys)
         
-   #     qs = '
-#select number,image_type from runs_view
-#inner join images on frame_id >= start_frame and frame_id <= end_frame
-#and runs_view.pk in ({pks})
-#group by runs_view.pk,image_type
-#        '.format(pks = ','.join([str(pk) for pk in pks]))
         
-        
-   #     q = runQuery(qs)
-  #      while q.next():
-    #        imageKeys.append(q.value(0))
-       
-    
-    def loadText(self,text):
-        f = io.StringIO(text)
+    #rename to loadStr
+    #load text from excel via clipboard etc
+    def loadText(self,text:str):
+        f = io.StringIO('start_frame\tend_frame\tchainage_shift\toffset\n'+text)
         self.addRows(parseCsv(f))
     
     
-    def loadCsv(self,file):
-        with open(file,'r', newline='') as f:
-            self.addRows(parseCsv(f))
-            
-          
+    def loadCsv(self,file:str):
+        with open(file,'r') as f:
+            self.addRows(parseCsv(f),clear=True)
         
         
     def addRows(self,data,clear = False):
@@ -208,38 +192,40 @@ and runs_view.pk in ({pks})
         for r in data:
             sm = frameToM(r['end_frame'])
             em = sm + r['chainage_shift']
-                
             runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:s,:e,:sm,:em,:eo)',
                         db=db,values = {':s':r['start_frame'],
                                          ':e':r['end_frame'],
                                          ':sm':sm,
                                          ':em':em,
-                                         ':eo':r['offset']})            
+                                         ':eo':r['offset']})
         db.commit()
-        self.select()        
+        self.select()
+        
         
     # array of [[m,o]] ordered by distance
     def locate(self,row:int,pt:QgsPointXY,corrected:bool, maxOffset:float = 10.0, outsideRunDistance:float = 50.0)->np.array:
         minM,maxM = self.chainageRange(row,additional = outsideRunDistance)
         opt = self.gpsModel.locate(pt, minM = minM, maxM = maxM, maxOffset = maxOffset)#nearest within range.
         return np.array([opt])
-        
-        
+
+
     def saveCsv(self,file:str):
         with open(file,'w',newline='') as f:
-            writer = csv.writer(f,dialect='excel',delimiter = '\t')
-            writer.writerow(('start_frame','end_frame','chainage_shift','offset'))
+            writer = csv.writer(f,dialect='excel',delimiter = ',')
+            writer.writerow(('RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY'))
             q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
+            row = 1
             while q.next():
-                writer.writerow((q.value(0),q.value(1),q.value(2),q.value(3)))
-            
-        
-    def chainageRange(self,row:int,additional:float = 20.0)->Tuple[float,float]:
+                writer.writerow((row,q.value(0),q.value(1),q.value(2),q.value(3)))
+                row += 1
+
+
+    def chainageRange(self,row:int,additional:float = 20.0):#-> Tuple[float,float]
         startFrame = int(self.index(row,self.fieldIndex('start_frame')).data())
         endFrame = int(self.index(row,self.fieldIndex('end_frame')).data())
         return (frameToM(startFrame) - additional , frameToM(endFrame) + additional)
-        
-    
+
+
     #array -> array
     @staticmethod
     def correctMO(mo):
