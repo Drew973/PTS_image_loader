@@ -9,53 +9,147 @@ import os
 import csv
 
 from PyQt5.QtCore import Qt
-from image_loader import db_functions
 from image_loader.name_functions import generateRun,generateImageId,findOrigonals,generateImageType,projectFolderFromRIL
 from image_loader.load_image import loadImage
-from image_loader import georeference
+
+from image_loader import georeference , layer_functions , db_functions
+
 from image_loader.georeference_commands import georeferenceCommand
 
 from image_loader import run_commands_3 as run_commands
-from image_loader import layer_functions
 from pathlib import Path
 from image_loader.commands_dialog import commandsDialog
-from image_loader.type_conversions import asFloat , asBool , asInt
+from osgeo import gdal
+from PyQt5.QtWidgets import QProgressDialog
 
 
 
 class _image():
     
     def __init__(self,imageId = None ,origonalFile = '',newFile = '',run = ''):
-        
         f = ''
         if origonalFile:
             f = origonalFile
         else:
             if newFile:
                 f = newFile
-        
         if imageId is None:
             self.imageId = generateImageId(f)
         else:
             self.imageId = imageId
-            
-            
         self.origonalFile = origonalFile
         self.newFile = newFile
-        
         if run:
             self.run = run
         else:
             self.run = generateRun(f)
-
         self.imageType = generateImageType(f)
         
 
-from PyQt5.QtCore import QSettings
-settings = QSettings("pts" , "image_loader")
+
+#{vrtFile:(files,type,run)} from primary keys.
+#grouped by run,image_type
+def vrtData(pks : list) -> dict:    
+    #use something unlikey to be in file name as seperator.
+    p = ','.join([str(pk) for pk in pks])
+    query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
+    d = {} # 
+    while query.next():
+        run = query.value(1)
+        tp = query.value(2) 
+        # existing warped files
+        files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
+       # print(files)
+        if files:
+            vrtFile = vrtFileName(run = run,imageType = tp, files = files)
+            d[vrtFile] = (files,tp,run)
+    return d
+
+
+#not realy worth doing this in paralell.
+gdal.UseExceptions()
+#vrt_options = gdal.BuildVRTOptions(resampleAlg='cubic', addAlpha=True)
+def makeVrtFile(vrtFile,files):
+    gdal.SetConfigOption("COMPRESS_OVERVIEW", "JPEG")
+    gdal.SetConfigOption("INTERLEAVE_OVERVIEW", "PIXEL")   
+    gdal.BuildVRT(vrtFile, files)
+    ds = gdal.Open(vrtFile, 0)  # 0 = read-only, 1 = read-write. 
+    factors = [32,64,128,256,512]
+    ds.BuildOverviews("AVERAGE" , factors)
+    ds = None
 
 
 
+def vrtFileName(run , imageType : str , files : []) -> str:
+    if len(files) == 1 :
+        folder = os.path.dirname(files[0])
+    else:
+        folder = os.path.commonpath(files)
+    return os.path.join(folder,'{tp}_{run}.vrt'.format(run = run,tp = imageType))
+
+    
+
+#return True if images georeferenced. False if user canceled.
+def beginGeoreference(gpsModel , pks : list = [] , progress = None , log : str = '') -> bool:
+    if pks:
+        georeferenceCommands = []
+        sources = []#names for georeferenced files
+        pkStr = ','.join([str(pk) for pk in pks])
+        t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
+        q = db_functions.runQuery(t)
+        while q.next():
+            frame = q.value(0)
+            gcp = gpsModel.gcps(frame)
+            if gcp is not None:
+                for f in q.value(1).split(','):
+                    newFile = georeference.warpedFileName(f)
+                    sources.append(newFile)
+                    georeferenceCommands.append(georeferenceCommand(inputFile = f , gcps = gcp , srid = gpsModel.srid))
+        if log:
+            with open(log,'w') as f:
+                f.write('\n'.join(georeferenceCommands))
+        layer_functions.removeSources(sources)#remove layers to allow file to be edited.
+        if georeferenceCommands:
+            #print(georeferenceCommands[0])
+            prog = commandsDialog(title = 'georeferencing')
+            return run_commands.runCommands(commands = georeferenceCommands , progress = prog)
+
+
+
+
+#load images with primary key in pks into qgis
+def loadImages(pks:list = []) -> bool: 
+    progress = QProgressDialog('Loading images',"Cancel", 0, 1 , parent = None)
+    p = ','.join([str(pk) for pk in pks])
+    t = 'select original_file,run,image_type from images_view where pk in ({pks}) and not original_file is null'.format(pks = p)
+    query = db_functions.runQuery(t)
+    progress.setRange(0,query.size())
+    progress.show()
+    i = 0
+    while query.next():
+        if progress.wasCanceled():
+            return False
+        progress.setValue(i)
+        warped = georeference.warpedFileName(query.value(0))
+        if os.path.exists(warped):
+            groups = ['image_loader',
+                      query.value(2),
+                      query.value(1)]
+            loadImage(file=warped,groups=groups)
+        i += 1
+    progress.close()
+    return True
+        
+    
+#only used for testing
+def allImagePks():
+    pks = []
+    query = db_functions.runQuery('select pk from images')
+    while query.next():
+        pks.append(query.value(0))
+    return pks
+    
+    
 
 class imageModel(QSqlQueryModel):
     
@@ -83,52 +177,16 @@ class imageModel(QSqlQueryModel):
         return super().data(index,role)
     
     
-    #return True if images georeferenced. False if user canceled.
-    @staticmethod
-    def georeference(gpsModel , pks : list = [] , progress = None , log : str = '') -> bool:
-        if pks:
-            
-            srid = asInt(settings.value('destSrid'),27700)
 
-            georeferenceCommands = []
-            sources = []#names for georeferenced files
-            pkStr = ','.join([str(pk) for pk in pks])
-            t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
-            q = db_functions.runQuery(t)
-            while q.next():
-                frame = q.value(0)
-                gcp = gpsModel.gcps(frame,srid)
-                if gcp is not None:
-                    for f in q.value(1).split(','):
-                        newFile = georeference.warpedFileName(f)
-                        sources.append(newFile)
-                        georeferenceCommands.append(georeferenceCommand(inputFile = f , gcps = gcp , srid = srid))
-            if log:
-                with open(log,'w') as f:
-                    f.write('\n'.join(georeferenceCommands))
-            layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-            if georeferenceCommands:
-                prog = commandsDialog(title = 'georeferencing')
-                return run_commands.runCommands(commands = georeferenceCommands , progress = prog)
     
-    
-    @staticmethod        
-    def vrtFile(run,imageType,files):
-        if len(files) ==1 :
-            folder = os.path.dirname(files[0])
-        else:
-            folder = os.path.commonpath(files)
-        return os.path.join(folder,'{tp}_{run}.vrt'.format(run = run,tp = imageType))
-        
-    
-    
+
     def flags(self,index):
         if index.column() == self.fieldIndex('marked'):
             return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
-    
-    
+
+
     def database(self):
         return QSqlDatabase.database('image_loader')
 
@@ -140,13 +198,8 @@ class imageModel(QSqlQueryModel):
         q.prepare(queryString)
         q.exec()
         self.setQuery(q)
-        
-     #   self.setRange()
-      #  q = self.query()
-      #  q.exec()
-      #  self.setQuery(q)
 
-        
+
     def clear(self):
         q = QSqlQuery(self.database())
         if not q.exec('delete from images'):
@@ -168,112 +221,7 @@ class imageModel(QSqlQueryModel):
         q.exec()
         self.setQuery(q)
 
-    #only used for testing
-    @staticmethod
-    def allPks():
-        pks = []
-        query = db_functions.runQuery('select pk from images')
-        while query.next():
-            pks.append(query.value(0))
-        return pks
-
-  
-    #load images with primary key in pks into qgis
-    def loadImages(self,pks:list = []) -> bool: 
-        p = ','.join([str(pk) for pk in pks])
-        progress = run_commands.createProgressDialog(parent=self.parent(),labelText = "Loading images...")
-        t = 'select original_file,run,image_type from images_view where pk in ({pks}) and not original_file is null'.format(pks = p)
-      #  query = db_functions.runQuery('select original_file,run,image_type from images_view where marked and not original_file is null')
-        query = db_functions.runQuery(t)
-        progress.setRange(0,query.size())
-        i = 0
-        while query.next():
-            if progress.wasCanceled():
-                return False
-            progress.setValue(i)
-            origonalFile = query.value(0)#string
-            warped = georeference.warpedFileName(origonalFile)
-            if os.path.exists(warped):
-                groups = ['image_loader',
-                          query.value(2),
-                          query.value(1)]
-                loadImage(file=warped,groups=groups)
-            i += 1
-        progress.close()#close immediatly otherwise haunted by ghostly progressbar
-        progress.deleteLater()
-        del progress
-        return True
         
-
-     
-    @staticmethod
-    def makeVrt(pks,folder = '') -> bool:
-        
-        #use something unlikey to be in file name as seperator.
-        p = ','.join([str(pk) for pk in pks])
-        query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
-        
-        d = {} # vrtFile:(files,groups)
-        buildCommands = []
-        overviewCommands = []
-        
-        while query.next():
-            run = query.value(1)
-            tp = query.value(2) 
-            # existing warped files
-            files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
-           # print(files)
-            if files:
-                vrtFile = imageModel.vrtFile(run = run,imageType = tp, files = files)
-                print({'vrtFile':vrtFile,'files':files})
-                return
-                
-              
-                
-         #       buildCommands.append('gdalbuildvrt -input_file_list "{fl}" -overwrite "{f}"'.format(fl = tempFile,f=vrtFile))
-                overviewCommands.append('gdaladdo -ro -clean "{vrtFile}" 32 64,128,256,512 --config COMPRESS_OVERVIEW JPEG --config INTERLEAVE_OVERVIEW PIXEL'.format(vrtFile = vrtFile))
-
-                groups = ['image_loader', 'combined VRT', tp, run]
-                d[vrtFile] = groups
-
-
-        tempFiles = []
-        for vrtFile in d:
-            #write tempuary file to get around console charactor limit.
-            tempFile = vrtFile + '.txt'
-            tempFiles.append(tempFile)
-            folder = os.path.dirname(vrtFile)
-            if not os.path.isdir(folder):
-                os.makedirs(folder)
-            with open(tempFile,'w') as tf:                
-                tf.write('\n'.join(['{f}'.format(f=file) for file in files]))
-        
-
-        if buildCommands:
-            
-            #remove VRT files containing images
-         #   progress.setLabelText('Unloading VRT files')
-            vrtFiles = []
-
-            layer_functions.removeSources(vrtFiles)#remove layers to allow file to be edited.
-            
-            
-            
-
-        #    print('d',d)
-            layer_functions.removeSources(d.keys())
-            prog = commandsDialog(title = 'remaking VRT files')
-            run_commands.runCommands(commands = buildCommands , progress = prog)
-            prog = commandsDialog(title = 'remaking overviews for VRT files')
-            run_commands.runCommands(commands = overviewCommands , progress = prog)
-    
-            for tempFile in tempFiles:
-                os.remove(tempFile)
-            
-            for k in d:
-                loadImage(file = k,groups=d[k])
-
-
 
     def addFolder(self,folder):
         files = [str(f) for f in Path(folder).glob("**/*.jpg")]
@@ -322,8 +270,8 @@ class imageModel(QSqlQueryModel):
                     for i,f in enumerate(origonalFiles):
                         data[i].origonalFile = f
             self._add(data)
-         
-            
+
+
     def _add(self,data):
         db = self.database()
         db.transaction()

@@ -48,7 +48,7 @@ class settingsDialog(QDialog):
         crs.createFromSrid(asInt(settings.value('destSrid') , 27700))
         self.crsWidget.setCrs(crs)
 
-        self.layout().addRow('Projection for georeferenced images. Needs units of meters.' , self.crsWidget)
+        self.layout().addRow('Projection for georeferenced images and spatial calculations. Needs units of meters.' , self.crsWidget)
         
        # self.crsWidget.crs().isGeographic()
 

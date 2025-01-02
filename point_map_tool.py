@@ -28,12 +28,12 @@ class pointMapTool(QgsMapTool):
         self.crs = destCrs
         
         
-    def canvasReleaseEvent(self, e: QgsMapMouseEvent):
-        mapPoint: QgsPointXY = e.mapPoint()
-        canvasCrs:QgsCoordinateReferenceSystem = self.canvas().mapSettings().destinationCrs()
+    def canvasReleaseEvent(self, e : QgsMapMouseEvent):
+        mapPoint : QgsPointXY = e.mapPoint()
+        canvasCrs : QgsCoordinateReferenceSystem = self.canvas().mapSettings().destinationCrs()
         #print('canvasCrs',canvasCrs)
         #print('p',mapPoint)
-        transform = QgsCoordinateTransform(canvasCrs,self.crs,QgsProject.instance())
+        transform = QgsCoordinateTransform(canvasCrs , self.crs , QgsProject.instance())
         transformedPoint = transform.transform(mapPoint)
         #print('transformedPoint',transformedPoint)
         self.canvasReleased.emit(transformedPoint)

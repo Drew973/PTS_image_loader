@@ -5,27 +5,50 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
-from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel#,QSettings
+from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel
 
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QApplication
+
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
-from PyQt5.QtCore import QSettings
 
 from image_loader import check_imports
 check_imports.checkImports()#need to check imports before using them
 
 from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog , gps_model ,
-                          commands_dialog , download_distress)
-
+                          commands_dialog , download_distress , layer_functions , settings)
 
 
 FORM_CLASS, _ = uic.loadUiType(file_locations.uiFile)
 version = 3.46
-settings = QSettings("pts" , "image_loader")
+
+
+def message(message : str , level : int = Qgis.Info ):
+    iface.messageBar().pushMessage("Image_loader", message, level=level)
+
+
+#make vrt files from data
+def makeLoadVrt(data):
+    prog = QProgressDialog(labelText = 'remaking VRT files')  
+    try:
+        vrtFiles = [k for k in data]
+        layer_functions.removeSources(vrtFiles)#remove layers to allow file to be edited.
+        prog.setMaximum(len(data))
+        prog.show()
+        for i,vrtFile in enumerate(data):
+            QApplication.processEvents()
+            if prog.wasCanceled():
+                return
+            image_model.makeVrtFile(vrtFile = vrtFile , files = data[vrtFile][0])
+            image_model.loadImage(file = vrtFile , groups = ['image_loader', 'combined VRT', data[vrtFile][1], data[vrtFile][2] ] )
+            prog.setValue(i)
+    except Exception as e:
+        iface.messageBar().pushMessage("Image_loader", "Error making VRTs:"+str(e), level=Qgis.Warning)
+    finally:
+        prog.close()
 
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
@@ -39,7 +62,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         title = 'PTS image loader v{ver}'.format(ver = version)
         self.setWindowTitle(title)
         
-      # self.settings = QSettings("pts","image_loader")
         self.settingsDialog = settings_dialog.settingsDialog(parent=self)
         db_functions.createDb()
 
@@ -59,21 +81,16 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
 
     def loadImages(self):
-        self.imagesModel.loadImages(self.imagesView.selectedPks())
+        image_model.loadImages(self.imagesView.selectedPks())
 
 
-    def createOverviews(self):
-        self.imagesModel.createOverviews()
-        
-   
     #tests if has gps and display message if not. -> bool
     def checkGps(self):
-        r = self.gpsModel.hasGps()
-        if not r:
-            iface.messageBar().pushMessage("Image_loader", "No GPS. Is GPS data loaded?", level=Qgis.Info)
-        return r
-            
-    
+        if self.gpsModel.error != '':
+            iface.messageBar().pushMessage("Image_loader",'bad GPS:'+self.gpsModel.error, level=Qgis.Info)
+        return self.gpsModel.error == ''
+
+
     #tests if has runs and display message if not. -> bool
     def checkRuns(self):
         r = self.runsModel.rowCount() > 0
@@ -89,31 +106,36 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         return r        
 
 
+    #connected to action
     def georeferenceImages(self):
         if self.checkGps():
-            self.imagesModel.georeference(self.gpsModel , pks = self.imagesView.selectedPks() , srid = self.settingsDialog.srid())
+            image_model.beginGeoreference(self.gpsModel , pks = self.imagesView.selectedPks())
         
-
+        
+    #connected to action
     def processRuns(self):
         if self.checkImages() and self.checkRuns() and self.checkGps():
-            selectedRuns = self.runsWidget.selectedPks()
-            if not selectedRuns:
-                iface.messageBar().pushMessage("Image_loader", 'No runs selected', level=Qgis.Info)
+            runPks = self.runsWidget.selectedPks()
+            if len(runPks) == 0:
+                message("No runs selected")
                 return
-            pks = self.runsModel.imagePks(selectedRuns)
-            if not pks:
-                message = "No images found in runs {runs}".format(runs = selectedRuns)
-                iface.messageBar().pushMessage("Image_loader", message, level=Qgis.Info)
+            imagePks = runs_model.imagePksFromRun(runPks)
+            if not imagePks:
+                message("No images found in runs {runs}".format(runs = runPks))
                 return
-            self.imagesModel.georeference(gpsModel = self.gpsModel , pks=pks , srid = self.settingsDialog.srid())
-            self.imagesModel.makeVrt(pks=pks)
+            image_model.beginGeoreference(gpsModel = self.gpsModel , pks=imagePks)
+            makeLoadVrt(image_model.vrtData(imagePks))
 
-       
+
+    #connected to action
     def makeRunsVrt(self):
-        if self.checkRuns():
-            pks = self.runsModel.imagePks(self.runsWidget.selectedPks())
-            self.imagesModel.makeVrt(pks=pks)
-
+        runPks = self.runsWidget.selectedPks()
+        if len(runPks) == 0:
+            message("No runs selected")
+            return
+        imagePks = runs_model.imagePksFromRun(runPks)
+        makeLoadVrt(image_model.vrtData(imagePks))
+    
 
     #scroll images to run and select in widget
     #same for corrections.
@@ -140,7 +162,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if top is not None:
             self.imagesView.scrollTo(top,QAbstractItemView.PositionAtTop)
     
-
+    
+    #file...new handler
     def new(self):
         self.imagesModel.clear()
         self.gpsModel.clear()
@@ -148,6 +171,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         db_functions.clear()
 
 
+    #open... handler
     def load(self):
         f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';sqlite database (*.db)')
         if f:
@@ -158,6 +182,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 self.runsModel.select()
         
         
+    #load Runs csv handler
     def loadRunsCsv(self):
         f = QFileDialog.getOpenFileName(caption = 'Load runs CSV',filter = ';csv (*.csv)')
         if f:
@@ -169,7 +194,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def saveRuns(self):
         f = QFileDialog.getSaveFileName(caption = 'Save runs',filter = 'CSV (*.csv)')[0]
         if f:
-            self.runsModel.saveCsv(f)
+            runs_model.saveRunsCsv(f)
             iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
 
     
@@ -209,8 +234,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         viewMenu = toolsMenu.addMenu('View')
 
         loadGpsAct = viewMenu.addAction('View GPS data')
-        loadGpsAct.triggered.connect(self.
-                                     downloadGps)
+        loadGpsAct.triggered.connect(self.downloadGpsLayer)
         
         loadCracksAct = viewMenu.addAction('View Cracking Data')
         loadCracksAct.triggered.connect(self.downloadCracks)     
@@ -224,8 +248,9 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
       #  loadCracksAct = viewMenu.addAction('View runs')
       #  loadCracksAct.triggered.connect(self.downloadRuns)     
         
-        setLayers = toolsMenu.addAction('Settings...')
-        setLayers.triggered.connect(self.settingsDialog.exec_)
+        openSettingsAct = toolsMenu.addAction('Settings...')
+        openSettingsAct.triggered.connect(self.openSettings)
+
        
         runsMenu = topMenu.addMenu("Runs")
         runsMenu.setToolTipsVisible(True)
@@ -259,11 +284,18 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.mainWidget.layout().setMenuBar(topMenu)
 
 
-    def downloadGps(self):
-        if self.checkGps():
-          #  download_gps.loadGps(corrected = False)
-            self.gpsModel.makeLayer(corrected = False)
-            
+    def downloadGpsLayer(self):
+        try:
+            self.gpsModel.downloadGpsLayer()
+        except Exception as e:
+            iface.messageBar().pushMessage("Image_loader", "Error displaying GPS:"+str(e), level=Qgis.Warning)
+
+    #handle open settings... action
+    def openSettings(self):
+        self.settingsDialog.exec_()
+        self.gpsModel.setSrid(settings.destSrid())#redownload model GPS in selected CRS. takes ~0.2s
+        
+
 #opens help/index.html in default browser
     def openHelp(self):
         QtGui.QDesktopServices.openUrl(QUrl(file_locations.helpPath))
@@ -275,17 +307,23 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.imagesModel.makeVrt(pks = self.imagesView.selectedPks(),progress = progress)
 
 
+    #handle load gps... action
     def loadGps(self):
         p = os.path.join(str(settings.value('folder')),'Hawkeye Exported Data') 
         if os.path.isdir(p):
             d = p
         else:
             d = ''
-        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
+        #f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*rutacd*.csv);;shp (*.shp);;all (*.*)',directory=d)
+
         if f:
             if f[0]:
-                self.gpsModel.loadFile(f[0])
-                iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
+                try:
+                    self.gpsModel.loadFile(f[0])
+                    iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
+                except Exception as e:
+                    iface.messageBar().pushMessage("Image_loader", "Error loading GPS:"+str(e), level=Qgis.Warning)
 
 
     def downloadCracks(self):

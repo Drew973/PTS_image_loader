@@ -18,3 +18,11 @@ helpPath = r'file:/'+abspath(join(folder,'help','help.html'))
 iconPath = join(folder,'icon.png')
       
 dbFile = join(folder,'images.db')
+
+
+
+crackStyle = join(folder,'layer_styles','cracking.qml')
+
+centerStyle = join(folder,'layer_styles','center_line.qml')
+
+#centerStyle = os.path.join(os.path.dirname(__file__),'center_line.qml')

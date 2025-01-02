@@ -13,15 +13,19 @@ because model calls select() and changes row count?
 
 
 from PyQt5.QtWidgets import QDialog,QDoubleSpinBox,QDialogButtonBox,QFormLayout,QHBoxLayout,QPushButton,QLabel
-from PyQt5.QtCore import Qt,QSettings
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
-from qgis.gui import QgsRubberBand
-from qgis.core import QgsCoordinateReferenceSystem,QgsPointXY,QgsWkbTypes
+from qgis.core import QgsCoordinateReferenceSystem,QgsPointXY,QgsWkbTypes,QgsProject,QgsCoordinateTransform
 from qgis.utils import iface
 from image_loader.dims import MAX,mToFrame
 from image_loader.combobox_dialog import comboBoxDialog
 from image_loader.type_conversions import asFloat
-from image_loader.point_map_tool import pointMapTool
+from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint
+
+
+
+def getCanvasCrs() -> QgsCoordinateReferenceSystem:
+    return iface.mapCanvas().mapSettings().destinationCrs()
 
 
 
@@ -31,7 +35,7 @@ def horizontalLayout(widgets):
         layout.addWidget(w)
     return layout
 
-crs = QgsCoordinateReferenceSystem("EPSG:27700")
+
 
 class moDifferenceDialog(QDialog):
     
@@ -46,9 +50,9 @@ class moDifferenceDialog(QDialog):
         self.gpsModel = None
         
         self.optionsDialog = comboBoxDialog(parent = self)
-        
-        self.mapTool = pointMapTool(destCrs = crs)
-        self.mapTool.canvasReleased.connect(self.mapClicked)
+        self.mapTool = QgsMapToolEmitPoint(iface.mapCanvas())
+
+        self.mapTool.canvasClicked.connect(self.mapClicked)
         
         #new QGIS versions
         try:
@@ -112,7 +116,7 @@ class moDifferenceDialog(QDialog):
                                       startOffset = self.startOffset.value(),
                                       endM = self.endM.value(),
                                       endOffset = self.endOffset.value())
-            self.markerLine.setToGeometry(line,crs=crs)
+            self.markerLine.setToGeometry(line,crs = self.gpsModel.crs)
 
 
     def startButtonClicked(self):
@@ -137,36 +141,29 @@ class moDifferenceDialog(QDialog):
         return (0.0,0.0)                   
         
         
-    def mapClicked(self , pt:QgsPointXY):
-        maxOffset:float = asFloat(QSettings("pts","image_loader").value('maxOffset'),30.0)
-        outsideRunDistance = asFloat(QSettings("pts","image_loader").value('outsideRunDistance'),50.0)
-        
-        minM,maxM = self.model.chainageRange(self.row,additional = outsideRunDistance)
-        
+    def mapClicked(self , pt : QgsPointXY):
+        #project to gps model crs
+        t = QgsCoordinateTransform(getCanvasCrs() , self.gpsModel.crs , QgsProject.instance())
+        p = t.transform(pt)  
         try:
-           opts = self.model.locate(row=self.row,pt=pt,corrected = False,maxOffset = maxOffset,outsideRunDistance = outsideRunDistance)
-        
+           opts = self.model.locate(row = self.row , x = p.x(), y = p.y())
         except Exception as e:
-            m = 'Error finding (chainage,offset) within {d}m of ({x:.2f},{y:.2f}) and between {minM}m(frame{minF}) and {maxM}m(frame{maxF}):'
-            m = m.format(d = maxOffset,minF = mToFrame(minM) , maxF = mToFrame(maxM),maxM = maxM,minM = minM,x = pt.x(),y = pt.y())
-            iface.messageBar().pushMessage(m+str(e),duration=5)
+            message = 'Image loader:Error finding (chainage,offset):'+str(e)
+            iface.messageBar().pushMessage(message , duration = 5)
             return
-    
+        #print('opts',opts)
         if len(opts) == 1:
             m = opts[0,0]
             off = opts[0,1]
-
         if len(opts) > 1:
             m,off = self.chooseOpt(opts)
-
         if self.lastButton == 0:
                 self.startM.setValue(m)
                 self.startOffset.setValue(off)
-
         if self.lastButton == 1:
                 self.endM.setValue(m)
                 self.endOffset.setValue(off)            
-            
+
 
     def setModel(self,model):
         self.model = model
@@ -175,6 +172,7 @@ class moDifferenceDialog(QDialog):
     def setGpsModel(self,model):
         self.gpsModel = model
            
+        
     #row:int
     def setRow(self,row:int = -1):
         self.row = row
@@ -183,12 +181,10 @@ class moDifferenceDialog(QDialog):
         else:
             self.setWindowTitle('Edit correction for run {r}'.format(r = row+1))
         model = self.model
-
         self.startM.setValue(asFloat(model.index(row,model.fieldIndex('correction_start_m')).data(),0.0))        
         self.endM.setValue(asFloat(model.index(row,model.fieldIndex('correction_end_m')).data(),0.0))
         self.startOffset.setValue(asFloat(model.index(row,model.fieldIndex('correction_start_offset')).data(),0.0))
         self.endOffset.setValue(asFloat(model.index(row,model.fieldIndex('correction_end_offset')).data(),0.0))
-
         self.pk = model.index(row,model.fieldIndex('pk')).data()
 
 

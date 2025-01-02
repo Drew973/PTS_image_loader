@@ -66,8 +66,8 @@ class runsView(QTreeView):
         self.chainagesDialog.show()
         
         
-    #->int
-    def minSelected(self):
+    #mimimum selected row in tableview
+    def minSelected(self) -> int:
         selected = [index.row() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))]
         if selected:
             return min(selected)

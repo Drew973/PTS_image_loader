@@ -10,13 +10,13 @@ from PyQt5.QtCore import Qt
 import numpy as np
 import csv
 import io
-from qgis.core import QgsPointXY
+from qgis.core import QgsPointXY,QgsGeometry
 import typing
 from image_loader.dims import mToFrame,frameToM
 from image_loader.db_functions import runQuery,defaultDb,prepareQuery,queryError
 from image_loader.image_model import imageModel
 from image_loader.type_conversions import asFloat
-
+from image_loader import settings
 
 #fields = ['RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY']
             
@@ -44,9 +44,36 @@ def parseCsv(f:typing.TextIO , quiet : bool = False):
                 print(row)
                 print(e)
       
-      
+    
+def saveRunsCsv(file:str):
+    with open(file,'w',newline='') as f:
+        writer = csv.writer(f,dialect='excel',delimiter = ',')
+        writer.writerow(('RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY'))
+        q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
+        row = 1
+        while q.next():
+            writer.writerow((row,q.value(0),q.value(1),q.value(2),q.value(3)))
+            row += 1  
 
+#area in wgs84
+def runFromArea(area : QgsGeometry , bearing : int):
+    pass
 
+def imagePksFromRun(runPks):
+    qs = '''
+select distinct(images.pk) from runs
+inner join images on frame_id >= start_frame and frame_id <= end_frame
+and runs.pk in ({pks})
+    '''.format(pks = ','.join([str(pk) for pk in runPks]))
+ #   print(qs)
+
+    q = runQuery(qs)
+    imageKeys = []
+    while q.next():
+        imageKeys.append(q.value(0))        
+    return imageKeys
+    
+    
 class runsModel(QSqlQueryModel):
     
     def __init__(self,db=None,parent=None):
@@ -139,37 +166,7 @@ class runsModel(QSqlQueryModel):
         self.select()
         
         
-        
-    def imagePks(self,runPks):
-        qs = '''
-select distinct(images.pk) from runs
-inner join images on frame_id >= start_frame and frame_id <= end_frame
-and runs.pk in ({pks})
-        '''.format(pks = ','.join([str(pk) for pk in runPks]))
-     #   print(qs)
-    
-        q = runQuery(qs)
-        imageKeys = []
-        while q.next():
-            imageKeys.append(q.value(0))        
-        return imageKeys
-        
-        
-    
-    def georeference(self,gpsModel,pks):
-    #    print('run pks',pks)
-        qs = '''
-select distinct(images.pk) from runs_view
-inner join images on frame_id >= start_frame and frame_id <= end_frame
-and runs_view.pk in ({pks})
-        '''.format(pks = ','.join([str(pk) for pk in pks]))
-     #   print(qs)
-        q = runQuery(qs)
-        imageKeys = []
-        while q.next():
-            imageKeys.append(q.value(0))
-        imageModel.georeference(gpsModel = self.gpsModel , pks = imageKeys)
-        imageModel.makeVrt(imageKeys)
+
         
         
     #rename to loadStr
@@ -203,60 +200,12 @@ and runs_view.pk in ({pks})
         
         
     # array of [[m,o]] ordered by distance
-    def locate(self,row:int,pt:QgsPointXY,corrected:bool, maxOffset:float = 10.0, outsideRunDistance:float = 50.0)->np.array:
-        minM,maxM = self.chainageRange(row,additional = outsideRunDistance)
-        opt = self.gpsModel.locate(pt, minM = minM, maxM = maxM, maxOffset = maxOffset)#nearest within range.
-        return np.array([opt])
+    #run should only pass near point once...
+    def locate(self , row : int, x : float , y : float) -> np.array:
+        outsideRunDistance = asFloat(settings.value('outsideRunDistance') , 50.0)
+        minM = frameToM(int(self.index(row , self.fieldIndex('start_frame')).data())) - outsideRunDistance
+        maxM = frameToM(int(self.index(row , self.fieldIndex('end_frame')).data())) + outsideRunDistance
+        return self.gpsModel.locate(x = x , y = y , minM = minM , maxM = maxM )#nearest within range.
 
 
-    def saveCsv(self,file:str):
-        with open(file,'w',newline='') as f:
-            writer = csv.writer(f,dialect='excel',delimiter = ',')
-            writer.writerow(('RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY'))
-            q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
-            row = 1
-            while q.next():
-                writer.writerow((row,q.value(0),q.value(1),q.value(2),q.value(3)))
-                row += 1
 
-
-    def chainageRange(self,row:int,additional:float = 20.0):#-> Tuple[float,float]
-        startFrame = int(self.index(row,self.fieldIndex('start_frame')).data())
-        endFrame = int(self.index(row,self.fieldIndex('end_frame')).data())
-        return (frameToM(startFrame) - additional , frameToM(endFrame) + additional)
-
-
-    #array -> array
-    @staticmethod
-    def correctMO(mo):
-        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
-        r = np.empty((len(mo),2),dtype = float) * np.nan
-        for i,row in enumerate(mo):
-            q.bindValue(':f',int(mToFrame(row[0])))
-            if not q.exec():
-                raise queryError(q)
-            while q.next():
-                r[i,0] = mo[i,0] + q.value(0)
-                r[i,1] = mo[i,1] + q.value(1)
-        return r
-        
-    
-    
-    #array -> array
-    @staticmethod
-    def unCorrectMO(mo):
-        q = prepareQuery('select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1')
-        r = np.empty((len(mo),2),dtype = float) * np.nan
-        for i,row in enumerate(mo):
-            q.bindValue(':f',int(mToFrame(row[0])))
-            if not q.exec():
-                raise queryError(q)
-            while q.next():
-                r[i,0] = mo[i,0] - q.value(0)
-                r[i,1] = mo[i,1] - q.value(1)
-        return r
-        
-    
-    
-    
-    

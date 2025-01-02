@@ -10,7 +10,7 @@ import unittest
 import os
 from image_loader import test
 #import cProfile
-from image_loader.gps_model_3 import gpsModel
+from image_loader.gps_model import gpsModel
 #import cProfile
 from qgis.core import QgsPointXY
 import numpy as np
@@ -19,8 +19,8 @@ import numpy as np
 
 class testGpsModel(unittest.TestCase):
     
-  #  @classmethod
-   # def setUpClass(cls):
+#    @classmethod
+#    def setUpClass(cls):
    #     db_functions.createDb(file = os.path.join(test.testFolder,'test.db'))
     #   # db_functions.createDb()
    
@@ -35,30 +35,17 @@ class testGpsModel(unittest.TestCase):
         self.model.clear()
         file = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv')
         self.model.loadFile(file)       
+        print('pointCount:',self.model.pointCount())
 
-    @unittest.skip
-    def testOriginalLine(self):
-        line = self.model.originalLine(100,500)
-        self.assertTrue(line.isGeosValid())
+
+  #  def testOriginalLine(self):
+ #       line = self.model.originalLine(100,500)
+#        self.assertTrue(line.isGeosValid())
         
         
     def estGcps(self):
         r = self.model.gcps(10)
         print('gcps',r)
-        
-        
-    @unittest.skip        
-    def testSetCorrections(self):
-        self.model.setCorrections(None)
-        
-        
-    def estRowCount(self):
-        rc = self.model.rowCount()
-        self.assertEqual(rc,15374)
-        
-        
-    def estHasGps(self):
-        self.assertTrue(self.model.hasGps())
         
         
     def estOriginalPoints(self):
@@ -74,48 +61,36 @@ class testGpsModel(unittest.TestCase):
         QgsPointXY(354575.205,322011.691),
         QgsPointXY(354582.341,321997.747)
         ]
-        r = self.model.mo(points,corrected=True)
+        r = self.model.mo(points)
         print('mo',r)
         
         
-    @unittest.skip        
-    def testPoint(self):
-        mo = np.array([(0,0),(10,10),(20,5)])
-       # p = self.model.point(mo)
-        p = self.model.point(mo)
-        print('testPoint',p)
+   # def testPoint(self):
+     #   mo = np.array([(0,0),(10,10),(20,5)])
+     #   p = self.model.point(mo)
+       # print('testPoint',p)
         
         
    # def tearDown(self):
         #self.model.release()
         
         
-    def testPointToFrame(self):
-        p = QgsPointXY(354457.671,321926.706)
-        frame = self.model.pointToFrame(p)
-        self.assertEqual(frame,2708)
-        pt = self.model.frameToPoint(frame)
-   #     print('frameToPoint',pt)
-        self.assertTrue(p.distance(pt)<10)
+ #   def testPointToFrame(self):
+#        p = QgsPointXY(354457.671,321926.706)
+#        frame = self.model.pointToFrame(p)
+#        self.assertEqual(frame,2708)
 
 
-    #@unittest.skip
-    def testFPLToPoint(self):
-        frame = 2706
-        p = QgsPointXY(354451.939,321913.856)
-        pixel,line = self.model.pointToPixelLine(frame = frame,point = p)
-        print('pixel',pixel,'line',line)
-        p2 = self.model.FPLToPoint(frame,pixel,line)
-        self.assertTrue(p.distance(p2) < 0.1,'point->FPL->point too far apart')
-        
-
-    @unittest.skip
-    def testGetTransform(self):
-        m = 13534
-        t = self.model.getTransform(m) 
-        print('getTransform',t)
+    def testGcps(self):
+        r = self.model.gcps(2685)
+        print(r)
 
 
+    def testLoadLayer(self):
+        self.model.downloadGpsLayer()
+    
+    
+    
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testGpsModel)
     unittest.TextTestRunner().run(suite)

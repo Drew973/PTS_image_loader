@@ -27,12 +27,12 @@ from image_loader.file_locations import dbFile
 
 
 class queryError(Exception):
-    def __init__(self,query):
+    def __init__(self , query):
         super().__init__('error executing query {q}:{err}'.format(q = query.lastQuery(),err = query.lastError().text()))
 
 
 class queryPrepareError(Exception):
-    def __init__(self,query):
+    def __init__(self , query):
         super().__init__('error preparing query {q}:{err}'.format(q = query.lastQuery(),err = query.lastError().text()))
         
         
@@ -48,7 +48,7 @@ def defaultDb():
    #fuck sql injection risk. just use replace.
 
 
-def prepareQuery(query,db=None):
+def prepareQuery(query , db=None):
     if db is None:
         db = defaultDb()
     query = query.replace("\n",' ')    
@@ -58,21 +58,17 @@ def prepareQuery(query,db=None):
     return q
 
 
-def runQuery(query,db = None,values = {},printQuery=False):
+def runQuery(query : str ,db = None,values = {} , printQuery = False , forwardOnly = False):
     if db is None:
         db = defaultDb()
   #  query = query.replace("\n",' ')
-    q = QSqlQuery(db)    
+    q = QSqlQuery(db)
+    q.setForwardOnly(forwardOnly)
     if not q.prepare(query):
         raise queryPrepareError(q)
     if isinstance(values,dict):
         for k in values:
-            #query = query.replace(k,str(values[k]))
             q.bindValue(k,values[k])
-  #  if isinstance(values,list):
-     #   for i,v in enumerate(values):
-            #q.bindValue(i,v)
-        #    q.addBindValue(v)
     if printQuery:
         t = query
         for k,v in values.items():
@@ -101,7 +97,7 @@ def saveToFile(file):
 #vs copy tables?
 #good if using in memory database
 
-def loadFile(dbFile):
+def loadFile(dbFile : str):
     db = defaultDb()
     db.transaction()
     try:
@@ -120,39 +116,15 @@ def loadFile(dbFile):
    # runQuery("DETACH DATABASE 'db2'",db=db)
 
 
-def hasGps(db=None):
+def hasGps(db=None) -> bool:
     q = runQuery('select count(m) from original_points',db)
     while q.next():
         return q.value(0) > 0
 
 
-import csv
 
-    
-def loadCorrections(file):
-    db = QSqlDatabase.database('image_loader')
-    db.transaction()
-    q = QSqlQuery(db)
-    if not q.prepare('insert into corrections(run,original_chainage,original_offset,new_chainage,new_offset) values (:run,:original_chainage,:origonal_offset,:new_chainage,:new_offset)'):
-        raise queryError(q)
-    with open(file,'r') as f:
-        reader = csv.DictReader(f)
-        reader.fieldnames = [name.lower().replace('_','') for name in reader.fieldnames]#lower case keys/fieldnames                 
-        #correction at start of each run
-        for r in reader:
-            #print(r)
-            q.bindValue(':run',r['runid'])
-            q.bindValue(':original_chainage',int(r['fromframe'])*5)
-            q.bindValue(':new_chainage',int(r['fromframe'])*5 + float(r['chainage']))
-            q.bindValue(':origonal_offset',0)
-            q.bindValue(':new_offset',r['offset'])
-            if not q.exec():
-                print(q.boundValues())
-                raise queryError(q)
-    db.commit()
-    
-    
-def createDb(file = dbFile,name = 'image_loader'):
+#want to call this at least once to avoid driver not loaded error.
+def createDb(file = dbFile,name = 'image_loader') -> QSqlDatabase:
     db = QSqlDatabase.addDatabase("QSPATIALITE",name)
     db.close()
     db.setDatabaseName(file)
@@ -162,58 +134,25 @@ def createDb(file = dbFile,name = 'image_loader'):
     return db
 
 
-#createDb()#want to call this at least once to avoid driver not loaded error.
-
-
-
-def sqliteVersion():
-    q = runQuery('select sqlite_version()')
-    return q.value(0)
-
-
-
-def runChainages(run):
-    
-    s = 0.0
-    e = 0.0
-    q = runQuery(query = "select m from run_changes where next_run  = :run",values = {':run':run})
-    while q.next():
-        s = q.value(0)
-        break
-    
-    q = runQuery(query = "select m from run_changes where last_run  = :run",values = {':run':run})
-    while q.next():
-        e = q.value(0)
-        break
-    
-    return (s,e)
-
-
-#def setStartChainage(run,m):
- #   runQuery(query = "INSERT OR REPLACE INTO run_changes(m,next_run values (m = :m where next_run  = :run",values = {':run':run,':m':m})
-
-
-#def setEndChainage(run,m):
-  #  runQuery(query = "update run_changes set m = :m where last_run  = :run",values = {':run':run,':m':m})
-
-
-
+#def sqliteVersion():
+ #   q = runQuery('select sqlite_version()')
+  #  return q.value(0)
 
 
 #->int
-def crackCount():
+def crackCount() -> int:
     q = runQuery('select count(crack_id) from cracks')
     while q.next():
         return q.value(0)
 
 #->int
-def rutCount():
+def rutCount() -> int:
     q = runQuery('select count(frame) from rut')
     while q.next():
         return q.value(0)
     
 #->int
-def faultingCount():
+def faultingCount() -> int:
     q = runQuery('select count(frame) from transverse_joint_faulting')
     while q.next():
         return q.value(0)
@@ -235,6 +174,3 @@ def clearDistresses():
     except:
         pass
     
-    
-if __name__ == '__console__':
-    print(sqliteVersion)

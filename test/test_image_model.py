@@ -8,19 +8,14 @@ Created on Wed Feb  1 10:55:03 2023
 
 import unittest
 import os
-from image_loader.image_model import imageModel
 
 
 import cProfile
-from image_loader import runs_model,db_functions,gps_model
+from image_loader import runs_model,db_functions,gps_model,test,image_model
 from PyQt5.QtSql import QSqlDatabase
 db_functions.createDb()
 
-
-if __name__ == '__console__':
-    testFolder = QgsProject.instance().homePath()
-else:
-    testFolder = os.path.dirname(__file__)
+folder1007 = os.path.join(test.testFolder,'1_007')
 
 
 class testImageModel(unittest.TestCase):
@@ -32,8 +27,7 @@ class testImageModel(unittest.TestCase):
     
         
     def setUp(self):
-        self.model = imageModel()
-        self.model.fields={'folder':os.path.join(testFolder,'1_007')}
+        self.model = image_model.imageModel()
         self.gpsModel = gps_model.gpsModel()
         
 
@@ -50,19 +44,18 @@ class testImageModel(unittest.TestCase):
         m = self.model
         c = m.rowCount()
       #  print(c)
-        folder = os.path.join(testFolder,'1_007')
-        m.addFolder(folder)
+        m.addFolder(folder1007)
         #self.assertEquals(m.rowCount()-c,191)#191 tif files in folder
       #  m.setRun('1_007')
         #self.assertTrue(m.rowCount()>0)
   
     def estSave(self):
-        f = os.path.normpath(os.path.join(testFolder,'outputs','test.csv'))
+        f = os.path.normpath(os.path.join(test.testFolder,'outputs','test.csv'))
         self.model.saveAs(f)
 
 
     def estLoadFile(self):
-        file = os.path.join(testFolder,'inputs','MFV2_01 Raster Image Load File.txt')
+        file = os.path.join(test.testFolder,'inputs','MFV2_01 Raster Image Load File.txt')
         self.model.loadRIL(file)
        # self.assertEqual(self.model.rowCount(),400)#should have 400 rows here.
        
@@ -75,32 +68,50 @@ class testImageModel(unittest.TestCase):
     def testGeoreference(self):
         #use images on external hdd for better indicator of performance.
         self.model.clear()
-        gps = os.path.join(testFolder,'1_007','MFV1_007-rutacd-1.csv')
+        gps = os.path.join(test.testFolder,'1_007','MFV1_007-rutacd-1.csv')
         self.gpsModel.loadFile(gps)
-        self.model.addFolder(os.path.join(testFolder,'1_007'))
+        self.model.addFolder(os.path.join(test.testFolder,'1_007'))
         
-        corrections = os.path.join(testFolder,'1_007','MFV1_007 Coordinate Corrections.csv')
+        corrections = os.path.join(test.testFolder,'1_007','MFV1_007 Coordinate Corrections.csv')
         correctionsModel = runs_model.runsTableModel()
         correctionsModel.clear()
         correctionsModel.loadCsv(corrections)
-        keys = self.model.allPks()
+        keys = self.model.allImagePks()
      #   print('keys',keys)
-        log = os.path.join(testFolder,'1_007','MFV1_007 goereference.prof')
         
-        profileFile = os.path.join(testFolder,'georeference.prof')
+        profileFile = os.path.join(test.profileFolder,'georeference.prof')
         print('snakeviz "{f}"'.format(f = profileFile))
         
         pr = cProfile.Profile()
         pr.enable()
-        self.model.georeference(self.gpsModel , keys , log = log)
+        self.model.georeference(self.gpsModel , keys)
         pr.disable()
         pr.dump_stats(profileFile)
     
     
     def tearDown(self):
         self.model.database().close()
+      
+    
+    def testMakeVrt(self):
+        folder = os.path.join(test.testFolder,'1_007','ImageInt')
+        files = [os.path.join(folder,f) for f in os.listdir(folder) if os.path.splitext(f)[1] == '.tif']
+        vrtFile = os.path.join(folder,'test.vrt')
+        if os.path.exists(vrtFile):
+            os.remove(vrtFile)        
+       # print(files)
+        image_model.makeVrtFile(files = files, vrtFile = vrtFile)
+        self.assertTrue(os.path.exists(vrtFile))
     
     
+    def testLoadVrt(self):
+        folder = os.path.join(test.testFolder,'1_007','ImageInt')
+        files = [os.path.join(folder,f) for f in os.listdir(folder) if os.path.splitext(f)[1] == '.vrt']
+        for file in files:
+            image_model.loadVrt(file)
+
+
+
 if __name__ in ['__main__','__console__']:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(testImageModel)
     unittest.TextTestRunner().run(suite)

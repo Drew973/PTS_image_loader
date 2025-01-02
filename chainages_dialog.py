@@ -12,20 +12,16 @@ Created on Thu Oct 19 14:32:58 2023
 
 """
 from PyQt5.QtWidgets import QDialog,QFormLayout,QDialogButtonBox,QSpinBox,QHBoxLayout,QPushButton
-from qgis.core import QgsCoordinateTransform,QgsCoordinateReferenceSystem,QgsProject,QgsGeometry,QgsWkbTypes,Qgis
+from qgis.core import QgsCoordinateReferenceSystem,QgsGeometry,QgsWkbTypes,QgsProject,QgsCoordinateTransform
 from qgis.utils import iface
-from qgis.gui import QgsMapToolEmitPoint,QgsRubberBand
+from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint
 from PyQt5.QtGui import QColor
-from image_loader.dims import frameToM
+from image_loader import dims
 from image_loader.type_conversions import asInt
 
-crs = QgsCoordinateReferenceSystem("EPSG:27700")
 
-def fromCanvasCrs(point):
-   # print('point',point)
-    transform = QgsCoordinateTransform(QgsProject.instance().crs(),crs,QgsProject.instance())
-    return transform.transform(point)
-
+def getCanvasCrs() -> QgsCoordinateReferenceSystem:
+    return iface.mapCanvas().mapSettings().destinationCrs()
 
 
 class chainagesDialog(QDialog):
@@ -58,28 +54,15 @@ class chainagesDialog(QDialog):
         endLayout.addWidget(self.endButton)
         self.layout().addRow('end_frame',endLayout)
         
-        
-        self.canvas = iface.mapCanvas()#canvas crs seems independent of project crs
-        
-        
-     #   version = Qgis.versionInt()
-        versionName = Qgis.version()        
-        #QgsRubberBand changed between qgis versions. somewhere between 3.18:3 and 3.34.        
-        #new versions
+        #QgsRubberBand() changed between qgis versions. somewhere between 3.18:3 and 3.34.        
         try:
-            self.markerLine = QgsRubberBand(self.canvas,QgsWkbTypes.GeometryType.Line)
-         #   print('Using new QgsRubberBand constructor for QGIS '+versionName)
-        #old versions
+            self.markerLine = QgsRubberBand(iface.mapCanvas(),QgsWkbTypes.GeometryType.Line)#new versions
         except Exception as te:
-            self.markerLine = QgsRubberBand(self.canvas,False)
-         #   print('Using old QgsRubberBand constructor for QGIS '+versionName)
-        
-        
+            self.markerLine = QgsRubberBand(iface.mapCanvas(),False)#old versions
         self.markerLine.setWidth(5)
         self.markerLine.setColor(QColor('red'))
-        self.canvas.setDestinationCrs(crs)
 
-        self.mapTool = QgsMapToolEmitPoint(self.canvas)
+        self.mapTool = QgsMapToolEmitPoint(iface.mapCanvas())
         self.mapTool.canvasClicked.connect(self.toolClicked)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel)
@@ -88,24 +71,21 @@ class chainagesDialog(QDialog):
         buttons.rejected.connect(self.reject)
         self.startChainage.valueChanged.connect(self.updateLine)
         self.endChainage.valueChanged.connect(self.updateLine)
-        
-        self.startChainage.setRange(0,999999999)
-        self.endChainage.setRange(0,999999999)
+        self.startChainage.setRange(0,dims.MAX)
+        self.endChainage.setRange(0,dims.MAX)
         
         
     def setGpsModel(self,model):
         self.gpsModel = model
 
 
-
     def toolClicked(self,point):
         if self.gpsModel is not None:
-            pt = fromCanvasCrs(point)
+            t = QgsCoordinateTransform(getCanvasCrs() , self.gpsModel.crs , QgsProject.instance())
+            pt = t.transform(point)
             f = self.gpsModel.pointToFrame(pt)
-           
             if self.lastButton == 'start':
                 self.startChainage.setValue(f)
-                
             if self.lastButton == 'end':
                 self.endChainage.setValue(f)
                 
@@ -146,17 +126,17 @@ class chainagesDialog(QDialog):
 
 
     def updateLine(self):
-        s = frameToM(self.startChainage.value())
-        e = frameToM(self.endChainage.value())
+        s = dims.frameToM(self.startChainage.value())
+        e = dims.frameToM(self.endChainage.value()+1)
         if self.gpsModel is not None and s<e :
-            line = self.gpsModel.line(startM = s , endM = e)
+            line = self.gpsModel.centerLine(startM = s , endM = e)
 #            print('line',line)
-            self.markerLine.setToGeometry(line,crs = crs)
+            self.markerLine.setToGeometry(line,crs = self.gpsModel.crs)
         else:
             self.markerLine.setToGeometry(QgsGeometry())
     
     
     def done(self,r):
         self.markerLine.hide()
-        self.canvas.refresh()
+        iface.mapCanvas().refresh()
         return super().done(r)

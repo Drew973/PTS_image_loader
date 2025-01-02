@@ -35,7 +35,7 @@ gdalwarp.exe
 import os
 import argparse
 from osgeo import gdal,osr,gdalconst
-import ast
+import json
 
 gdal.UseExceptions()
 noData = 255
@@ -45,11 +45,11 @@ def warpedFileName(origonalFile):
 
    
 #create warped vrt from file
-def georeferenceFile(file : str , warpedFile : str , gcps:list , scrid : int):
+def georeferenceFile(file : str , warpedFile : str , gcps:list , srid : int):
     
     if os.path.exists(file):
         srs = osr.SpatialReference()
-        srs.ImportFromEPSG(scrid)
+        srs.ImportFromEPSG(srid)
         srs = srs.ExportToWkt()
         translatedFile = r'/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.vrt'
        # translatedFile = '/vsimem/' + os.path.splitext(os.path.basename(file))[0] + '_translated.tif'#created on disk?
@@ -108,12 +108,9 @@ def georeferenceFile(file : str , warpedFile : str , gcps:list , scrid : int):
     else:
         raise ValueError('{file} not found'.format(file=file))
        
-#file:file,pixel[],line:[],x:[],y:[]
 #GCP like (x,y,pixel,line)
-
 def parseGcpString(s:str):
-    lis = ast.literal_eval(s)
-    return [gdal.GCP(r[0],r[1],0,r[2],r[3]) for r in lis]
+    return [gdal.GCP(r[0],r[1],0,r[2],r[3]) for r in json.loads(s)]
 
 
 def main():
@@ -125,7 +122,7 @@ def main():
     args = parser.parse_args()
     #x,y,z,pixel,line
     gcps = parseGcpString(args.gcp)
-    georeferenceFile(args.originalFile , args.warpedFile , gcps , args.srid)
+    georeferenceFile(args.originalFile , args.warpedFile , gcps , int(args.srid))
 
 
 if __name__ in ('__main__','__console__'):

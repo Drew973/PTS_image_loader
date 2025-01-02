@@ -32,50 +32,35 @@ def to2DArray(x,y):
 
 
 
-
 class splineString:
     
-    def __init__(self):
-        self.xSpline = None
-        self.ySpline = None
-        self.xDerivitive = None
-        self.yDerivitive = None
+    #3 column numpy array. m,x,y
 
+    def __init__(self,values):
+        self.xSpline = interpolate.UnivariateSpline(values[:,0], values[:,1] , s = S, ext='const', k = K)
+        self.ySpline = interpolate.UnivariateSpline(values[:,0],  values[:,2] , s = S, ext='const', k = K)
+        self.xDerivitive = self.xSpline.derivative(1)
+        self.yDerivitive = self.ySpline.derivative(1)    
 
-#3 column numpy array. m,x,y
-    def setValues(self,values):
-       # print('setValues',values)
-        if len(values) >= K:
-            self.xSpline = interpolate.UnivariateSpline(values[:,0], values[:,1] , s = S, ext='const', k = K)
-            self.ySpline = interpolate.UnivariateSpline(values[:,0],  values[:,2] , s = S, ext='const', k = K)
-            self.xDerivitive = self.xSpline.derivative(1)
-            self.yDerivitive = self.ySpline.derivative(1)    
-        else:
-            self.xSpline = None
-            self.ySpline = None
-            self.xDerivitive = None
-            self.yDerivitive = None    
-    
-    #->bool
-    def hasPoints(self):
-        return self.xSpline is not None
     
     # array[[x,y]] or []
     # m in any units.
     #offset in same units as x and y.
     def point(self,mo):
-        if self.hasPoints():
-            m = mo[:,0]
-            r = np.zeros((len(m),2)) * np.nan
-            r[:,0] =  self.xSpline(m)
-            r[:,1] = self.ySpline(m)
-            offsets = mo[:,1]
-          #  if not np.any(offsets):
-            perps = self.leftPerp(m)#([x],[y])
-            r[:,0] = r[:,0] + perps[:,0] * offsets
-            r[:,1] = r[:,1] + perps[:,1] * offsets
-            return r
-        return []
+          m = mo[:,0]
+          r = np.zeros((len(m),2)) * np.nan
+          r[:,0] =  self.xSpline(m)
+          r[:,1] = self.ySpline(m)
+          offsets = mo[:,1]
+          perps = self.leftPerp(m)#([x],[y])
+          r[:,0] = r[:,0] + perps[:,0] * offsets
+          r[:,1] = r[:,1] + perps[:,1] * offsets
+          return r
+    
+    #array of m values
+    #array [(x1,y1),(x2,y2)...]
+    def centerLinePoint(self,m):
+        return np.column_stack([self.xSpline(m) , self.ySpline(m)])
     
 
     #convert geometry in terms of m,offset to x,y
@@ -96,51 +81,42 @@ class splineString:
 
     #perpendicular unit vectors at m
     def leftPerp(self,m):
-        if self.hasPoints():
-            r = np.zeros((len(m),2)) * np.nan
-            dx = self.xDerivitive(m)
-            dy = self.yDerivitive(m)
-            magnitudes = np.sqrt(dx*dx+dy*dy)
-            r[:,0] = -dy/magnitudes
-            r[:,1] = dx/magnitudes
-            return r
+        r = np.zeros((len(m),2)) * np.nan
+        dx = self.xDerivitive(m)
+        dy = self.yDerivitive(m)
+        magnitudes = np.sqrt(dx*dx+dy*dy)
+        r[:,0] = -dy/magnitudes
+        r[:,1] = dx/magnitudes
+        return r
+
+
+    def nearestM(self , x : float , y : float , minM:float = 0.0 , maxM:float = np.inf , tol:float = 0.01) -> float:
+        def _sqdist(m):
+            p = self.centerLinePoint(m)# like p [[ 495866.03275013 4198850.1469678 ]]
+            return (p[0,0] - x) * (p[0,0] - x) + (p[0,1] - y) * (p[0,1] - y)
+        
+        res = minimize_scalar(_sqdist,bounds = (minM,maxM),method='bounded',tol = tol)
+        if res.success:
+            return res.x            
+        else:
+            raise ValueError('Could not minimize distance')
+
 
     
     #cartestian to 'ribbon' coordinates
-    #nearest m,o to point xy
+    #nearest m,offset to point xy
     #could find m more efficiently by solving d distance/dm = 0?
     #numpy uses numeric methods to solve higher order polynomials. might not be faster.
-    def locate(self, point:QgsPointXY , minM:float = 0.0 , maxM:float = np.inf , maxOffset:float = 20.0 , tol:float = 0.01): #-> Tuple(float,float)  
-        if not self.hasPoints():
-            raise ValueError('No points loaded.')
-    
-        def _dist(m):
-            mo = np.array([[m,0]])
-         #   print('mo',mo)
-            p = self.point(mo)
-         #   print('p',p)
-            if len(p)>0:
-                pt = QgsPointXY(p[0,0],p[0,1])
-                return pt.distance(point)
-           # print('dist',pt.distance(point))
-            return MAX
+    def locate(self, x : float , y : float , minM:float = 0.0 , maxM:float = np.inf , tol:float = 0.01): #-> Tuple(float,float)
+        m = self.nearestM(x = x, y = y ,minM = minM , maxM = maxM , tol = tol)
+        nearest = self.centerLinePoint(m)#like [[ 494899.23345296 4197063.37078011]]
+        shortestLine = nearest[0] - np.array([x,y])
+        perp = self.leftPerp([m])[0]
+        offset = -np.dot(perp,shortestLine)
+        return (m,offset)
+      
+
         
-        res = minimize_scalar(_dist,bounds = (minM,maxM),method='bounded',tol = tol)
-        
-        if res.success:
-            m = res.x
-            #distance = res.fun#distance
-            
-            nearest = self.point(np.array([[m,0]]))
-            shortestLine = nearest[0] - np.array([point.x(),point.y()])
-            perp = self.leftPerp([m])[0]
-            offset = -np.dot(perp,shortestLine)
-            if abs(offset) > maxOffset:
-                raise ValueError('Nearest point outside maximum offset.')
-            
-            return (m,offset)
-        else:
-            raise ValueError('Could not minimize distance')
 
 
 if __name__ == '__console__':

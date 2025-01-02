@@ -13,8 +13,8 @@ PIXELS = 1038
 LINES = 1250
 HEIGHT = 5.0
 
-MAX = 99999999999999999999
-
+MAX = 999999 # 999 km maximum chainage
+#max size of QDoubleSpinbox is 2147483647
 
 #use np.clip for arrays
 def clamp(v,lower,upper):
@@ -24,20 +24,21 @@ def clamp(v,lower,upper):
         return upper
     return v
 
-
-def mToFrame(m):
+#start of frame
+def mToFrame(m:float) -> int:
     return int(m/HEIGHT)+1
 
 
-def frameToM(frame):
-    return (frame-1)*HEIGHT
+#chainage at start of frame
+def frameToM(frame : int) -> float:
+    return float(frame-1)*HEIGHT
 
 
-def lineToM(frame,line):
+def lineToM(frame:int , line:int) -> float:
     return HEIGHT * (frame-line/LINES)
 
 
-def pixelToOffset(pixel):
+def pixelToOffset(pixel:int) -> float:
     return WIDTH*0.5-pixel*WIDTH/PIXELS
 
 

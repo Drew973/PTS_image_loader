@@ -1,4 +1,61 @@
 
+greek projections.
+
+test with athens data. seems ok so far.
+
+
+run from area and bearing
+
+test unwarped COG and worldfile/ warped VRT
+
+
+ecef coordinates?
+	get point lat,lon,alt.
+	vertical direction = toEcef(lat,lon,alt+amount) - toEcef(lat,lon,alt)
+	offset direction = lineDirection x vertical_direction 
+		
+
+projection error of ~1.5m between WGS84 and ESPG:27700
+how much of need for correction is projection error?
+
+	reprojecting in QGIS shows new layer in same place.
+	in spatialite different place.
+
+
+see how much effect translating 27700 to wgs84 tif has.
+
+
+patterns:
+	as procedural as possible. makes testing easier.
+	backend should raise errors where problem.
+	ui/ frontend should use try/except and display error message where problem.
+	gdal cli preferable to python bindings as better documented (and faster?)
+
+	functions get/set state of database.
+	models read and display only?
+
+
+	lookup QSettings in functions vs ui. in functions means easier to add new args.
+
+
+
+make most of gps procedural. for easier testing. may help performance to store splinestring.
+
+
+trigger when start/end changed that changes rows where range overlaps.
+
+find dead code with 
+vulture C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader/image_loader_dockwidget.py C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader
+
+
+local file.
+spatialite is buggy piece of crap
+want sql style queries though.
+shapefile? performance?
+fileLocks?
+
+
+
 create/load database explicitly on starting plugin?
 
 constraints:
@@ -37,8 +94,6 @@ Qgis not releasing file locks.
 
 include frame in correction?
 	preview button and filePath combobox to remake and reload image.
-
-
 
 
 read hawkeye database?

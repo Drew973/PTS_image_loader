@@ -6,18 +6,14 @@ Created on Thu Feb 29 15:39:58 2024
 """
 
 from image_loader.db_functions import runQuery,prepareQuery,defaultDb,dbFile
-from image_loader.layer_styles import styles
 from qgis import processing
 
 from qgis.core import QgsFeature,QgsGeometry,edit,QgsWkbTypes
 from qgis.utils import iface
-#from image_loader import db_functions
-#from image_loader.layer_styles.styles import centerStyle
-from PyQt5.QtCore import QByteArray,QProcess
+from PyQt5.QtCore import QByteArray
 from PyQt5.QtWidgets import QProgressDialog,QApplication
 
-
-
+from image_loader import file_locations
 
 from itertools import islice
 
@@ -82,7 +78,7 @@ def downloadCracks(gpsModel,progress):
                 
     with edit(layer):
          layer.addFeatures(features())
-    layer.loadNamedStyle(styles.crackStyle)
+    layer.loadNamedStyle(file_locations.crackStyle)
     progress.setValue(progress.maximum())
     progress.close()
     
