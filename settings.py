@@ -18,3 +18,9 @@ def destSrid() -> int:
 
 def value(k):
     return settings.value(k)
+
+
+
+
+def setValue(k , v):
+    return settings.setValue(k,v)

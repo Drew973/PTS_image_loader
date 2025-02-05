@@ -5,12 +5,12 @@
 import os
 
 from qgis.PyQt import QtWidgets, uic
-from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel
+from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel,Qt
 
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QApplication
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QDialog
 
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
@@ -19,36 +19,39 @@ from image_loader import check_imports
 check_imports.checkImports()#need to check imports before using them
 
 from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog , gps_model ,
-                          commands_dialog , download_distress , layer_functions , settings)
+                          commands_dialog , download_distress , settings , vrt , process_runner , layer_functions , georeference_process,
+                          backend,runs_from_layer_dialog)
+
+
 
 
 FORM_CLASS, _ = uic.loadUiType(file_locations.uiFile)
-version = 3.46
+version = 3.47
 
 
 def message(message : str , level : int = Qgis.Info ):
     iface.messageBar().pushMessage("Image_loader", message, level=level)
 
 
-#make vrt files from data
-def makeLoadVrt(data):
-    prog = QProgressDialog(labelText = 'remaking VRT files')  
-    try:
-        vrtFiles = [k for k in data]
-        layer_functions.removeSources(vrtFiles)#remove layers to allow file to be edited.
-        prog.setMaximum(len(data))
-        prog.show()
-        for i,vrtFile in enumerate(data):
-            QApplication.processEvents()
-            if prog.wasCanceled():
-                return
-            image_model.makeVrtFile(vrtFile = vrtFile , files = data[vrtFile][0])
-            image_model.loadImage(file = vrtFile , groups = ['image_loader', 'combined VRT', data[vrtFile][1], data[vrtFile][2] ] )
-            prog.setValue(i)
-    except Exception as e:
-        iface.messageBar().pushMessage("Image_loader", "Error making VRTs:"+str(e), level=Qgis.Warning)
-    finally:
-        prog.close()
+#brgin running run list of processes and increnent progress dialog
+def beginProcesses(progress:QProgressDialog , processes:list):
+    runner = process_runner.processRunner(parent = progress)#garbage collected without parent.
+    progress.canceled.connect(runner.cancel)
+    runner.errorOccured.connect(message)
+    runner.progressChanged.connect(lambda : progress.setValue(progress.value()+1))
+    #print('running',processes)
+    runner.beginProcesses(processes)
+    return runner
+
+
+def runProcesses(parent , processes , labelText):
+    prog = QProgressDialog(labelText = labelText , parent = parent , maximum = len(processes))
+    prog.setWindowModality(Qt.WindowModal)
+    prog.show()
+    runner = beginProcesses(processes = processes , progress = prog)
+    runner.waitForFinished()
+    prog.hide()
+    prog.deleteLater()
 
 
 class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
@@ -68,7 +71,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.imagesModel = image_model.imageModel(parent=self)
         self.imagesModel.fields = self.settingsDialog
         self.imagesView.setModel(self.imagesModel)
-        self.initTopMenu()
         self.gpsModel = gps_model.gpsModel()
         
         self.runsModel = runs_model.runsModel()
@@ -77,129 +79,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.runsWidget.setModel(self.runsModel)
         self.runsWidget.setGpsModel(self.gpsModel)
         self.runsWidget.doubleClicked.connect(self.setChainages)
-        #self.chainageBar.rangeChanged.connect()
-
-
-    def loadImages(self):
-        image_model.loadImages(self.imagesView.selectedPks())
-
-
-    #tests if has gps and display message if not. -> bool
-    def checkGps(self):
-        if self.gpsModel.error != '':
-            iface.messageBar().pushMessage("Image_loader",'bad GPS:'+self.gpsModel.error, level=Qgis.Info)
-        return self.gpsModel.error == ''
-
-
-    #tests if has runs and display message if not. -> bool
-    def checkRuns(self):
-        r = self.runsModel.rowCount() > 0
-        if not r:
-            iface.messageBar().pushMessage("Image_loader", "No Runs.", level=Qgis.Info)
-        return r
-
-
-    def checkImages(self):
-        r = self.imagesModel.rowCount() > 0
-        if not r:
-            iface.messageBar().pushMessage("Image_loader", "No Image details.", level=Qgis.Info)
-        return r        
-
-
-    #connected to action
-    def georeferenceImages(self):
-        if self.checkGps():
-            image_model.beginGeoreference(self.gpsModel , pks = self.imagesView.selectedPks())
         
-        
-    #connected to action
-    def processRuns(self):
-        if self.checkImages() and self.checkRuns() and self.checkGps():
-            runPks = self.runsWidget.selectedPks()
-            if len(runPks) == 0:
-                message("No runs selected")
-                return
-            imagePks = runs_model.imagePksFromRun(runPks)
-            if not imagePks:
-                message("No images found in runs {runs}".format(runs = runPks))
-                return
-            image_model.beginGeoreference(gpsModel = self.gpsModel , pks=imagePks)
-            makeLoadVrt(image_model.vrtData(imagePks))
-
-
-    #connected to action
-    def makeRunsVrt(self):
-        runPks = self.runsWidget.selectedPks()
-        if len(runPks) == 0:
-            message("No runs selected")
-            return
-        imagePks = runs_model.imagePksFromRun(runPks)
-        makeLoadVrt(image_model.vrtData(imagePks))
-    
-
-    #scroll images to run and select in widget
-    #same for corrections.
-    def setChainages(self,index):
-        m = index.model()
-        s = index.siblingAtColumn(m.fieldIndex('start_frame')).data()
-        if not isinstance(s,int):
-            s = 0   
-        e = index.siblingAtColumn(m.fieldIndex('end_frame')).data()
-        if not isinstance(e,int):
-            e = 0              
-#        print('s',s,'e',e)
-        mode = QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
-        selectionModel = self.imagesView.selectionModel()
-        selectionModel.clear()
-        col = self.imagesModel.fieldIndex('frame_id')
-        top = None
-        for i in range(self.imagesModel.rowCount()):
-            index = self.imagesModel.index(i,col)
-            if s<= index.data() and index.data() <= e:
-                selectionModel.select(index, mode)
-                if top is None:
-                    top = index
-        if top is not None:
-            self.imagesView.scrollTo(top,QAbstractItemView.PositionAtTop)
-    
-    
-    #file...new handler
-    def new(self):
-        self.imagesModel.clear()
-        self.gpsModel.clear()
-        self.runsModel.clear()
-        db_functions.clear()
-
-
-    #open... handler
-    def load(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';sqlite database (*.db)')
-        if f:
-            file = f[0]
-            if file:
-                db_functions.loadFile(file)
-                self.imagesModel.select()
-                self.runsModel.select()
-        
-        
-    #load Runs csv handler
-    def loadRunsCsv(self):
-        f = QFileDialog.getOpenFileName(caption = 'Load runs CSV',filter = ';csv (*.csv)')
-        if f:
-            file = f[0]
-            if file:
-                self.runsModel.loadCsv(file)
-    
-    
-    def saveRuns(self):
-        f = QFileDialog.getSaveFileName(caption = 'Save runs',filter = 'CSV (*.csv)')[0]
-        if f:
-            runs_model.saveRunsCsv(f)
-            iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
-
-    
-    
-    def initTopMenu(self):
+        #top menu
         topMenu = QMenuBar(self.mainWidget)
         
         fileMenu = topMenu.addMenu("File")
@@ -254,15 +135,26 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
        
         runsMenu = topMenu.addMenu("Runs")
         runsMenu.setToolTipsVisible(True)
-
         
         processRunsAct = runsMenu.addAction('Process selected runs')
-        processRunsAct.setToolTip('Georeferences and make VRT files')
+        processRunsAct.setToolTip('Georeference,make and load VRT')
         processRunsAct.triggered.connect(self.processRuns)
+        
+        georeferenceRunsAct = runsMenu.addAction('Georeference selected runs')
+        georeferenceRunsAct.triggered.connect(self.georeferenceRuns)
 
         runsVrtAct = runsMenu.addAction('Remake VRT files for selected runs')
-        runsVrtAct.setToolTip('Only useful when run start/end changed.')
+   #     runsVrtAct.setToolTip('Only useful when run start/end changed.')
         runsVrtAct.triggered.connect(self.makeRunsVrt)
+
+        loadRunsVrtAct = runsMenu.addAction('Load VRT files for selected runs')
+   #     runsVrtAct.setToolTip('Only useful when run start/end changed.')
+        loadRunsVrtAct.triggered.connect(self.loadRunsVrt)
+
+
+
+        RunsFromAreasAct = runsMenu.addAction('Add runs from polygon layer...')
+        RunsFromAreasAct.triggered.connect(self.runsFromLayer)
 
         imagesMenu = topMenu.addMenu("Images")
         
@@ -272,8 +164,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadAct = imagesMenu.addAction('Load selected images')
         loadAct.triggered.connect(self.loadImages)
         
-        georeferenceAct = imagesMenu.addAction('Georeference selected images')
-        georeferenceAct.triggered.connect(self.georeferenceImages)
+      # georeferenceAct = imagesMenu.addAction('Georeference selected images')
+      #  georeferenceAct.triggered.connect(self.georeferenceImages)
     
         vrtAct = imagesMenu.addAction('Make combined VRTs for selected images')
         vrtAct.triggered.connect(self.makeVrt)
@@ -284,6 +176,209 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.mainWidget.layout().setMenuBar(topMenu)
 
 
+
+    def loadImages(self):
+        image_model.loadImages(self.imagesView.selectedPks())
+
+
+    def runsFromLayer(self):
+        d = runs_from_layer_dialog.runsFromAreasDialog(parent = self , runsModel = self.runsModel)
+        res = d.exec()
+        if res == QDialog.Accepted:
+            self.runsModel.select()
+            
+
+    #tests if has gps and display message if not. -> bool
+    def checkGps(self):
+        if self.gpsModel.error != '':
+            iface.messageBar().pushMessage("Image_loader",'bad GPS:'+self.gpsModel.error, level=Qgis.Info)
+        return self.gpsModel.error == ''
+
+
+    #tests if has runs and display message if not. -> bool
+    def checkRuns(self):
+        r = self.runsModel.rowCount() > 0
+        if not r:
+            iface.messageBar().pushMessage("Image_loader", "No Runs.", level=Qgis.Info)
+        return r
+
+
+    def checkImages(self):
+        r = self.imagesModel.rowCount() > 0
+        if not r:
+            iface.messageBar().pushMessage("Image_loader", "No Image details.", level=Qgis.Info)
+        return r        
+
+
+    #connected to action
+ #   def georeferenceImages(self):
+    #    if self.checkGps():
+       #     image_model.beginGeoreference(self.gpsModel , pks = self.imagesView.selectedPks())
+        
+        
+    def processRuns(self):
+        self.georeferenceRuns()
+        self.makeRunsVrt()
+        self.loadRunsVrt()
+        
+        
+    #connected to action
+    def georeferenceRuns(self):
+        if self.checkImages() and self.checkRuns() and self.checkGps():
+            runPks = self.runsWidget.selectedPks()
+            if len(runPks) == 0:
+                message("No runs selected")
+                return
+            imagePks = backend.runs_functions.imagePksFromRun(runPks)
+            
+            #need to remove any VRT containing georeferenced images.
+            vrtSources = [v.vrtFile for v in vrt.getVrtData(imagePks = imagePks)]
+
+            
+            if not imagePks:
+                message("No images found in runs {runs}".format(runs = runPks))
+                return
+            georeferenceProcesses , sources , errors = georeference_process.georeferenceProcesses(imagePks = imagePks , gpsModel = self.gpsModel)
+            
+            for e in errors:
+                message(e)
+            
+            if georeferenceProcesses:
+                layer_functions.removeSources(vrtSources + sources)
+                
+            runProcesses(parent = self , processes = georeferenceProcesses , labelText = 'Georeferencing runs')
+
+
+    #connected to action
+    def makeRunsVrt(self):
+        runPks = self.runsWidget.selectedPks()
+        if len(runPks) == 0:
+            message("No runs selected")
+            return
+        
+        imagePks = backend.runs_functions.imagePksFromRun(runPks)
+       # image_model.makeLoadVrt(image_model.vrtData(imagePks))
+        vrtData = vrt.getVrtData(imagePks = imagePks)
+        n = len(vrtData)
+    
+        d = QProgressDialog(parent = self)
+        d.setWindowModality(Qt.WindowModal)
+        d.setRange(0,n*2)
+        
+        d.setLabelText('Removing layers')
+        d.show()
+
+        layer_functions.removeSources([row.vrtFile for row in vrtData])#remove layers to allow file to be edited.
+        
+        d.setLabelText('Writing txt files')#io bound. 
+        for i,row in enumerate(vrtData):
+            if d.wasCanceled():
+                return
+            row.writeTextFile()
+            d.setValue(i)
+        
+        d.setLabelText('Remaking vrt files')
+        processes = [row.asQProcess() for row in vrtData]
+        runner = beginProcesses(processes = processes , progress = d)
+        runner.waitForFinished()
+
+        d.setValue(d.maximum())
+        d.hide()
+        d.deleteLater()
+
+
+    def loadRunsVrt(self):
+        runPks = self.runsWidget.selectedPks()
+        if len(runPks) == 0:
+            message("No runs selected")
+            return
+        
+        imagePks = backend.runs_functions.imagePksFromRun(runPks)
+       # image_model.makeLoadVrt(image_model.vrtData(imagePks))
+        vrtData = vrt.getVrtData(imagePks = imagePks)
+        n = len(vrtData)
+    
+        d = QProgressDialog(parent = self)
+        d.setWindowModality(Qt.WindowModal)
+        d.setRange(0,n)
+        d.setLabelText('Loading vrt files')
+
+        for i,row in enumerate(vrtData):
+            if d.wasCanceled():
+                return
+            d.setValue(i)
+            row.load()
+        d.hide()
+        d.deleteLater()
+
+
+
+    #scroll images to run and select in widget
+    #same for corrections.
+    def setChainages(self,index):
+        m = index.model()
+        s = index.siblingAtColumn(m.fieldIndex('start_frame')).data()
+        if not isinstance(s,int):
+            s = 0   
+        e = index.siblingAtColumn(m.fieldIndex('end_frame')).data()
+        if not isinstance(e,int):
+            e = 0              
+#        print('s',s,'e',e)
+        mode = QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
+        selectionModel = self.imagesView.selectionModel()
+        selectionModel.clear()
+        col = self.imagesModel.fieldIndex('frame_id')
+        top = None
+        for i in range(self.imagesModel.rowCount()):
+            index = self.imagesModel.index(i,col)
+            if s<= index.data() and index.data() <= e:
+                selectionModel.select(index, mode)
+                if top is None:
+                    top = index
+        if top is not None:
+            self.imagesView.scrollTo(top,QAbstractItemView.PositionAtTop)
+    
+    
+    #file...new handler
+    def new(self):
+        self.imagesModel.clear()
+        self.gpsModel.clear()
+        self.runsModel.clear()
+        db_functions.clear()
+
+
+    #open... handler
+    def load(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load file',filter = ';sqlite database (*.db)')
+        if f:
+            file = f[0]
+            if file:
+                db_functions.loadFile(file)
+                self.imagesModel.select()
+                self.runsModel.select()
+        
+        
+    #load Runs csv handler
+    def loadRunsCsv(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load runs CSV',filter = ';csv (*.csv)')
+        if f:
+            file = f[0]
+            if file:
+                backend.runs_functions.loadCsv(file)
+                self.runsModel.select()
+    
+    
+    def saveRuns(self):
+        f = QFileDialog.getSaveFileName(caption = 'Save runs',filter = 'CSV (*.csv)')[0]
+        if f:
+            backend.runs_functions.saveRunsCsv(f)
+            iface.messageBar().pushMessage("Image_loader", "Saved to {file}".format(file=f), level=Qgis.Info)
+
+    
+    
+
+
+
     def downloadGpsLayer(self):
         try:
             self.gpsModel.downloadGpsLayer()
@@ -292,8 +387,11 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     #handle open settings... action
     def openSettings(self):
+        oldSrid = settings.destSrid()
         self.settingsDialog.exec_()
-        self.gpsModel.setSrid(settings.destSrid())#redownload model GPS in selected CRS. takes ~0.2s
+        newSrid = settings.destSrid()
+        if oldSrid != newSrid:
+            self.gpsModel.setSrid(newSrid)#redownload model GPS in selected CRS. takes ~0.2s
         
 
 #opens help/index.html in default browser

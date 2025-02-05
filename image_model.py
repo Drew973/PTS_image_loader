@@ -20,9 +20,10 @@ from image_loader import run_commands_3 as run_commands
 from pathlib import Path
 from image_loader.commands_dialog import commandsDialog
 from osgeo import gdal
-from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtWidgets import QProgressDialog,QApplication
 
-
+from qgis.utils import iface
+from qgis.core import Qgis
 
 class _image():
     
@@ -49,9 +50,9 @@ class _image():
 
 #{vrtFile:(files,type,run)} from primary keys.
 #grouped by run,image_type
-def vrtData(pks : list) -> dict:    
+def vrtData(imagePks : list) -> dict:    
     #use something unlikey to be in file name as seperator.
-    p = ','.join([str(pk) for pk in pks])
+    p = ','.join([str(pk) for pk in imagePks])
     query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
     d = {} # 
     while query.next():
@@ -66,17 +67,39 @@ def vrtData(pks : list) -> dict:
     return d
 
 
-#not realy worth doing this in paralell.
 gdal.UseExceptions()
 #vrt_options = gdal.BuildVRTOptions(resampleAlg='cubic', addAlpha=True)
 def makeVrtFile(vrtFile,files):
-    gdal.SetConfigOption("COMPRESS_OVERVIEW", "JPEG")
+    gdal.SetConfigOption("COMPRESS_OVERVIEW", "LZW")
     gdal.SetConfigOption("INTERLEAVE_OVERVIEW", "PIXEL")   
     gdal.BuildVRT(vrtFile, files)
     ds = gdal.Open(vrtFile, 0)  # 0 = read-only, 1 = read-write. 
     factors = [32,64,128,256,512]
     ds.BuildOverviews("AVERAGE" , factors)
     ds = None
+
+
+#make vrt files from data like {vrtFile:(files,type,run)...}
+def makeLoadVrt(data):
+   #print('makeLoadVrt' , data)
+    prog = QProgressDialog(labelText = 'remaking VRT files')  
+    try:
+        vrtFiles = [k for k in data]
+        layer_functions.removeSources(vrtFiles)#remove layers to allow file to be edited.
+        prog.setMaximum(len(data))
+        prog.show()
+        for i,vrtFile in enumerate(data):
+            QApplication.processEvents()
+            if prog.wasCanceled():
+                return
+            makeVrtFile(vrtFile = vrtFile , files = data[vrtFile][0])
+            loadImage(file = vrtFile , groups = ['image_loader', 'combined VRT', data[vrtFile][1], data[vrtFile][2] ] )
+            prog.setValue(i)
+    except Exception as e:
+        iface.messageBar().pushMessage("Image_loader", "Error making VRTs:" + str(e) , level = Qgis.Warning)
+    finally:
+        prog.close()
+
 
 
 
@@ -101,6 +124,7 @@ def beginGeoreference(gpsModel , pks : list = [] , progress = None , log : str =
             frame = q.value(0)
             gcp = gpsModel.gcps(frame)
             if gcp is not None:
+                #each file in group
                 for f in q.value(1).split(','):
                     newFile = georeference.warpedFileName(f)
                     sources.append(newFile)
@@ -113,6 +137,9 @@ def beginGeoreference(gpsModel , pks : list = [] , progress = None , log : str =
             #print(georeferenceCommands[0])
             prog = commandsDialog(title = 'georeferencing')
             return run_commands.runCommands(commands = georeferenceCommands , progress = prog)
+
+
+
 
 
 

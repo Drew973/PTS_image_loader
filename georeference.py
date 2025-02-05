@@ -93,7 +93,9 @@ def georeferenceFile(file : str , warpedFile : str , gcps:list , srid : int):
                      resampleAlg = 'near',
                      format = 'COG',
                      tps = True,
-                     creationOptions = ['QUALITY=60','COMPRESS=JPEG','OVERVIEWS=IGNORE_EXISTING'],
+                   #  creationOptions = ['QUALITY=60','COMPRESS=JPEG','OVERVIEWS=IGNORE_EXISTING'],
+                     creationOptions = ['COMPRESS=LZW','OVERVIEWS=IGNORE_EXISTING'],
+
                      warpOptions = ['SKIP_NOSOURCE=YES'],
                      warpMemoryLimit  = 10,#use upto 10mb. images~0.3mb
             )

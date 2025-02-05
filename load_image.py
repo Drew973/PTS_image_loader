@@ -9,6 +9,16 @@ from qgis.core import QgsProject,QgsRasterLayer,QgsLayerTreeGroup,QgsContrastEnh
 import os
 
 
+
+def loadLayer(layer,groups):
+    group = getGroup(groups)#QgsLayerTreeGroup
+    group.addLayer(layer)
+    QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
+    node = group.findLayer(layer)
+    node.setItemVisibilityChecked(True)
+    node.setExpanded(False) 
+
+
 #iface.addRasterLayer
 def loadImage(file,groups):
     name = os.path.splitext(os.path.basename(file))[0]

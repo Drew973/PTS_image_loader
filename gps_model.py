@@ -14,11 +14,16 @@ linestringM with quadratic or cubic spline.
 import os
 import numpy as np
 from qgis.utils import iface
-from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY
+from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY,QgsVectorLayer,QgsProject
 from image_loader.db_functions import runQuery
-from image_loader import settings,backend,dims,file_locations
+from image_loader import settings,dims,file_locations
 from image_loader.splinestring import splineString
-import json
+
+from image_loader import load_image
+from image_loader.backend import gps_functions
+
+
+#import json
 from image_loader import type_conversions
 
 from qgis.core import QgsCoordinateReferenceSystem
@@ -30,10 +35,9 @@ from qgis.core import QgsCoordinateReferenceSystem
 #might have less than 1 point/frame if using shapefile geom.
 # different results if reproject in QGIS vs in spatialite.experiment with this.
 def makeGpsLayer(s : splineString) -> None:
-    #s = splineString(values = backend.getPoints(settings.destSrid()))
-    uri = "LineString?crs=epsg:{p}&field=runs:string(20,0)&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())
-    name = 'original_GPS'
-    layer = iface.addVectorLayer(uri, name, "memory")
+    uri = "LineString?crs=epsg:{p}&field=runs:string(20,0)&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())    
+    layer = QgsVectorLayer(uri,'original_GPS',"memory")
+    
     fields = layer.fields()
     
     def features():
@@ -55,7 +59,17 @@ def makeGpsLayer(s : splineString) -> None:
     with edit(layer):
          layer.addFeatures(features())
     layer.loadNamedStyle(file_locations.centerStyle)
-    
+   # load_image.loadLayer(layer)
+    group = load_image.getGroup(['image_loader'])#QgsLayerTreeGroup
+    group.addLayer(layer)
+
+    node = group.findLayer(layer)
+    node.setItemVisibilityChecked(True)
+    node.setExpanded(False)        
+    QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
+
+
+
 
 def getCorrection(frame):
     q = runQuery(query = 'select chainage_shift,offset from runs_view where start_frame <= :f and end_frame >= :f order by start_frame limit 1',values = {':f':frame})
@@ -64,7 +78,7 @@ def getCorrection(frame):
     return (0.0 , 0.0)
     
 
-#-> '[(x,y,pixel,line)]'
+#-> '-gcp <pixel> <line> <easting> <northing>'
 #might as well serialize to string here. list is valid JSON and avoids passing "" to CLI
 N = 2 # GCP points per side of frame
 def calcGcps(frame : int , geom : splineString) -> str:
@@ -83,9 +97,10 @@ def calcGcps(frame : int , geom : splineString) -> str:
      r[:,2][N:] = dims.PIXELS
      r[:,3][0:N] = np.linspace(dims.LINES,0,N)
      r[:,3][N:] = np.linspace(dims.LINES,0,N)
-     v = [(row[0],row[1],int(row[2]),int(row[3])) for row in r]
-     return json.dumps(v)
-
+     #v = [(row[0],row[1],int(row[2]),int(row[3])) for row in r]
+     #-gcp <pixel> <line> <easting> <northing> [<elevation>]
+     return ' '.join(['-gcp {pixel} {line} {easting} {northing}'.format(pixel = int(a[2] ), line = int(a[3]) , easting = a[0] , northing = a[1]) for a in r])
+     
 
 class gpsModel:
     
@@ -102,16 +117,20 @@ class gpsModel:
         self.crs = QgsCoordinateReferenceSystem()
         self.crs.createFromSrid(self.srid)
         try:
-            self.splineString = backend.getSplineString(self.srid)
+            gps_functions.reproject()
+            self.splineString = gps_functions.getSplineString()
             #"No GPS. Is GPS data loaded?"
             self.error = ''
         except Exception as e:
             self.splineString = None
-            self.error = str(e)        
-        
+            self.error = str(e)
+
 
     def downloadGpsLayer(self) -> None:
-        makeGpsLayer(self.splineString)
+        if self.pointCount() > 0:
+            makeGpsLayer(self.splineString)
+        else:
+            raise ValueError('No GPS points. Is GPS loaded?')
 
 
     #only used by chainages dialog. speed unimportant.
@@ -122,7 +141,7 @@ class gpsModel:
         #print('x',point.x(),'y',point.y())
         #m , offset = self.splineString.locate(x = point.x() , y = point.y() , maxM = float(backend.maxM()) , tol = 2.0)
         #return dims.mToFrame(m)
-        mVals = np.arange(0 , backend.maxM() , dims.HEIGHT/4)
+        mVals = np.arange(0 , gps_functions.maxM() , dims.HEIGHT/4)
         xy = self.splineString.centerLinePoint(mVals)
         sqdif = (xy[:,0] - point.x())*(xy[:,0] - point.x()) + (xy[:,1] - point.y())*(xy[:,1] - point.y())
         return dims.mToFrame(mVals[np.argmin(sqdif)])
@@ -145,13 +164,13 @@ class gpsModel:
     def loadFile(self,file) -> None:
         ext = os.path.splitext(file)[1]
         if ext == '.csv':
-            data = np.array([r for r in backend.parseCsv(file)])#ESPG:4326
-            backend.setValues(data)
+            data = np.array([r for r in gps_functions.parseCsv(file)])#ESPG:4326
+            gps_functions.setValues(data)
             self.setSrid(self.srid)#reprojects
 
 
     def clear(self) -> None:
-        backend.clear()
+        gps_functions.clear()
         self.setSrid(self.srid)
 
 
@@ -175,7 +194,6 @@ class gpsModel:
             so = endOffset
             e = startM
             eo = startOffset
-            
         #along centerline. perpendicular line joining to startOffset and endOffset 
         m = [s,s]#want point at s,0 and s,so
         q = runQuery('select m from original_points where m > :s and m < :e order by m limit 2000',values = {':s':float(s),':e':float(e)})

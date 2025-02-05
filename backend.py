@@ -62,8 +62,12 @@ def setValues(vals):
     #updating points
     if asBool(settings.value('startAtZero'),True):
         runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
-    runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
-    runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
+   # runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
+  #  runQuery('update original_points set next_m = (select m from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
+  #  runQuery('update original_points set last_id = (select id from original_points as np where np.m<original_points.m order by np.m desc limit 1)',db=db)
+    runQuery('update original_points set bearing = (select 360*atan(st_x(next.pt)-st_x(a.pt))/(st_y(next.pt)-st_y(a.pt))/6.283185307179586 from original_points as next where a.next_id = next.id ) from original_points as a' , db=db)
+    runQuery('update original_points set bearing = bearing + 360 where bearing < 0' , db=db)
+
     #add rows to frames table
     runQuery(query='delete from frames', db=db)
     q = prepareQuery('insert into frames(id) values (:frame)' , db = db)
@@ -84,7 +88,7 @@ def minM() -> int:
     q = runQuery('select min(m) from original_points')
     while q.next():
         return q.value(0)
-    
+    return 0
 
 def clear():
     runQuery(query='delete from original_points')
@@ -111,5 +115,9 @@ def getPoints(srid):
         except Exception as e:
             pass
     return np.array(mxy,dtype = float)
+  
+    
+  
+    
   
     

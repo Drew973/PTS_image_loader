@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 similar to linestringM but models line as smooth curve through known points.
-smooth curve has well defined direction for every chainage.
+smooth curve has well defined direction for every chainage. 
+need continous 1st derivitives.
+quadratic spine has this.
 """
-
-K = 3
+K = 2
+#K = 3
 S = 0
 N = 2
 MAX = 99999999999999999999.9

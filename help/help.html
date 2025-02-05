@@ -11,30 +11,32 @@
     <h3 id="home">Image loader</h3>
 
 
-<p>Plugin for georeferencing and loading images from MFV into QGIS. To use:</p>
+<p>Plugin for cataloging,georeferencing and loading images from MFV into QGIS. To use:</p>
+
+
+<h3 id="loading details">Add to images table</h3>
+    <p>Tell the plugin where the images to process are stored by adding them to the images table.</p>
+    <p>"Images","Find images from folder..." will add a row for every .jpg file in folder and subfolders.</p>
+	<p>The plugin can also find image details from a "raster image load" file produced by the distress plotter macro. This is through "File","Open","Open raster image load file..."
+	If doing this project_folder("Tools","Settings")/data is searched for original jpg filenames.</p>
+	<img src="images_table.png" alt="Images table">
+
 
 
 <h3 id="loading gps">Load GPS data</h3>
-	<p>Set Projection/CRS for spatial calculations through "Tools , settings...". Use EPSG:27700 for surveys in Britain.</p>
+	<p>Choose a projection for spatial calculations through "Tools , settings...". EPSG:27700 for surveys in Britain.</p>
 	<p>Load GPS through "File, Open, Open gps...".</p>
 	<p>GPS data is usually in a file like "project_folder\Hawkeye Exported Data\MFV1_001-rutacd-1.csv".</p>
 	<p>Use "Tools" , "View", "View GPS data" to view this as a QGIS layer named "original_GPS"</p>
 
 
 <h3 id="runs">Create runs</h3>
-	<p>Images need grouping into runs</p>
+	<p>Runs mark which images should be georeferenced.</p>
 	<p>There should be 1 run per time the vehicle surveyed an area of interest in a direction.</p>
 	<p>Where the vehicle changed direction should be a seperate run.</p>
-	<p>Create runs by right clicking the runs table then "Add new run...".</p>
+	<p>Create runs through the  <a href="runs_from_layer.html">"runs from polygons layer" dialog</a>.</p>
+	<p>Or by right clicking the runs table then "Add new run...".</p>
 	<img src="runs.png" alt="creating runs">
-
-
-<h3 id="loading details">Add to images table</h3>
-    <p>The images table tells the plugin where the images to georeference are stored.</p>
-    <p>"Images","Find images from folder..." will add a row to the images table for every .jpg file in folder and subfolders.</p>
-	<p>The plugin can also find image details from a 'raster image load' file produced by the distress plotter macro. This is through "File","Open","Open raster image load file..."
-	If doing this project_folder("Tools","Settings")/data is searched for original jpg filenames.</p>
-	<img src="images_table.png" alt="Images table">
 
 
 <h3 id="georeferencing">Georeference</h3>
@@ -62,7 +64,7 @@
 
 <h3 id="loading distress">Load distress data</h3>
 	<p>Distress data like cracking,rutting and joint faulting is contained in a folder like 'D:\RAF_BENSON\Data\2024-01-08\MFV1_001\Run 1\LCMS Module 1\Results'</p>
-	<p>The plugin can load this from .acdx files or xml files. The xml files are simply the unzipped .acdx files from hawkeye. </p>
+	<p>The plugin can load this from .acdx files or xml files. Acdx files are zipped xml files produced by hawkeye.</p>
 	<p>"Tools","View",... will apply corrections and make a tempuary layer in QGIS. </p>
 
 

@@ -58,7 +58,7 @@ class runsView(QTreeView):
         
     def paste(self):
         t = QApplication.clipboard().text()
-        self.model().loadText(t)
+        self.model().paste(t)
         
         
     def addRun(self):
@@ -76,7 +76,6 @@ class runsView(QTreeView):
 
     def selectedPks(self):
         return [index.data() for index in self.selectionModel().selectedRows(self.model().fieldIndex('pk'))]
-
 
 
     def setChainage(self):

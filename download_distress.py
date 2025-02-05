@@ -188,17 +188,17 @@ class downloadFaultingDialog(QProgressDialog):
 
 
 
-import cProfile
+#import cProfile
 
 def downloadRuts(gpsModel,saveTo = None):
-    pr = cProfile.Profile()
-    pr.enable()
+  #  pr = cProfile.Profile()
+   # pr.enable()
     
     d = downloadRutDialog()
     d.downloadRuts(gpsModel = gpsModel,saveTo=saveTo)
     d.close()
-    pr.disable()
-    pr.dump_stats(r"C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof")
+#    pr.disable()
+   # pr.dump_stats(r"C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof")
     #   snakeviz C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof
   
     

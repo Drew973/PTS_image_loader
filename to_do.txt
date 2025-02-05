@@ -1,28 +1,34 @@
 
-greek projections.
-
 test with athens data. seems ok so far.
+Martyn already did these runs:
+17-07
+17-08
+20-09
 
-
-run from area and bearing
 
 test unwarped COG and worldfile/ warped VRT
 
-
-ecef coordinates?
-	get point lat,lon,alt.
-	vertical direction = toEcef(lat,lon,alt+amount) - toEcef(lat,lon,alt)
-	offset direction = lineDirection x vertical_direction 
-		
-
-projection error of ~1.5m between WGS84 and ESPG:27700
-how much of need for correction is projection error?
-
-	reprojecting in QGIS shows new layer in same place.
-	in spatialite different place.
+use name instead of number for runs? reduce need to renumber and remake VRT if adding runs before existing.
+group by name,image_type . 2 runs with same name can become same VRT
 
 
-see how much effect translating 27700 to wgs84 tif has.
+corrections table. starts with 0 chainage,0 offset at start/end of gps data.
+map corrected chainage to uncorrected
+select corrections to process between.
+still need way to filter out unwanted areas. split into runs. do corrections as seperate table/process.
+
+
+raw gps data in anpp file.
+lcmsdata made by hawkeye
+
+
+store spline coefficients in database? like min_m,max_m,x0,x1,x2,y0,y1,y2...
+
+
+gui updated and events handled by QApplication.processEvents() or when not in method/function.
+start tasks and use modal QProgressDialog where appropriate
+if the progress dialog is modal setValue() calls QCoreApplication::processEvents()
+emiting signal causes connected slots to happen immediately, not before leaving function that emitted it.
 
 
 patterns:
@@ -34,12 +40,10 @@ patterns:
 	functions get/set state of database.
 	models read and display only?
 
+	use QSettings instead of looking up settings from ui and passing args
+	
+	list of 10000 inactive QProcess uses <1Mb memory.
 
-	lookup QSettings in functions vs ui. in functions means easier to add new args.
-
-
-
-make most of gps procedural. for easier testing. may help performance to store splinestring.
 
 
 trigger when start/end changed that changes rows where range overlaps.
@@ -48,12 +52,11 @@ find dead code with
 vulture C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader/image_loader_dockwidget.py C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader
 
 
-local file.
+local file. Postgis might make collaboration easier.
 spatialite is buggy piece of crap
 want sql style queries though.
 shapefile? performance?
 fileLocks?
-
 
 
 create/load database explicitly on starting plugin?
@@ -71,9 +74,6 @@ alternative to QSqlTableModel with sqlite3?
 might want to switch to using gps shapefile.
 view with lines?
 
-
-only need corrected centerline to find gcps.
-m,corrected_x,corrected_y
 
 corrections:
 	mo best as gps tends to lag.
