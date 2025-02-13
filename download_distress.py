@@ -143,61 +143,11 @@ def downloadRuts(gpsModel,saveTo,parent = None):
 
 
     
-    
-'''
-####delete this
-class downloadFaultingDialog(QProgressDialog):
-    def __init__(self,parent = None):
-        super().__init__(parent)
-        self.setAutoClose(False)
-        self.setLabelText('Recalculating faulting geometry...')
 
-
-    def download(self,gpsModel,chunkSize = 100):
-        db = defaultDb()
-        db.transaction()
-        q = runQuery('select count(frame) from faulting_view',db = db)
-       
-        #set range
-        while q.next():
-            count = q.value(0)
-        self.setRange(0,count+100)
-        
-        #update geom column of transverse_joint_faulting
-        q = runQuery('select frame,joint_id,joint_offset,mo_wkb,chainage_shift,left_offset from faulting_view',db=db)
-       
-        i = 0
-        while q.next():
-            g = QgsGeometry()
-            wkb = q.value(3)
-            if isinstance(wkb,QByteArray):
-                g.fromWkb(wkb)
-                geom = gpsModel.moGeomToXY(g,mShift = q.value(4),offset = q.value(5))
-
-            self.setValue(i)
-            if i%chunkSize == 0:
-                QApplication.processEvents()
-            i+=1            
-        db.commit()   
-        
-        #run processing algorithm. can make tempuary layer this way.
-        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"faulting_view\"'.format(db = file_locations.dbFile),
-     'OPTIONS' : '-sql \"select frame,joint_id,joint_offset,faulting,width,geom from faulting_view\" -t_srs EPSG:27700 -s_srs EPSG:27700 -nln rutting -overwrite',
-     'OUTPUT' : 'TEMPORARY_OUTPUT' }
-        r = processing.run('gdal:convertformat',params)
-        layer = iface.addVectorLayer(r['OUTPUT'], "Transverse Joint Faulting", "ogr")
-        layer.setName('Transverse Joint Faulting')
-        self.setValue(self.maximum())
-        return
-            
-'''
 
 
 
 #def recalcFaultingGeom(gpsModel):
-    
-    
-    
     
 
 
@@ -206,47 +156,45 @@ class downloadFaultingDialog(QProgressDialog):
 def downloadFaulting(gpsModel,parent = None):
     
     srid = settings.destSrid()
-    uri = "Polygon?crs=epsg:{srid}&field=frame:int&field=joint_id:int&field=joint_offset:real&field=faulting:real&field=width:real&index=yes".format(srid = srid)
-   
+    uri = "Polygon?crs=epsg:{srid}&field=frame:int&field=joint_id:int&field=joint_offset:int&field=faulting:real&field=width:real&index=yes".format(srid = srid)
     layer = iface.addVectorLayer(uri, 'transverse joint faulting', "memory")
     fields = layer.fields()
-   
     q = runQuery('select count(frame) from faulting_view')
     #set range
     while q.next():
         count = q.value(0)
-        
     d = QProgressDialog(parent = parent)
     d.setWindowModality(Qt.WindowModal);
     d.setLabelText('Loading faulting...')
     d.show()        
-        
-    d.setRange(0,count)
+    d.setRange(0,count)    
     
-    #update geom column of rut
-    #frame,joint_id,joint_offset,faulting,width
-    q = runQuery('select mo_wkb,chainage_shift,left_offset,frame,joint_id,joint_offset,faulting,width from faulting_view')##########test
-    
-    i = 0
-    while q.next() and not d.wasCanceled():
-        wkb = q.value(0)
-        if isinstance(wkb,QByteArray):
-            g = QgsGeometry()
-            g.fromWkb(wkb)
-            geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
-            #print(geom.asWkt())#Polygon(...)
-            f = QgsFeature(fields)
-            f['frame'] = q.value(3)
-            f['joint_id'] = q.value(4)
-            f['joint_offset'] = q.value(5)
-            f['faulting'] = q.value(6)
-            f['width'] = q.value(7)
-            f.setGeometry(geom)
-            if not layer.addFeature(f):#False
-                print(layer.lastError())
-            #print(f.isValid())#True
-        d.setValue(i)
-        i+=1            
-    d.setValue(d.maximum())
+    def features():
+        q = runQuery('select mo_wkb,chainage_shift,left_offset,frame,joint_id,joint_offset,faulting,width from faulting_view')##########test
+        i = 0
+        while q.next() and not d.wasCanceled():
+            wkb = q.value(0)
+            if isinstance(wkb,QByteArray):
+                g = QgsGeometry()
+                g.fromWkb(wkb)
+                geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
+                #print(geom.asWkt())#Polygon(...)
+                f = QgsFeature(fields)
+                f['frame'] = q.value(3)
+                f['joint_id'] = q.value(4)
+                f['joint_offset'] = q.value(5)
+                f['faulting'] = q.value(6)
+                f['width'] = q.value(7)
+                f.setGeometry(geom)
+                yield f
+            if i%100 == 0:#setValue slow. due to calling processEvents as modal. Balance responsiveness vs performance.
+                d.setValue(i)
+            i+=1
+            
+    with edit(layer):
+        if not layer.addFeatures(features()):#False
+            print(layer.lastError())
 
+    d.setValue(d.maximum())
+    return layer
     

@@ -67,7 +67,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         
         self.settingsDialog = settings_dialog.settingsDialog(parent=self)
         db_functions.createDb()
-
+        db_functions.vacuum()
         self.imagesModel = image_model.imageModel(parent=self)
         self.imagesModel.fields = self.settingsDialog
         self.imagesView.setModel(self.imagesModel)

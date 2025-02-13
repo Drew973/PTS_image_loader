@@ -1,0 +1,72 @@
+
+
+image formats.
+
+
+qgis uses aux.xml files with jpg.
+
+
+
+can produce vrt for jpg with gdalwarp.
+
+
+gdalwarp "D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 09h40m38s LCMS Module 1 000105.vrt" "D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 09h40m38s LCMS Module 1 000105_warped.vrt" -s_srs "EPSG:27700" -t_srs "EPSG:27700" -r bilinear && gdaladdo  "D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 09h40m38s LCMS Module 1 000105_warped.vrt"
+
+
+
+this can be made into bigger vrt through buildvrt without errors about rotated geotransform.
+gdalbuildvrt "D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\test.vrt" "D:\RAF Shawbury/Data\2023-01-21\MFV1_006\Run 8\LCMS Module 1\Images\IntensityWithoutOverlay\2023-01-21 09h40m38s LCMS Module 1 000105_warped.vrt"
+
+gdalbuildvrt "D:\RAF Shawbury\1.vrt" -input_file_list "D:\RAF Shawbury\1.txt" -srcnodata 255 -b 1 -colorinterp_1 gray -a_srs "EPSG:27700"
+
+
+
+
+can have warped vrt per image. rendering performance?
+might need overview.
+
+
+
+
+georeferencing:
+	set transform/gcps.
+	write wld file (suprisingly slow)
+	or write vrt through gdal translate.   image.vrt.
+	want to lose unnecessary bands early...
+	
+
+	gdal translate "{source}" -b 1 -nodata -1 colorinterp_1 gray {gcp}
+
+	better as vrt. can specify band,no data,crs easier.
+
+
+warping:
+	warp to warped_vrt or COG through gdal_warp
+	
+	vrt = 7Kb/image. Buggy rendering. Random Crashes.
+	
+	COG = 350KB.
+	jpg compressed
+	1160 LZW compressed
+	
+	
+	
+	
+	
+merging:
+	vrt per run.
+	gdal_build_vrt
+
+
+
+georeferencer plugin does this and gives good results:
+
+
+
+gdal_translate -of GTiff -gcp -2.56914 -4.01576 354457 321917 -gcp 1039.1 -0.810636 354461 321917 -gcp -5.77427 1252.39 354459 321911 -gcp 1032.69 1252.39 354463 321913 -gcp -2.56914 569.702 354458 321914 -gcp 1035.89 604.959 354461 321915 "C:/Users/drew.bennett/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/image_loader/test/1_007/ImageInt/2023-01-21 10h08m11s LCMS Module 1 002709.jpg" "C:/Users/drew.bennett/AppData/Local/Temp/2023-01-21 10h08m11s LCMS Module 1 002709.jpg"
+gdalwarp -r near -tps -co COMPRESS=LZW  -t_srs EPSG:27700 "C:/Users/drew.bennett/AppData/Local/Temp/2023-01-21 10h08m11s LCMS Module 1 002709.jpg" "C:/Users/drew.bennett/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/image_loader/test/1_007/ImageInt/2023-01-21 10h08m11s LCMS Module 1 002709_modified.tif"
+
+
+
+
+

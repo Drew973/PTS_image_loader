@@ -122,6 +122,10 @@ def hasGps(db=None) -> bool:
         return q.value(0) > 0
 
 
+def vacuum():
+    runQuery('vacuum')
+
+
 
 #want to call this at least once to avoid driver not loaded error.
 def createDb(file = dbFile,name = 'image_loader') -> QSqlDatabase:

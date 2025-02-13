@@ -1,0 +1,115 @@
+
+test with athens data. seems ok so far.
+Martyn already did these runs:
+17-07
+17-08
+20-09
+
+
+test unwarped COG and worldfile/ warped VRT
+
+use name instead of number for runs? reduce need to renumber and remake VRT if adding runs before existing.
+group by name,image_type . 2 runs with same name can become same VRT
+
+
+corrections table. starts with 0 chainage,0 offset at start/end of gps data.
+map corrected chainage to uncorrected
+select corrections to process between.
+still need way to filter out unwanted areas. split into runs. do corrections as seperate table/process.
+
+
+raw gps data in anpp file. point every 0.05s. occasional missing point. seen ~ 0.8m offset from rutacd file.
+
+lcmsdata made by hawkeye
+
+
+
+store spline coefficients in database? already have splinestring to handle this. 
+processing run should recalculate distress geometry?
+
+
+backend as htpp server would help with concurrency problems and sqlite filelock
+
+
+store spline coefficients in database? like min_m,max_m,x0,x1,x2,y0,y1,y2...
+
+
+gui updated and events handled by QApplication.processEvents() or when not in method/function.
+start tasks and use modal QProgressDialog where appropriate
+if the progress dialog is modal setValue() calls QCoreApplication::processEvents()
+emiting signal causes connected slots to happen immediately, not before leaving function that emitted it.
+
+
+patterns:
+	as procedural as possible. makes testing easier.
+	backend should raise errors where problem.
+	ui/ frontend should use try/except and display error message where problem.
+	gdal cli preferable to python bindings as better documented (and faster?)
+
+	functions get/set state of database.
+	models read and display only?
+
+	use QSettings instead of looking up settings from ui and passing args
+	
+	list of 10000 inactive QProcess uses <1Mb memory.
+
+	use spatialite as little as possible. buggy and badly documented piece of crap
+	store geometries as wkt or WKB where possible. addGeometryColumn usually doesn't.
+
+trigger when start/end changed that changes rows where range overlaps.
+
+find dead code with 
+vulture C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader/image_loader_dockwidget.py C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader
+
+
+local file. Postgis might make collaboration easier.
+spatialite is buggy piece of crap
+want sql style queries though.
+shapefile? performance?
+fileLocks?
+
+
+create/load database explicitly on starting plugin?
+
+constraints:
+	start of image should be end of last image.
+	image width should be ~ constant (gradient effects?)
+
+
+alternative to QSqlTableModel with sqlite3?
+    create application defined functions. not that useful as can't use in views,triggers,constraints...
+    use more recent sqlite version? seems same.
+
+
+might want to switch to using gps shapefile.
+view with lines?
+
+
+corrections:
+	mo best as gps tends to lag.
+
+runs vs no runs:
+	could have 1 shift/offset per run like collator does
+	better if don't need to spend time splitting into runs
+		
+	
+test out loading gps from geom.csv
+	see if any more accurate
+
+store gcps and only gereference where changed or image doesn't exist?
+
+Qgis not releasing file locks.
+	use iface.addVectorLayer() instead of QgsVectorLayer?
+	
+
+include frame in correction?
+	preview button and filePath combobox to remake and reload image.
+
+
+read hawkeye database?
+need ms sql server? how is it currently being done?
+0.4 GB vs 4.8 Gb of hawkeye exported xml files + time
+
+
+	
+Rut Right (mm)
