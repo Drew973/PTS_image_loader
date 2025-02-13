@@ -6,25 +6,29 @@ Created on Thu Nov 21 13:50:42 2024
 """
 
 
-import pip
 from PyQt5.QtWidgets import QMessageBox
+from image_loader import file_locations
+import subprocess
 
 
-def checkScipy() -> bool:
+
+def checkImports() -> bool:
     try:
         import scipy
         return True
     except ImportError:
-        reply = QMessageBox.question(None , 'missing library:' , 'missing scipy. Install it now?' , QMessageBox.Yes|QMessageBox.No)
+        reply = QMessageBox.question(None , 'Image loader:' , 'missing required libraries(scipy). Setup now?' , QMessageBox.Yes|QMessageBox.No)
         if reply == QMessageBox.Yes:
-            pip.main(['install', 'scipy'])
+            subprocess.run(file_locations.setup)
+            
+            
             return True
         return False
 
 
-def checkImports():
-    return checkScipy()
-
 
 if __name__ in ('__main__','__console__'):
-    checkScipy()
+    #checkImports()
+    reply = QMessageBox.question(None , 'Image loader:' , 'missing required libraries(scipy). Setup now?' , QMessageBox.Yes|QMessageBox.No)
+    if reply == QMessageBox.Yes:
+        subprocess.run(file_locations.setup)

@@ -18,8 +18,17 @@ select corrections to process between.
 still need way to filter out unwanted areas. split into runs. do corrections as seperate table/process.
 
 
-raw gps data in anpp file.
+raw gps data in anpp file. point every 0.05s. occasional missing point. seen ~ 0.8m offset from rutacd file.
+
 lcmsdata made by hawkeye
+
+
+
+store spline coefficients in database? already have splinestring to handle this. 
+processing run should recalculate distress geometry?
+
+
+backend as htpp server would help with concurrency problems and sqlite filelock
 
 
 store spline coefficients in database? like min_m,max_m,x0,x1,x2,y0,y1,y2...
@@ -44,7 +53,8 @@ patterns:
 	
 	list of 10000 inactive QProcess uses <1Mb memory.
 
-
+	use spatialite as little as possible. buggy and badly documented piece of crap
+	store geometries as wkt or WKB where possible. addGeometryColumn usually doesn't.
 
 trigger when start/end changed that changes rows where range overlaps.
 

@@ -21,6 +21,46 @@ from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrep
 from image_loader.type_conversions import asBool,asInt
 
 
+from image_loader.backend import anpp
+
+
+
+
+def uploadAnpp(fileName):
+    db = defaultDb()
+    db.transaction()
+    runQuery('delete from original_points' , db = db)
+    
+    q = prepareQuery('insert or ignore into original_points (lon,lat,alt,seconds,milliseconds) values (:lon,:lat,:alt,:seconds,:milliseconds)',db = db)
+    for r in anpp.readAnpp(fileName):
+        q.bindValue(':lon',r.lon)
+        q.bindValue(':lat',r.lat)
+        q.bindValue(':alt',r.alt)
+        q.bindValue(':seconds',r.seconds)
+        q.bindValue(':milliseconds',int(r.microSeconds/1000))
+        if not q.exec():
+            raise queryError(q)
+            
+    srid = asInt(settings.value('destSrid'),27700)
+     
+    runQuery('update original_points set x = st_x(ST_Transform(MakePoint(lon,lat,4326),:srid)) , y = st_y(ST_Transform(MakePoint(lon,lat,4326),:srid))',values = {':srid':srid} , db=db)
+            
+    qs = '''
+    update original_points set m = points_update_2.m
+    ,bearing = points_update_2.bearing 
+    ,next_id = points_update_2.next_id
+    ,last_id = points_update_2.last_id
+    from points_update_2 where points_update_2.id = original_points.id
+    '''
+    runQuery(qs , db = db)
+         
+    runQuery('delete from original_points where m in (select m from original_points group by m having count(m)>1)',db=db)#remove duplicate points
+            
+    db.commit()
+
+
+
+
 
 #ESPG:4326
 #meant for rutacd csvs. 1m intervals
@@ -118,12 +158,31 @@ def getSplineString():
                  forwardOnly = True)
     mxy = []
     while q.next():
-        try:
-            mxy.append( [ float(q.value(0)) , float(q.value(1)) , float(q.value(2)) ] )
-        except Exception as e:
-            pass
+        mxy.append( [ float(q.value(0)) , float(q.value(1)) , float(q.value(2)) ] )
     return splineString(values = np.array(mxy,dtype = float))
   
     
+K = 2
+S = 0   
+from scipy import interpolate
   
     
+#unused WIP
+def recalcSpline():
+    q = runQuery('select m , x , y from original_points order by m',
+                 forwardOnly = True)
+    m = []
+    x = []
+    y = []
+    while q.next():
+        try:
+            m.append(float(q.value(0)))
+            x.append(float(q.value(1)))
+            y.append(float(q.value(2)))
+        except Exception as e:
+            pass
+        
+    xSpline = interpolate.UnivariateSpline(m, x , s = S, ext='const', k = K)
+     #ySpline = interpolate.UnivariateSpline(m,  y , s = S, ext='const', k = K)
+    for c in xSpline.get_coeffs():
+        print(c)

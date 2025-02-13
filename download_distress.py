@@ -5,15 +5,17 @@ Created on Thu Feb 29 15:39:58 2024
 @author: Drew.Bennett
 """
 
-from image_loader.db_functions import runQuery,prepareQuery,defaultDb,dbFile
+from image_loader.db_functions import runQuery,prepareQuery,defaultDb
+
+from image_loader import file_locations,settings
+
 from qgis import processing
 
 from qgis.core import QgsFeature,QgsGeometry,edit,QgsWkbTypes
 from qgis.utils import iface
-from PyQt5.QtCore import QByteArray
+from PyQt5.QtCore import QByteArray,Qt
 from PyQt5.QtWidgets import QProgressDialog,QApplication
 
-from image_loader import file_locations
 
 from itertools import islice
 
@@ -40,7 +42,8 @@ def chunk(gen, k):
 
 def downloadCracks(gpsModel,progress):
     interval = 50
-    uri = "Linestring?crs=epsg:27700&field=frame:int&field=crack_id:int&field=length:real&field=width:real&field=depth:real&index=yes"
+    srid = settings.destSrid()
+    uri = "Linestring?crs=epsg:{srid}&field=frame:int&field=crack_id:int&field=length:real&field=width:real&field=depth:real&index=yes".format(srid = srid)
     layer = iface.addVectorLayer(uri, 'cracking', "memory")
     fields = layer.fields()
     
@@ -51,7 +54,7 @@ def downloadCracks(gpsModel,progress):
         
     def features():
         i = 0
-        q = runQuery('select section_id,crack_id,len,depth,width,st_asText(geom),chainage_shift,offset from cracks_view')
+        q = runQuery('select section_id,crack_id,len,depth,width,wkt,chainage_shift,offset from cracks_view')
         while q.next() and not progress.wasCanceled():
             if i%interval == 0:
                 progress.setValue(i)
@@ -84,52 +87,65 @@ def downloadCracks(gpsModel,progress):
     
 
 
-class downloadRutDialog(QProgressDialog):
-    def __init__(self,parent = None):
-        super().__init__(parent)
-        self.setAutoClose(False)
-        self.setLabelText('Recalculating rutting geometry...')
 
 
-    def downloadRuts(self,gpsModel,saveTo,chunkSize = 100):
-        db = defaultDb()
-        db.transaction()
-        q = runQuery('select count(frame) from rut_view',db = db)
-       
-        #set range
-        while q.next():
-            count = q.value(0)
-        self.setRange(0,count+100)
-        
-        #update geom column of rut
-        q = runQuery('select pk,chainage_shift,offset,mo_wkb from rut_view',db=db)##########test
-        updateQuery = prepareQuery('update rut set geom = PolygonFromWKB(?,27700) where pk = ?', db= db)##########test
-        
-        i = 0
-        while q.next():
-            g = QgsGeometry()
-            wkb = q.value(3)
-            if isinstance(wkb,QByteArray):
-                g.fromWkb(wkb)
-                geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
-                updateQuery.bindValue(0,geom.asWkb())
-                updateQuery.bindValue(1,int(q.value(0)))
-                updateQuery.exec()
-            self.setValue(i)
-            if i%chunkSize == 0:
-                QApplication.processEvents()
-            i+=1            
-        db.commit()   
-        
+
+
+
+#updating database then using gdal:convertformat.
+#faster than layer.addFeatures.
+  
+def downloadRuts(gpsModel,saveTo,parent = None):
+    db = defaultDb()
+    db.transaction()
+    q = runQuery('select count(frame) from rut_view',db = db)
+    #set range
+    while q.next():
+        count = q.value(0)
+    d = QProgressDialog(parent = parent)
+    d.setWindowModality(Qt.WindowModal);
+    d.setLabelText('Recalculating rutting geometry...')
+    d.setRange(0,count+1)
+    d.show()        
+
+    #update geom column of rut
+    q = runQuery('select pk,chainage_shift,offset,mo_wkb from rut_view',db=db)##########test
+    updateQuery = prepareQuery('update rut set xy_wkb = ? where pk = ?', db= db)##########test  PolygonFromWKB(?,27700)
+    
+    i = 0
+    while q.next() and not d.wasCanceled():
+        g = QgsGeometry()
+        wkb = q.value(3)
+        if isinstance(wkb,QByteArray):
+            g.fromWkb(wkb)
+            geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
+            updateQuery.bindValue(0,geom.asWkb())
+            updateQuery.bindValue(1,int(q.value(0)))
+            updateQuery.exec()
+        d.setValue(i)
+        i+=1            
+    db.commit()   
+    
+    if not d.wasCanceled():
+        d.setLabelText('Loading layer...')
+
+        srid = settings.destSrid()
         #copy to geopackage using processing algorithm. can make tempuary layer this way.
-        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"runs_view\"'.format(db = dbFile()), 'OPTIONS' : '-sql \"select frame,chainage,wheelpath,width,depth,type,deform,x_section,geom from rut_view\" -t_srs EPSG:27700 -s_srs EPSG:27700 -nln rutting -overwrite', 'OUTPUT' : 'TEMPORARY_OUTPUT' }
+        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"runs_view\"'.format(db = file_locations.dbFile),
+                  'OPTIONS' : '-sql \"select frame,chainage,wheelpath,width,depth,type,deform,x_section,GeomFromWKB(xy_wkb) from rut_view\" -t_srs EPSG:{srid} -s_srs EPSG:{srid} -nln rutting -overwrite'.format(srid = srid),
+                  'OUTPUT' : 'TEMPORARY_OUTPUT' }
+        
         r = processing.run('gdal:convertformat',params)
         layer = iface.addVectorLayer(r['OUTPUT'], "Rutting", "ogr")
         layer.setName('Rutting')
-        self.setValue(self.maximum())
-        return
+        d.setValue(d.maximum())
             
 
+
+    
+    
+'''
+####delete this
 class downloadFaultingDialog(QProgressDialog):
     def __init__(self,parent = None):
         super().__init__(parent)
@@ -149,8 +165,7 @@ class downloadFaultingDialog(QProgressDialog):
         
         #update geom column of transverse_joint_faulting
         q = runQuery('select frame,joint_id,joint_offset,mo_wkb,chainage_shift,left_offset from faulting_view',db=db)
-        updateQuery = prepareQuery('update transverse_joint_faulting set geom = PolygonFromWKB(?,27700) where frame = ? and joint_id = ? and joint_offset = ?', db = db)
-        #primary key (frame,joint_id,joint_offset)
+       
         i = 0
         while q.next():
             g = QgsGeometry()
@@ -158,16 +173,7 @@ class downloadFaultingDialog(QProgressDialog):
             if isinstance(wkb,QByteArray):
                 g.fromWkb(wkb)
                 geom = gpsModel.moGeomToXY(g,mShift = q.value(4),offset = q.value(5))
-                
-                #if i == 0:
-                 #   print('g',g,'geom',geom)
-                
-                updateQuery.bindValue(0,geom.asWkb())
-                updateQuery.bindValue(1,int(q.value(0)))#frame
-                updateQuery.bindValue(2,int(q.value(1)))#jointId
-                updateQuery.bindValue(3,int(q.value(2)))#jointOffset
 
-                updateQuery.exec()
             self.setValue(i)
             if i%chunkSize == 0:
                 QApplication.processEvents()
@@ -175,7 +181,7 @@ class downloadFaultingDialog(QProgressDialog):
         db.commit()   
         
         #run processing algorithm. can make tempuary layer this way.
-        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"faulting_view\"'.format(db = dbFile()),
+        params = { 'INPUT' : 'spatialite://dbname=\'{db}\' table=\"faulting_view\"'.format(db = file_locations.dbFile),
      'OPTIONS' : '-sql \"select frame,joint_id,joint_offset,faulting,width,geom from faulting_view\" -t_srs EPSG:27700 -s_srs EPSG:27700 -nln rutting -overwrite',
      'OUTPUT' : 'TEMPORARY_OUTPUT' }
         r = processing.run('gdal:convertformat',params)
@@ -184,27 +190,63 @@ class downloadFaultingDialog(QProgressDialog):
         self.setValue(self.maximum())
         return
             
+'''
 
 
 
-
-#import cProfile
-
-def downloadRuts(gpsModel,saveTo = None):
-  #  pr = cProfile.Profile()
-   # pr.enable()
+#def recalcFaultingGeom(gpsModel):
     
-    d = downloadRutDialog()
-    d.downloadRuts(gpsModel = gpsModel,saveTo=saveTo)
-    d.close()
-#    pr.disable()
-   # pr.dump_stats(r"C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof")
-    #   snakeviz C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\test\download_ruts.prof
-  
+    
+    
     
 
-def downloadFaulting(gpsModel):
-    d = downloadFaultingDialog()
-    d.download(gpsModel = gpsModel)
-    d.close()
+
+#faulting,width
+##########finish this
+def downloadFaulting(gpsModel,parent = None):
+    
+    srid = settings.destSrid()
+    uri = "Polygon?crs=epsg:{srid}&field=frame:int&field=joint_id:int&field=joint_offset:real&field=faulting:real&field=width:real&index=yes".format(srid = srid)
+   
+    layer = iface.addVectorLayer(uri, 'transverse joint faulting', "memory")
+    fields = layer.fields()
+   
+    q = runQuery('select count(frame) from faulting_view')
+    #set range
+    while q.next():
+        count = q.value(0)
+        
+    d = QProgressDialog(parent = parent)
+    d.setWindowModality(Qt.WindowModal);
+    d.setLabelText('Loading faulting...')
+    d.show()        
+        
+    d.setRange(0,count)
+    
+    #update geom column of rut
+    #frame,joint_id,joint_offset,faulting,width
+    q = runQuery('select mo_wkb,chainage_shift,left_offset,frame,joint_id,joint_offset,faulting,width from faulting_view')##########test
+    
+    i = 0
+    while q.next() and not d.wasCanceled():
+        wkb = q.value(0)
+        if isinstance(wkb,QByteArray):
+            g = QgsGeometry()
+            g.fromWkb(wkb)
+            geom = gpsModel.moGeomToXY(g,mShift = q.value(1),offset = q.value(2))
+            #print(geom.asWkt())#Polygon(...)
+            f = QgsFeature(fields)
+            f['frame'] = q.value(3)
+            f['joint_id'] = q.value(4)
+            f['joint_offset'] = q.value(5)
+            f['faulting'] = q.value(6)
+            f['width'] = q.value(7)
+            f.setGeometry(geom)
+            if not layer.addFeature(f):#False
+                print(layer.lastError())
+            #print(f.isValid())#True
+        d.setValue(i)
+        i+=1            
+    d.setValue(d.maximum())
+
     

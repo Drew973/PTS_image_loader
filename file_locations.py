@@ -34,3 +34,9 @@ centerStyle = join(folder,'layer_styles','center_line.qml')
 makeVrt = normpath(join(folder , 'make_vrt.bat'))
 
 georeference = normpath(join(folder , 'georeference.bat'))
+
+setup = normpath(join(folder , 'setup.bat'))
+
+
+
+

@@ -6,6 +6,8 @@ Created on Thu Feb 29 09:45:10 2024
 """
 from image_loader.dims import WIDTH, HEIGHT
 from image_loader.db_functions import prepareQuery, defaultDb
+from image_loader.type_conversions import asBool,asInt,asFloat
+
 from qgis.utils import iface
 import xml.etree.ElementTree as ET
 from PyQt5.QtWidgets import QProgressDialog, QApplication
@@ -15,19 +17,6 @@ import gzip
 from qgis.core import Qgis
 
 
-
-def toFloat(v, default=None):
-    try:
-        return float(v)
-    except:
-        return default
-
-
-def toInt(v, default=None):
-    try:
-        return int(v)
-    except:
-        return default
 
 
 # y value in xml to m
@@ -46,8 +35,8 @@ def offset(imageX):
 
 # convert x and y to m,offset
 def xyFromNode(node, sectionId):
-    x = toFloat(node.find('X').text)
-    y = toFloat(node.find('Y').text)
+    x = asFloat(node.find('X').text)
+    y = asFloat(node.find('Y').text)
     if x is not None and y is not None:
         return '{m} {of}'.format(m=m(sectionId, y), of=offset(x))
 
@@ -78,7 +67,7 @@ def loadJoints(root, sectionIds,db):
     for i, frame in enumerate(root.iter('LcmsAnalyserResultFrame')):
         #some frames don't have jointList.
         sectionId = sectionIds[i]
-        print('sectionId',sectionId)
+        #print('sectionId',sectionId)
         
         for jointList in frame.iter('JointList'):
 
@@ -114,7 +103,7 @@ def loadJoints(root, sectionIds,db):
                                           nodes[0],
                                           nodes[1]],dtype = float)
                                 
-                            print('xypoints',points)
+                            #print('xypoints',points)
                             # m as x,offset as y
                             offsets = np.array([offset(x) for x in points[:,0]])
                             mVals = np.array([m(sectionId,y) for y in points[:,1]])
@@ -164,7 +153,7 @@ class uploadXmlDialog(QProgressDialog):
 
 
     def loadCracks(self,root, sectionIds,db):
-        cq = prepareQuery('INSERT OR ignore into cracks(section_id,crack_id,len,depth,width,geom) values (?,?,?,?,?,ST_LineFromText(?,0))', db)
+        cq = prepareQuery('INSERT OR ignore into cracks(section_id,crack_id,len,depth,width,wkt) values (?,?,?,?,?,?)', db)
         # cracks
         # 1 per frame. len(frames)
         for i, resultFrame in enumerate(root.iter('LcmsAnalyserResultFrame')):
@@ -172,10 +161,10 @@ class uploadXmlDialog(QProgressDialog):
             for c in resultFrame.iter('Crack'):
                 if self.wasCanceled():
                     return False
-                crackId = toInt(c.find('CrackID').text)
-                length = toFloat(c.find('Length').text)
-                width = toFloat(c.find('WeightedWidth').text)
-                depth = toFloat(c.find('WeightedDepth').text)
+                crackId = asInt(c.find('CrackID').text)
+                length = asFloat(c.find('Length').text)
+                width = asFloat(c.find('WeightedWidth').text)
+                depth = asFloat(c.find('WeightedDepth').text)
                 xy = [xyFromNode(n, sectionId) for n in c.iter('Node')]
                 xy = [a for a in xy if a is not None]
                 wkt = 'LINESTRING ({xy})'.format(xy=', '.join(xy))

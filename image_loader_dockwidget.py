@@ -26,7 +26,7 @@ from image_loader import (db_functions , file_locations , upload_xml , runs_mode
 
 
 FORM_CLASS, _ = uic.loadUiType(file_locations.uiFile)
-version = 3.47
+version = 3.48
 
 
 def message(message : str , level : int = Qgis.Info ):
@@ -451,7 +451,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if self.runsModel.rowCount() == 0:
             iface.messageBar().pushMessage("Image_loader", "No runs. This only shows rutting within runs.", level=Qgis.Info)
             return
-        download_distress.downloadRuts(gpsModel = self.gpsModel,saveTo = None)
+        download_distress.downloadRuts(gpsModel = self.gpsModel,saveTo = None , parent = self)
 
     
     def downloadFaulting(self):

@@ -161,6 +161,10 @@ class gpsModel:
             return int(q.value(0))
 
 
+    def moGeomToXY(self,g,mShift,offset):
+        return self.splineString.moGeomToXY(g,mShift,offset)
+
+
     def loadFile(self,file) -> None:
         ext = os.path.splitext(file)[1]
         if ext == '.csv':
