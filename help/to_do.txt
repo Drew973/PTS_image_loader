@@ -1,5 +1,5 @@
 
-test with athens data. seems ok so far.
+test with athens data.
 Martyn already did these runs:
 17-07
 17-08
@@ -8,36 +8,37 @@ Martyn already did these runs:
 
 test unwarped COG and worldfile/ warped VRT
 
-use name instead of number for runs? reduce need to renumber and remake VRT if adding runs before existing.
-group by name,image_type . 2 runs with same name can become same VRT
+
+run numbers problem when runs added/removed before.
+change VRT names to use frames?
+group by start_frame,end_frame,image_type . 2 runs with same name can become same VRT
+how to unload VRTs containing frame? regex from filename?
 
 
-corrections table. starts with 0 chainage,0 offset at start/end of gps data.
-map corrected chainage to uncorrected
-select corrections to process between.
-still need way to filter out unwanted areas. split into runs. do corrections as seperate table/process.
+corrections independent to runs? still need to split into runs to filter out unwanted areas and split into managable pieces.
 
 
-raw gps data in anpp file. point every 0.05s. occasional missing point. seen ~ 0.8m offset from rutacd file.
+best GPS?
+	-decide if gps from anpp file worthwhile.
+	point every 0.05s. occasional missing point. seen ~ 0.8m offset from rutacd file.
+	-might want to switch to using gps shapefile.
+
+
 
 lcmsdata made by hawkeye
 
 
 
-store spline coefficients in database? already have splinestring to handle this. 
+store spline coefficients in database for more restful api? currently using splinestring to handle this. 
 processing run should recalculate distress geometry?
 
 
-backend as htpp server would help with concurrency problems and sqlite filelock
+backend as htpp server would help with concurrency problems and sqlite filelock. could be compiled language.
 
 
 store spline coefficients in database? like min_m,max_m,x0,x1,x2,y0,y1,y2...
 
 
-gui updated and events handled by QApplication.processEvents() or when not in method/function.
-start tasks and use modal QProgressDialog where appropriate
-if the progress dialog is modal setValue() calls QCoreApplication::processEvents()
-emiting signal causes connected slots to happen immediately, not before leaving function that emitted it.
 
 
 patterns:
@@ -56,10 +57,9 @@ patterns:
 	use spatialite as little as possible. buggy and badly documented piece of crap
 	store geometries as wkt or WKB where possible. addGeometryColumn usually doesn't.
 
+
 trigger when start/end changed that changes rows where range overlaps.
 
-find dead code with 
-vulture C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader/image_loader_dockwidget.py C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader
 
 
 local file. Postgis might make collaboration easier.
@@ -81,21 +81,10 @@ alternative to QSqlTableModel with sqlite3?
     use more recent sqlite version? seems same.
 
 
-might want to switch to using gps shapefile.
-view with lines?
-
-
 corrections:
 	mo best as gps tends to lag.
 
-runs vs no runs:
-	could have 1 shift/offset per run like collator does
-	better if don't need to spend time splitting into runs
-		
 	
-test out loading gps from geom.csv
-	see if any more accurate
-
 store gcps and only gereference where changed or image doesn't exist?
 
 Qgis not releasing file locks.

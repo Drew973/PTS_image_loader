@@ -26,7 +26,7 @@ from image_loader import (db_functions , file_locations , upload_xml , runs_mode
 
 
 FORM_CLASS, _ = uic.loadUiType(file_locations.uiFile)
-version = 3.48
+version = 3.49
 
 
 def message(message : str , level : int = Qgis.Info ):
@@ -164,12 +164,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         loadAct = imagesMenu.addAction('Load selected images')
         loadAct.triggered.connect(self.loadImages)
         
-      # georeferenceAct = imagesMenu.addAction('Georeference selected images')
-      #  georeferenceAct.triggered.connect(self.georeferenceImages)
-    
-        vrtAct = imagesMenu.addAction('Make combined VRTs for selected images')
-        vrtAct.triggered.connect(self.makeVrt)
-        
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help')
         openHelpAct.triggered.connect(self.openHelp)
@@ -232,7 +226,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             imagePks = backend.runs_functions.imagePksFromRun(runPks)
             
             #need to remove any VRT containing georeferenced images.
-            vrtSources = [v.vrtFile for v in vrt.getVrtData(imagePks = imagePks)]
+            vrtSources = [v.vrtFile for v in backend.runs_functions.vrtDataFromRuns(runPks = runPks)]
 
             
             if not imagePks:
@@ -255,10 +249,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if len(runPks) == 0:
             message("No runs selected")
             return
+        vrtData = backend.runs_functions.vrtDataFromRuns(runPks = runPks)
         
-        imagePks = backend.runs_functions.imagePksFromRun(runPks)
-       # image_model.makeLoadVrt(image_model.vrtData(imagePks))
-        vrtData = vrt.getVrtData(imagePks = imagePks)
         n = len(vrtData)
     
         d = QProgressDialog(parent = self)
@@ -268,7 +260,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         d.setLabelText('Removing layers')
         d.show()
 
-        layer_functions.removeSources([row.vrtFile for row in vrtData])#remove layers to allow file to be edited.
+        for row in vrtData:
+            row.removeSources()
         
         d.setLabelText('Writing txt files')#io bound. 
         for i,row in enumerate(vrtData):
@@ -293,11 +286,8 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             message("No runs selected")
             return
         
-        imagePks = backend.runs_functions.imagePksFromRun(runPks)
-       # image_model.makeLoadVrt(image_model.vrtData(imagePks))
-        vrtData = vrt.getVrtData(imagePks = imagePks)
+        vrtData = backend.runs_functions.vrtDataFromRuns(runPks = runPks)
         n = len(vrtData)
-    
         d = QProgressDialog(parent = self)
         d.setWindowModality(Qt.WindowModal)
         d.setRange(0,n)
@@ -399,11 +389,6 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         QtGui.QDesktopServices.openUrl(QUrl(file_locations.helpPath))
         
         
-    def makeVrt(self):
-        progress = commands_dialog.commandsDialog(title = 'Remaking VRT files',parent = self)
-        progress.show()
-        self.imagesModel.makeVrt(pks = self.imagesView.selectedPks(),progress = progress)
-
 
     #handle load gps... action
     def loadGps(self):
@@ -412,13 +397,15 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             d = p
         else:
             d = ''
-        #f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*.csv);;shp (*.shp)',directory=d)
-        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'csv (*rutacd*.csv);;shp (*.shp);;all (*.*)',directory=d)
+        f = QFileDialog.getOpenFileName(caption = 'Load GPS Data',filter = 'rutacd csv (*rutacd*.csv);;csv (*.csv)',directory=d)
 
         if f:
             if f[0]:
                 try:
-                    self.gpsModel.loadFile(f[0])
+                    backend.gps_functions.uploadFile(f[0])
+                    self.gpsModel.setSrid(self.gpsModel.srid)#reprojects
+                    
+                    #self.gpsModel.loadFile(f[0])
                     iface.messageBar().pushMessage("Image_loader", "Loaded GPS data.", level=Qgis.Info)
                 except Exception as e:
                     iface.messageBar().pushMessage("Image_loader", "Error loading GPS:"+str(e), level=Qgis.Warning)

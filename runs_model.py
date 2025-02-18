@@ -8,19 +8,13 @@ Created on Mon Oct  9 11:12:37 2023
 from PyQt5.QtSql import QSqlQueryModel
 from PyQt5.QtCore import Qt
 import numpy as np
-import csv
-import io
-from qgis.core import QgsGeometry
 import typing
 from image_loader.db_functions import runQuery,defaultDb
 from image_loader.type_conversions import asFloat
-from image_loader import settings , db_functions , dims
-from qgis.core import QgsCoordinateReferenceSystem,QgsCoordinateTransform,QgsProject
-
+from image_loader import settings , dims
 from image_loader.backend import runs_functions
 
 
-    
     
     
 class runsModel(QSqlQueryModel):

@@ -20,7 +20,7 @@ from image_loader import settings,dims
 from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError , prepareQuery
 from image_loader.type_conversions import asBool,asInt
 
-
+import os
 from image_loader.backend import anpp
 
 
@@ -74,13 +74,51 @@ def parseCsv(file : str , interval = 5):
                 lon = float(d['Longitude (deg)'])
                 lat = float(d['Latitude (deg)'])
                 alt = float(d['Altitude (m)'])
-                if m % interval == 0:
-                    yield ( m , lon , lat , alt )
+                yield ( m , lon , lat , alt )
             except Exception as e:
                 print(e)
                 pass
 
 
+
+def uploadCsv(filePath):
+    
+    db = defaultDb()
+    db.transaction()
+    runQuery(query='delete from original_points', db=db)
+    q = QSqlQuery(db)
+    if not q.prepare('insert or ignore into original_points(m,lon,lat,alt) values (:m,:lon,:lat,:alt)'):
+        raise queryPrepareError(q)
+        
+    for i,r in enumerate(parseCsv(filePath)):
+        try:
+            q.bindValue(':m', int(r[0]))
+            q.bindValue(':lon', float(r[1]))
+            q.bindValue(':lat', float(r[2]))
+            q.bindValue(':alt', float(r[3]))
+            if not q.exec():
+                raise queryError(q)
+        except Exception as e:
+            message = 'error loading row {r} : {err}'.format(r=i, err=e)
+            print(message)
+        
+    #apply start at 0 setting
+    if asBool(settings.value('startAtZero'),True):
+        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
+        
+    #update original_points next_id,last_id
+    runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
+    runQuery('update original_points set last_id = (select id from original_points as np where np.m<original_points.m order by np.m desc limit 1)', db=db)
+    db.commit()
+    reproject()
+
+
+
+def uploadFile(filePath) -> None:
+    ext = os.path.splitext(filePath)[1]
+    if ext == '.csv':
+        uploadCsv(filePath)
+    
 
 #sets x,y,bearing
 def reproject():
@@ -88,43 +126,7 @@ def reproject():
     #print('reprojecting to :'+str(srid))
     runQuery('update original_points set x = st_x(ST_Transform(MakePoint(lon,lat,4326),:srid)) , y = st_y(ST_Transform(MakePoint(lon,lat,4326),:srid))',values = {':srid':srid})
     runQuery('update original_points set bearing = (select next_point.bearing from next_point where next_point.id = original_points.id)')
-
-
-
-#numpy array
-def setValues(vals):
-    db = defaultDb()
-    db.transaction()
-    runQuery(query='delete from original_points', db=db)
-    q = QSqlQuery(db)
-    if not q.prepare('insert or ignore into original_points(m,lon,lat) values (:m,:lon,:lat)'):
-        raise queryPrepareError(q)
-    for i, v in enumerate(vals):
-        try:
-            q.bindValue(':m', int(v[0]))
-            q.bindValue(':lon', float(v[1]))
-            q.bindValue(':lat', float(v[2]))
-           # q.bindValue(':alt', float(v[3]))
-            if not q.exec():
-                raise queryError(q)
-        except Exception as e:
-            message = 'error loading row {r} : {err}'.format(r=i, err=e)
-            print(message)
-    #updating points
-    if asBool(settings.value('startAtZero'),True):
-        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
-    runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
-    runQuery('update original_points set last_id = (select id from original_points as np where np.m<original_points.m order by np.m desc limit 1)', db=db)
-
-    #add rows to frames table
-    runQuery(query='delete from frames', db=db)
-    q = prepareQuery('insert into frames(id) values (:frame)' , db = db)
-    numberOfFrames = math.floor((np.max(vals[:,0]) - np.min(vals[:,0]))/dims.HEIGHT)
-    for frame in range(0,numberOfFrames+1):
-        q.bindValue(':frame',frame)
-        q.exec()
-    db.commit()
-    reproject()
+    
     
 
 def maxM() -> int:
@@ -185,4 +187,12 @@ def recalcSpline():
     xSpline = interpolate.UnivariateSpline(m, x , s = S, ext='const', k = K)
      #ySpline = interpolate.UnivariateSpline(m,  y , s = S, ext='const', k = K)
     for c in xSpline.get_coeffs():
-        print(c)
+        print('c',c)
+        
+
+
+
+
+
+
+

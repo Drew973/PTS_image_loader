@@ -20,16 +20,12 @@ runsFromLayerHelp = r'file:/'+abspath(join(folder,'help','runs_from_layer.html')
 
 iconPath = join(folder,'icon.png')
       
-dbFile = join(folder,'images.db')
-
+dbFile = join(folder,'backend','images.db')
 
 
 crackStyle = join(folder,'layer_styles','cracking.qml')
 
 centerStyle = join(folder,'layer_styles','center_line.qml')
-
-#centerStyle = os.path.join(os.path.dirname(__file__),'center_line.qml')
-
 
 makeVrt = normpath(join(folder , 'make_vrt.bat'))
 

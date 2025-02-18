@@ -8,24 +8,30 @@ Created on Thu Jan  9 12:53:40 2025
 import os
 from PyQt5.QtCore import QProcess
 
-from image_loader import georeference , db_functions , load_image , file_locations
-from image_loader.image_model import allImagePks
+from image_loader import load_image , file_locations , backend
 
+from qgis.core import QgsProject
+
+import re
 
 
 #data to create/load VRT file
 class vrtData:
     
     
-    def __init__(self , imageType , run , warpedFiles):
-        self.imageType = imageType
-        self.run = run
-        self.vrtFile = vrtFileName(run = run , imageType = imageType , files = warpedFiles)
-        self.root = os.path.commonpath(warpedFiles)
-        #self.warpedFiles = [os.path.relpath(f,self.root) for f in warpedFiles]
+    def __init__(self , imageType , startFrame : int , endFrame : int , warpedFiles):
+        self.runName = '{tp}_{sf}_to_{ef}'.format(sf = startFrame , ef = endFrame , tp = imageType)
         self.warpedFiles = warpedFiles
-        self.textFile = ''
-        
+        self.imageType = imageType
+        if len(warpedFiles) == 1 :
+            folder = os.path.dirname(warpedFiles[0])
+        else:
+            folder = os.path.commonpath(warpedFiles)
+        self.vrtFile = os.path.join(folder,self.runName+'.vrt')
+        self.textFile = os.path.join(folder,self.runName+'.txt')
+        self.startFrame = startFrame
+        self.endFrame = endFrame
+
 
     #windows CLI has 8191 charactor limit. does it apply to QProcess?
     def asQProcess(self) -> QProcess:
@@ -39,76 +45,50 @@ class vrtData:
     #write text file containing list of filenames.
     #need this because limit on CLI charactors.
     def writeTextFile(self):
-        self.textFile = os.path.splitext(self.vrtFile)[0] + '.txt'
         with open(self.textFile,'w') as tf:
             tf.write('\n'.join(self.warpedFiles))
             
     
     def load(self):
-        load_image.loadImage(file = self.vrtFile, groups = ['image_loader','combined VRT',self.imageType,self.run])
+        load_image.loadImage(file = self.vrtFile, groups = ['image_loader','combined VRT',self.imageType])
 
 
-
-def vrtFileName(run , imageType : str , files : []) -> str:
-    if len(files) == 1 :
-        folder = os.path.dirname(files[0])
-    else:
-        folder = os.path.commonpath(files)
-    return os.path.join(folder,'{tp}_{run}.vrt'.format(run = run,tp = imageType))
+#remove layers containing warpedFiles.
+#uses layer name. more direct way to test what vrt layer contains?
+#need this to avoid file lock and invalid layer issues.
+    def removeSources(self):        
+        for layer in QgsProject.instance().layerTreeRoot().findLayers():
+            #print(layer.name())
+            #{type}_{startFrame}_to_{endFrame}.vrt
+            pattern = '(\D+)_(\d+)_to_(\d+)'
+            match = re.match(pattern,layer.name())
+            if match:
+                tp = match.group(1)
+                start = int(match.group(2))
+                end = int(match.group(3))
+                print(tp,start,end)
         
-
-    
-#{vrtFile:(files,type,run)} from primary keys.
-#grouped by run,image_type
-def getVrtData(imagePks : list) -> list:    
-    #use something unlikey to be in file name as seperator.
-    p = ','.join([str(pk) for pk in imagePks])
-    query = db_functions.runQuery("select group_concat(original_file,'[,]'),run,image_type from images_view where pk in ({pks}) group by run,image_type order by original_file".format(pks = p))
-    d = [] # 
-    while query.next():
-        run = query.value(1)
-        tp = query.value(2) 
-        # existing warped files
-        files = [os.path.normpath(georeference.warpedFileName(f)) for f in query.value(0).split('[,]') if os.path.isfile(georeference.warpedFileName(f))]
-       # print(files)
-        if files:
-            #vrtFile = vrtFileName(run = run,imageType = tp, files = files)
-            #d[vrtFile] = (files,tp,run)
-            d.append(vrtData(imageType = tp , run = run , warpedFiles = files))
-    return d
-
-
-    #'/d+_warped.tif'
+                if tp == self.imageType and start <= self.endFrame and end >= self.startFrame:
+                    print('removing:'+layer.name())
+                    QgsProject.instance().removeMapLayers([layer.layerId()])
+                        
 
 
 
 def test():
-    pks = allImagePks()
-    #print(pks)
-    d = getVrtData(pks)
+    pks = backend.runs_functions.allRunPks()
+    d = backend.runs_functions.vrtDataFromRuns([min(pks)])
    # print(d)
     v = d[-1]
-   # print(v.vrtFile)
-  #  print(v.warpedFiles)
-    
-    #print(v.warpedFiles)
-    
     v.writeTextFile()
   
     proc = v.asQProcess()
     proc.waitForFinished()
-    
-  #  print(json.dumps(v.warpedFiles))
-  
     print('args:')
     for a in proc.arguments():
         print(a)
-    
     if proc.exitStatus() == QProcess.CrashExit:
         print('error:',proc.readAllStandardError())
-
-    
-  #  QProcess.ProcessError
     if proc.error() == QProcess.FailedToStart:
         print('not started')
     else:
@@ -117,10 +97,16 @@ def test():
     
     v.load()
     
- #   print(proc.arguments())
     
-    #fl = ['{f}'.format(f=f) for f in v.warpedFiles[0:5]]
-    #print(';'.join(fl))
+    
+def testRemoveSources():
+    pks = backend.runs_functions.allRunPks()
+    d = backend.runs_functions.vrtDataFromRuns([min(pks)])[-1]
+    d.removeSources()
+    
+    
+    
+    
 if __name__ == '__console__':
     test()
-    
+    testRemoveSources()

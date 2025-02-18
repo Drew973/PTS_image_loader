@@ -11,21 +11,14 @@ linestringM with quadratic or cubic spline.
 
 
 """
-import os
 import numpy as np
-from qgis.utils import iface
 from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY,QgsVectorLayer,QgsProject
 from image_loader.db_functions import runQuery
 from image_loader import settings,dims,file_locations
 from image_loader.splinestring import splineString
-
-from image_loader import load_image
+from image_loader import group_functions
 from image_loader.backend import gps_functions
-
-
-#import json
 from image_loader import type_conversions
-
 from qgis.core import QgsCoordinateReferenceSystem
 
 
@@ -35,22 +28,23 @@ from qgis.core import QgsCoordinateReferenceSystem
 #might have less than 1 point/frame if using shapefile geom.
 # different results if reproject in QGIS vs in spatialite.experiment with this.
 def makeGpsLayer(s : splineString) -> None:
-    uri = "LineString?crs=epsg:{p}&field=runs:string(20,0)&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())    
+    uri = "LineString?crs=epsg:{p}&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())    
     layer = QgsVectorLayer(uri,'original_GPS',"memory")
     
     fields = layer.fields()
     
+    maxFrame = dims.mToFrame(gps_functions.maxM())
+                             
+                             
     def features():
-        q = runQuery('select id,runs from load_gps_view order by id')
-        while q.next():
+        for frame in range(0,maxFrame+1):
             f = QgsFeature(fields)
-            f['frame'] = q.value(0)
-            startChain = dims.frameToM(q.value(0))            
+            startChain = dims.frameToM(frame)
             endChain = startChain + dims.HEIGHT
             f['start_chain'] = startChain
             f['end_chain'] = endChain
-            f['runs'] = str(q.value(1))
-            points = s.centerLinePoint([startChain,endChain])
+            f['frame'] = frame
+            points = s.centerLinePoint([startChain,endChain])#array [(x1,y1),(x2,y2)]
             geom = QgsGeometry.fromPolylineXY([QgsPointXY(points[0,0],points[0,1]),QgsPointXY(points[1,0],points[1,1])])
             f.setGeometry(geom)
             if f.isValid():
@@ -60,7 +54,7 @@ def makeGpsLayer(s : splineString) -> None:
          layer.addFeatures(features())
     layer.loadNamedStyle(file_locations.centerStyle)
    # load_image.loadLayer(layer)
-    group = load_image.getGroup(['image_loader'])#QgsLayerTreeGroup
+    group = group_functions.getGroup(['image_loader'])#QgsLayerTreeGroup
     group.addLayer(layer)
 
     node = group.findLayer(layer)
@@ -163,14 +157,6 @@ class gpsModel:
 
     def moGeomToXY(self,g,mShift,offset):
         return self.splineString.moGeomToXY(g,mShift,offset)
-
-
-    def loadFile(self,file) -> None:
-        ext = os.path.splitext(file)[1]
-        if ext == '.csv':
-            data = np.array([r for r in gps_functions.parseCsv(file)])#ESPG:4326
-            gps_functions.setValues(data)
-            self.setSrid(self.srid)#reprojects
 
 
     def clear(self) -> None:

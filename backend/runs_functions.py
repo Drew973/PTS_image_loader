@@ -13,9 +13,12 @@ from qgis.core import QgsGeometry
 import typing
 from image_loader.db_functions import runQuery,defaultDb
 from image_loader.type_conversions import asFloat
-from image_loader import settings , db_functions , dims
+from image_loader import settings , db_functions , dims , vrt , georeference
 from qgis.core import QgsCoordinateReferenceSystem,QgsCoordinateTransform,QgsProject
 import math
+import os
+
+
 
 
 
@@ -55,6 +58,15 @@ def saveRunsCsv(file:str):
         while q.next():
             writer.writerow((row,q.value(0),q.value(1),q.value(2),q.value(3)))
             row += 1
+
+
+def allRunPks():
+    q = runQuery('select pk from runs')
+    pks = []
+    while q.next():
+        pks.append(q.value(0))        
+    return pks
+    
 
 
 
@@ -167,6 +179,26 @@ order by m
     return ranges
 
 
+#data for making vrt from selected runs.
+#->[vrt.vrtData]
+def vrtDataFromRuns(runPks:list):
+    qs = '''select image_type,start_frame,end_frame,group_concat(original_file,'[,]') from runs inner join images on frame_id >= start_frame and frame_id <= end_frame 
+    and runs.pk in ({runPks})
+    group by image_type,start_frame,end_frame
+'''.format(runPks =  ','.join([str(pk) for pk in runPks]))
+
+    query = db_functions.runQuery(qs)
+    d = [] 
+    while query.next():        
+        originalFiles = query.value(3).split('[,]')
+        # existing warped files
+        warpedFiles = [os.path.normpath(georeference.warpedFileName(f)) for f in originalFiles if os.path.isfile(georeference.warpedFileName(f))]
+        if warpedFiles:
+            d.append(vrt.vrtData(imageType = query.value(0) ,
+                             startFrame = query.value(1) ,
+                             endFrame = query.value(2) ,
+                             warpedFiles = warpedFiles))
+    return d
 
 
 
