@@ -48,7 +48,7 @@ def mToLine(m,frame):
         startM = frameToM(frame)
     #    endM = frame*HEIGHT
         r = LINES - LINES*(m-startM)/HEIGHT
-    return clamp(r,0,LINES)
+    return clamp(int(r),0,LINES)
     
 
 #(m:float[],frame:int)->int[]

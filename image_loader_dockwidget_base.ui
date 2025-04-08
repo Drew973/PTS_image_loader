@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>918</width>
-    <height>441</height>
+    <width>915</width>
+    <height>660</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>PTS image loader v3.41</string>
+   <string>PTS image loader v3.50</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -41,6 +41,44 @@
              </property>
              <property name="uniformRowHeights">
               <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab">
+          <attribute name="title">
+           <string>Corrections</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QComboBox" name="runBox">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show corrections for this run.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="selectRunButton">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select this run in the runs table.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="text">
+                <string>Select run</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="correctionsView" name="correctionsView">
+             <property name="selectionMode">
+              <enum>QAbstractItemView::MultiSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
              </property>
             </widget>
            </item>
@@ -84,6 +122,11 @@
    <class>runsView</class>
    <extends>QTreeView</extends>
    <header>image_loader.runs_view</header>
+  </customwidget>
+  <customwidget>
+   <class>correctionsView</class>
+   <extends>QTableView</extends>
+   <header>image_loader.corrections_view</header>
   </customwidget>
  </customwidgets>
  <resources/>

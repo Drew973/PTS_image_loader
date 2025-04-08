@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-create database and tables in db_functions.createDb().
 """
 
 from PyQt5.QtSql import QSqlQuery,QSqlQueryModel,QSqlDatabase
@@ -227,6 +226,7 @@ class imageModel(QSqlQueryModel):
                         data[i].origonalFile = f
             self._add(data)
 
+        
 
     def _add(self,data):
         db = self.database()

@@ -49,6 +49,27 @@ def readOdometerState(b):
 
 position = namedtuple('position', ['lon', 'lat', 'alt', 'seconds','microSeconds','lastOdometer'])
 
+'''
+
+can sort by multiple columns like sorted(unsorted, key=lambda p: (p.seconds, p.microseconds))
+
+class position:
+    def __init__(self , lon:float , lat:float , alt:float , seconds:int ,microseconds:int , lastOdometer:float):
+        self.lon = float(lon)
+        self.lat = float(lat)
+        self.alt = float(alt)
+        self.seconds = int(seconds)
+        self.microseconds = int(microseconds)
+        #self.lastOdometer = float(lastOdometer)
+        
+    def __lt__(self,other):
+        if self.seconds == other.seconds:
+            return self.microseconds < other.microseconds
+        selse:
+            return self.seconds < other.seconds
+'''
+
+
 def readAnpp(filePath):
     types = {}
     with open(filePath,'rb') as f:        
@@ -74,7 +95,7 @@ def readAnpp(filePath):
             except Exception as e:
                 h = False
                 print(e)
-    print(sorted(types.keys()))
+    #print(sorted(types.keys()))
         
     
 #only used for testing.
@@ -91,7 +112,8 @@ def anppToCsv(inputFile):
 
 
 if __name__ in ('__main__','__console__'):
-    inFile = r'C:\Users\drew.bennett\Documents\athens_airport\data\2024-10-17\20241017_03\2024-10-17 01h41m32s Gipsi2 Module 1 20241017_03 001.anpp'
+    #inFile = r'C:\Users\drew.bennett\Documents\athens_airport\data\2024-10-17\20241017_03\2024-10-17 01h41m32s Gipsi2 Module 1 20241017_03 001.anpp'
+    inFile = r'E:\Athens_image_loader\20241018_07\2024-10-18 21h14m09s Gipsi2 Module 1 20241018_07 001.anpp'
     anppToCsv(inFile)
 
     

@@ -4,3 +4,4 @@ cd /D %1
 XCOPY *.jpg %2 /S /Y
 XCOPY *.acdx %2 /S /Y
 XCOPY "*rutacd*.csv" %2 /S /Y
+XCOPY *.anpp %2 /S /Y

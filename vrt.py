@@ -7,11 +7,8 @@ Created on Thu Jan  9 12:53:40 2025
 
 import os
 from PyQt5.QtCore import QProcess
-
-from image_loader import load_image , file_locations , backend
-
-from qgis.core import QgsProject
-
+from image_loader import load_image , file_locations , backend , group_functions
+from qgis.core import QgsProject , QgsRasterLayer , QgsContrastEnhancement
 import re
 
 
@@ -20,7 +17,7 @@ class vrtData:
     
     
     def __init__(self , imageType , startFrame : int , endFrame : int , warpedFiles):
-        self.runName = '{tp}_{sf}_to_{ef}'.format(sf = startFrame , ef = endFrame , tp = imageType)
+        self.runName = layerName(imageType = imageType , startFrame = startFrame , endFrame = endFrame)
         self.warpedFiles = warpedFiles
         self.imageType = imageType
         if len(warpedFiles) == 1 :
@@ -50,7 +47,26 @@ class vrtData:
             
     
     def load(self):
-        load_image.loadImage(file = self.vrtFile, groups = ['image_loader','combined VRT',self.imageType])
+        #load_image.loadImage(file = self.vrtFile, groups = ['image_loader','combined VRT',self.imageType])
+        group = group_functions.getGroup(['image_loader','combined VRT',self.imageType])#QgsLayerTreeGroup
+
+        #find position for new layer ordered by imageType,startFrame,endFrame
+        names = [la.name() for la in group.findLayers()] + [self.runName]
+        names.sort(key = tse)
+        #print('names:',names)
+        i = names.index(self.runName)
+        
+        layer = QgsRasterLayer(self.vrtFile , self.runName)        
+        layer.setContrastEnhancement(QgsContrastEnhancement.NoEnhancement)#remove contrast enhancement. end up with same pixel value showing as different color.
+       
+        group.insertLayer(i , layer)
+        #group.setExpanded(False)#why?
+        QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
+        node = group.findLayer(layer)
+        node.setItemVisibilityChecked(True)
+        
+     #  group.reorderGroupLayers(layers:Iterable[QgsMapLayer])
+        #sometimes crashes QGIS with "Windows fatal exception: access violation"
 
 
 #remove layers containing warpedFiles.
@@ -58,20 +74,33 @@ class vrtData:
 #need this to avoid file lock and invalid layer issues.
     def removeSources(self):        
         for layer in QgsProject.instance().layerTreeRoot().findLayers():
-            #print(layer.name())
-            #{type}_{startFrame}_to_{endFrame}.vrt
-            pattern = '(\D+)_(\d+)_to_(\d+)'
-            match = re.match(pattern,layer.name())
-            if match:
-                tp = match.group(1)
-                start = int(match.group(2))
-                end = int(match.group(3))
-                print(tp,start,end)
-        
-                if tp == self.imageType and start <= self.endFrame and end >= self.startFrame:
-                    print('removing:'+layer.name())
-                    QgsProject.instance().removeMapLayers([layer.layerId()])
-                        
+            tp , start , end = tse(layer.name())
+            if tp == self.imageType and start <= self.endFrame and end >= self.startFrame:
+                print('removing:'+layer.name())
+                QgsProject.instance().removeMapLayers([layer.layerId()])
+            
+                    
+            
+def layerName(imageType : str , startFrame : int , endFrame : int):
+    return '{tp}_{sf}_to_{ef}'.format(sf = startFrame , ef = endFrame , tp = imageType)
+
+
+#inverse of layerName
+#returns (imageType:str , startFrame:int , endFrame:int) from layerName
+#('' , -1 , -1) if not found
+def tse(layerName : str):
+    pattern = '(\D+)_(\d+)_to_(\d+)'
+    match = re.match(pattern , layerName)
+    if match:
+        tp = match.group(1)
+        start = int(match.group(2))
+        end = int(match.group(3))                
+        return (tp,start,end)
+    return ('' , -1 , -1)
+    
+    
+
+                
 
 
 

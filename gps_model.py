@@ -14,53 +14,10 @@ linestringM with quadratic or cubic spline.
 import numpy as np
 from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY,QgsVectorLayer,QgsProject
 from image_loader.db_functions import runQuery
-from image_loader import settings,dims,file_locations
-from image_loader.splinestring import splineString
-from image_loader import group_functions
+from image_loader import settings,dims
 from image_loader.backend import gps_functions
 from image_loader import type_conversions
 from qgis.core import QgsCoordinateReferenceSystem
-
-
-
-#make layer with centerlines.
-#1 feature per frame.
-#might have less than 1 point/frame if using shapefile geom.
-# different results if reproject in QGIS vs in spatialite.experiment with this.
-def makeGpsLayer(s : splineString) -> None:
-    uri = "LineString?crs=epsg:{p}&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())    
-    layer = QgsVectorLayer(uri,'original_GPS',"memory")
-    
-    fields = layer.fields()
-    
-    maxFrame = dims.mToFrame(gps_functions.maxM())
-                             
-                             
-    def features():
-        for frame in range(0,maxFrame+1):
-            f = QgsFeature(fields)
-            startChain = dims.frameToM(frame)
-            endChain = startChain + dims.HEIGHT
-            f['start_chain'] = startChain
-            f['end_chain'] = endChain
-            f['frame'] = frame
-            points = s.centerLinePoint([startChain,endChain])#array [(x1,y1),(x2,y2)]
-            geom = QgsGeometry.fromPolylineXY([QgsPointXY(points[0,0],points[0,1]),QgsPointXY(points[1,0],points[1,1])])
-            f.setGeometry(geom)
-            if f.isValid():
-                yield f
-                
-    with edit(layer):
-         layer.addFeatures(features())
-    layer.loadNamedStyle(file_locations.centerStyle)
-   # load_image.loadLayer(layer)
-    group = group_functions.getGroup(['image_loader'])#QgsLayerTreeGroup
-    group.addLayer(layer)
-
-    node = group.findLayer(layer)
-    node.setItemVisibilityChecked(True)
-    node.setExpanded(False)        
-    QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
 
 
 
@@ -72,29 +29,7 @@ def getCorrection(frame):
     return (0.0 , 0.0)
     
 
-#-> '-gcp <pixel> <line> <easting> <northing>'
-#might as well serialize to string here. list is valid JSON and avoids passing "" to CLI
-N = 2 # GCP points per side of frame
-def calcGcps(frame : int , geom : splineString) -> str:
-     chainageShift , offset = getCorrection(frame)
-     startM = dims.frameToM(frame) + chainageShift
-     endM = startM + dims.HEIGHT
-     mo = np.zeros((N*2,2)) * np.nan
-     mo[:,0][0:N] = np.linspace(startM,endM,N)
-     mo[:,0][N:] = np.linspace(startM,endM,N)
-     mo[:,1][0:N] = offset + dims.WIDTH/2
-     mo[:,1][N:] = offset - dims.WIDTH/2
-     xy = geom.point(mo)
-     r = np.zeros((N*2,4)) * np.nan
-     r[:,0:2] = xy
-     r[:,2][0:N] = 0
-     r[:,2][N:] = dims.PIXELS
-     r[:,3][0:N] = np.linspace(dims.LINES,0,N)
-     r[:,3][N:] = np.linspace(dims.LINES,0,N)
-     #v = [(row[0],row[1],int(row[2]),int(row[3])) for row in r]
-     #-gcp <pixel> <line> <easting> <northing> [<elevation>]
-     return ' '.join(['-gcp {pixel} {line} {easting} {northing}'.format(pixel = int(a[2] ), line = int(a[3]) , easting = a[0] , northing = a[1]) for a in r])
-     
+
 
 class gpsModel:
     
@@ -118,13 +53,6 @@ class gpsModel:
         except Exception as e:
             self.splineString = None
             self.error = str(e)
-
-
-    def downloadGpsLayer(self) -> None:
-        if self.pointCount() > 0:
-            makeGpsLayer(self.splineString)
-        else:
-            raise ValueError('No GPS points. Is GPS loaded?')
 
 
     #only used by chainages dialog. speed unimportant.

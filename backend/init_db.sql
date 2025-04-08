@@ -1,22 +1,23 @@
-SELECT InitSpatialMetaDataFull();
+--SELECT InitSpatialMetaDataFull();
     
+drop table if exists runs;
+
 create table if not exists runs
 (
 	pk INTEGER PRIMARY KEY
 	,start_frame int default 0
 	,end_frame int default 0
-	,correction_start_m float default 0.0
-	,correction_end_m float default 0.0
-	,correction_start_offset float default 0.0
-	,correction_end_offset float default 0.0
 );
 
 
-create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk
-    ,start_frame,end_frame,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset
-    ,correction_end_m - correction_start_m as chainage_shift,correction_end_offset - correction_start_offset as offset
-    from runs;
+drop view if exists runs_view;
 
+create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number
+,start_frame||' to '||end_frame as run_name
+,pk
+,start_frame
+,end_frame
+from runs;
 
 create table if not exists images
 ( 
@@ -141,8 +142,8 @@ create index if not exists frame_ind on rut(frame);
 
 drop view if exists rut_view;
 create view if not exists rut_view as
-select rut.pk as pk,frame,chainage,wheelpath,depth,width,type,deform,x_section,mo_wkb,chainage_shift,offset
-from rut inner join runs_view on start_frame <= frame and end_frame >= frame;
+select rut.pk as rut_pk, runs.pk as run_pk,frame,chainage,wheelpath,depth,width,type,deform,x_section,mo_wkb,xy_wkb
+from rut inner join runs on start_frame <= frame and end_frame >= frame;
 
 
 create table if not exists joints(
@@ -195,8 +196,8 @@ frame int
 
 drop view if exists faulting_view;
 create view if not exists faulting_view as
-select frame,joint_id,joint_offset,faulting,width,mo_wkb,chainage_shift,runs_view.offset as left_offset from transverse_joint_faulting
-inner join runs_view on start_frame <= frame and end_frame >= frame;
+select runs.pk as run_pk,frame,joint_id,joint_offset,faulting,width,mo_wkb from transverse_joint_faulting
+inner join runs on start_frame <= frame and end_frame >= frame;
 
 
 create table if not exists areas
@@ -236,14 +237,36 @@ create table spline
 create index if not exists spline_min_m on spline(min_m);
 
 
+drop table if exists corrections;
 
-
-
-create table anpp
+create table corrections
 (
-	lon float
-	,lat float
-	,alt float
-	,seconds int
-	,microseconds int
+pk INTEGER primary key
+,frame INT
+,line INT
+,pixel INT
+,new_chainage DECIMAL(8,2)--up to 999999.99 meters
+,new_offset DECIMAL(4,2)--up to 99.99 meters
+,run int
+,foreign key (run) references runs(pk) on delete cascade on update cascade
+);
+
+
+
+
+
+create table frames(
+id INTEGER primary key
 )
+
+
+drop table if exists corrected_points;
+
+create table corrected_points(
+m int --only need multiples of LENGTH
+,x float
+,y float
+,run int 
+,foreign key (run) references runs(pk) on delete cascade on update cascade
+,unique(run,m)
+);

@@ -7,7 +7,7 @@ quadratic spine has this.
 """
 K = 2
 #K = 3
-S = 0
+S = None
 N = 2
 MAX = 99999999999999999999.9
 
@@ -34,21 +34,33 @@ def to2DArray(x,y):
 
 
 
+mxyType = np.dtype([('m',float),('x',float),('y',float)])
+
+
 class splineString:
     
     #3 column numpy array. m,x,y
 
     def __init__(self,values):
-        self.xSpline = interpolate.UnivariateSpline(values[:,0], values[:,1] , s = S, ext='const', k = K)
-        self.ySpline = interpolate.UnivariateSpline(values[:,0],  values[:,2] , s = S, ext='const', k = K)
+        m = [v['m'] for v in values]
+        x = [v['x'] for v in values]
+        y = [v['y'] for v in values]
+        
+      #  print('splineString.m',m.shape)#(21332, 1)
+        
+        
+        self.xSpline = interpolate.UnivariateSpline(m, x , s = S, ext='const', k = K)
+        self.ySpline = interpolate.UnivariateSpline(m,  y , s = S, ext='const', k = K)
         self.xDerivitive = self.xSpline.derivative(1)
         self.yDerivitive = self.ySpline.derivative(1)    
+        self.maxM = np.max(m)
+        self.minM = np.min(m)
 
-    
+
     # array[[x,y]] or []
     # m in any units.
     #offset in same units as x and y.
-    def point(self,mo):
+    def points(self,mo):
           m = mo[:,0]
           r = np.zeros((len(m),2)) * np.nan
           r[:,0] =  self.xSpline(m)
@@ -59,23 +71,31 @@ class splineString:
           r[:,1] = r[:,1] + perps[:,1] * offsets
           return r
     
+    
+    def point(self , m:float , offset:float):
+        self.xSpline(m)
+        self.ySpline(m)
+        perp = self.leftPerp([m])[0]
+        return (self.xSpline(m) + offset*perp[0] , self.ySpline(m) + offset*perp[1])
+
+        
+        
+        
+    
     #array of m values
     #array [(x1,y1),(x2,y2)...]
     def centerLinePoint(self,m):
+        #print({'x':self.xSpline(m),'y':self.ySpline(m)})
         return np.column_stack([self.xSpline(m) , self.ySpline(m)])
     
 
     #convert geometry in terms of m,offset to x,y
     #QgsGeometry
     # x as m. y as offset
-    def moGeomToXY(self,geom,mShift = 0.0,offset = 0.0):
+    def moGeomToXY(self,geom):
         g = QgsGeometry(geom)
-        mo = []
-        for i,v in enumerate(g.vertices()):
-            mo.append([v.x()+mShift,v.y()+offset])
-           # p = to2DArray(v.x()+mShift,v.y()+offset)
-        mo = np.array(mo)
-        new = self.point(mo)
+        mo = np.array( [[v.x(),v.y()] for v in g.vertices()] )
+        new = self.points(mo)
         for i,row in enumerate(new):
             g.moveVertex(row[0],row[1],i)
         return g
@@ -97,7 +117,7 @@ class splineString:
             p = self.centerLinePoint(m)# like p [[ 495866.03275013 4198850.1469678 ]]
             return (p[0,0] - x) * (p[0,0] - x) + (p[0,1] - y) * (p[0,1] - y)
         
-        res = minimize_scalar(_sqdist,bounds = (minM,maxM),method='bounded',tol = tol)
+        res = minimize_scalar(_sqdist , bounds = (minM , maxM) , method='bounded' , tol = tol)
         if res.success:
             return res.x            
         else:
@@ -109,7 +129,9 @@ class splineString:
     #nearest m,offset to point xy
     #could find m more efficiently by solving d distance/dm = 0?
     #numpy uses numeric methods to solve higher order polynomials. might not be faster.
-    def locate(self, x : float , y : float , minM:float = 0.0 , maxM:float = np.inf , tol:float = 0.01): #-> Tuple(float,float)
+    def locate(self, x : float , y : float , minM:float = 0.0 , maxM:float = None , tol:float = 0.01): #-> Tuple(float,float)
+        if maxM is None:
+            maxM = self.maxM
         m = self.nearestM(x = x, y = y ,minM = minM , maxM = maxM , tol = tol)
         nearest = self.centerLinePoint(m)#like [[ 494899.23345296 4197063.37078011]]
         shortestLine = nearest[0] - np.array([x,y])

@@ -49,17 +49,8 @@ def parseCsv(f:typing.TextIO , quiet : bool = False):
                 print(e)
       
     
-def saveRunsCsv(file:str):
-    with open(file,'w',newline='') as f:
-        writer = csv.writer(f,dialect='excel',delimiter = ',')
-        writer.writerow(('RunID','FromFrame','ToFrame','Chainage','Offset','StartX','StartY','EndX','EndY'))
-        q = runQuery('select start_frame,end_frame,chainage_shift,offset from runs_view order by number')
-        row = 1
-        while q.next():
-            writer.writerow((row,q.value(0),q.value(1),q.value(2),q.value(3)))
-            row += 1
 
-
+#only used for testing
 def allRunPks():
     q = runQuery('select pk from runs')
     pks = []
@@ -86,7 +77,13 @@ and runs.pk in ({pks})
     return imageKeys
     
 
-def insertRuns(runs):
+
+def clearRuns():
+    runQuery(query = 'delete from runs')
+
+
+
+def addRuns(runs):
     db = db_functions.defaultDb()
     db.transaction()
     q = db_functions.prepareQuery('insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)')
@@ -98,33 +95,17 @@ def insertRuns(runs):
     
     
     
-def addRows(data,clear = False):
-    db = db_functions.defaultDb()
-    db.transaction()
-    if clear:
-        runQuery(query = 'delete from runs', db=db)
-    for r in data:
-        sm = dims.frameToM(r['end_frame'])
-        em = sm + r['chainage_shift']
-        runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:s,:e,:sm,:em,:eo)',
-                    db=db,values = {':s':r['start_frame'],
-                                     ':e':r['end_frame'],
-                                     ':sm':sm,
-                                     ':em':em,
-                                     ':eo':r['offset']})
-    db.commit()
-    
-    
 #rename to loadStr
 #load text from excel via clipboard etc
 def loadText(text:str):
     f = io.StringIO('start_frame\tend_frame\tchainage_shift\toffset\n'+text)
-    addRows(parseCsv(f))
+    addRuns(parseCsv(f))
 
 
 def loadCsv(file:str):
     with open(file,'r') as f:
-        addRows(parseCsv(f),clear=True)    
+        clearRuns()
+        addRuns(parseCsv(f))    
     
     
     
@@ -176,7 +157,9 @@ order by m
             ranges.append({'start_frame':frame,'end_frame':frame})
         if q.value(1) == False:
             ranges[-1]['end_frame'] = frame
-    return ranges
+    
+    return [r for r in ranges if r['end_frame'] - r['start_frame'] > 5] # minimum of 5 frames in run. make this into setting?
+
 
 
 #data for making vrt from selected runs.
@@ -201,7 +184,26 @@ def vrtDataFromRuns(runPks:list):
     return d
 
 
+def runFromFrame(frame:int):
+    q = runQuery('select pk from runs where start_frame <= :f and end_frame >= :f limit 1',values = {':f':frame})
+    q.next()
+    return q.value(0)
 
+
+def mRange(runPk : int):
+    q = runQuery('select start_frame,end_frame from runs where pk = :pk',values = {':pk':runPk})
+    while q.next():
+        return (dims.frameToM(q.value(0)) , dims.frameToM(q.value(1)))
+    return None
+    
+
+
+def frames(runPk:int) -> list:
+    runsQuery = runQuery('select start_frame,end_frame from runs where pk = :pk' , values = {':pk':runPk})
+    while runsQuery.next():
+        return [frame for frame in range(runsQuery.value(0) , runsQuery.value(1)+1)]
+    return []
+        
 
 
 

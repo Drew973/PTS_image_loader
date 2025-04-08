@@ -1,0 +1,61 @@
+
+
+
+
+
+multiple corrections per run.
+	load old runs csv:
+
+	save/load corrections as csv.
+	
+	do per run. don't want corrections to last run affecting things unexpectedly.
+	
+	
+	need to store current position of image.
+	
+	
+
+runs deselected after setting correction through dialog.
+
+runProcesses sometimes freezing around 97%
+
+
+
+resample at ~5m intervals when uploading gps. faster to upload.
+	known spacing for finding chainages?
+
+
+
+web app like:
+rest api and database handles fitting & corrections.
+creates georeferenced images on server/in database.
+display to user on page. Geoserver?
+
+
+georeferenceRun(runPk:int)
+should show cancellable progress dialog and block ui.
+could use subprocess and program in any language that displays this
+
+
+
+save as json? {run:startFrame,endFrame,corrections:[[]],'images':[[]]}
+easier to just save sqlite database. could have version problems loading files made by old versions of plugin.
+
+
+createRunVrt(runPk:int)
+
+
+
+x,y corrections vs m,offset:
+
+	simpler		
+	don't need to change start/end frames
+	chainages seem to be leading/lagging correct position. 
+
+	cant go past start/end of gps
+
+
+	use frame,pixel,line -> xy with
+	single chainage shift (minimize distances) and x,y shift?
+
+	correctedPoint(m,offset) = point(m + chainageShift(run),offset) + XYShift(m)

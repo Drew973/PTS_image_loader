@@ -10,20 +10,38 @@ import os
 
 
 testFolder = os.path.dirname(__file__)
-#dbFile = os.path.join(testFolder,'outputs','test.sqlite')
+dbFile = os.path.join(testFolder,'test.db')
+profileFolder = os.path.join(testFolder,'profiles')
 
 
-profileFolder = os.path.join(os.path.dirname(__file__),'profiles')
 
 import cProfile
 
 
-def profileFunction(function,args):
+
+#profile function and write [function_name].prof to test/profiles.
+#returns function(**args)
+def profileFunction(function , args = None):
     pr = cProfile.Profile()
     pr.enable()
-   # with cProfile.Profile() as profiler:#context manager not in earlier versions of cProfile
-    r = function(**args)
-    pr.disable()
-    to = os.path.join(profileFolder,str(function)+'.prof')
-    pr.dump_stats(to)
-    return r
+    
+    #get ValueError: Another profiling tool is already active if profiler not closed due to error etc.
+
+    try:
+       # with cProfile.Profile() as profiler:#context manager not in earlier versions of cProfile
+        if args:
+            r = function(**args)
+        else:
+            r = function()
+            
+        to = os.path.join(profileFolder,function.__name__+'.prof')
+        pr.dump_stats(to)
+        return r
+        
+        
+    except Exception as e:
+        raise e
+    
+    finally:
+        pr.disable()
+        

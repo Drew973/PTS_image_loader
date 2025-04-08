@@ -11,7 +11,6 @@ from os.path import dirname,join,abspath,normpath
 
 folder = dirname(__file__)
 
-uiFile = join(folder , 'image_loader_dockwidget_base.ui')
 
 helpPath = r'file:/'+abspath(join(folder,'help','help.html'))
 runsFromLayerHelp = r'file:/'+abspath(join(folder,'help','runs_from_layer.html'))
@@ -24,8 +23,10 @@ dbFile = join(folder,'backend','images.db')
 
 
 crackStyle = join(folder,'layer_styles','cracking.qml')
-
 centerStyle = join(folder,'layer_styles','center_line.qml')
+rutStyle = join(folder,'layer_styles','rutting.qml')
+
+
 
 makeVrt = normpath(join(folder , 'make_vrt.bat'))
 

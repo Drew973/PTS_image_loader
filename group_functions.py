@@ -27,6 +27,13 @@ def findGroup(child,parent=QgsProject.instance().layerTreeRoot()):
             return c
 
 
+#sort QgsLayerTreeGroup children by name
+#def sortGroup(group):
+#    a = sorted(group.findLayers() , key = lambda e : e.name() )
+#    layers = [g.layer() for g in a] #List[QgsLayerTreeLayer]
+#   group.reorderGroupLayers(layers)# Iterable[QgsMapLayer]
+    
+    
 
 #finds or makes group from list of ancestors.
 #groups: list of strings
@@ -45,20 +52,10 @@ def removeChild(child,parent=QgsProject.instance().layerTreeRoot()):
                 parent.removeChildNode(c)
                 
                 
+                
 
-
-
-import re
-for layer in QgsProject.instance().layerTreeRoot().findLayers():
-    print(layer.name())
-    #{type}_{startFrame}_to_{endFrame}.vrt
-    pattern = '(\D+)_(\d+)_to_(\d+)\.vrt'
-    match = re.match(pattern,layer.name())
-    if match:
-        tp = match.group(1)
-        start = match.group(2)
-        end = match.group(3)
-        print(tp,start,end)
+                
+                
 
 def test1():
     print(findOrMake('image_loader3'))

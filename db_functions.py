@@ -26,6 +26,14 @@ from PyQt5.QtSql import QSqlDatabase,QSqlQuery
 from image_loader.file_locations import dbFile
 
 
+
+NAME = 'image_loader'
+
+
+
+
+
+
 class queryError(Exception):
     def __init__(self , query):
         super().__init__('error executing query {q}:{err}'.format(q = query.lastQuery(),err = query.lastError().text()))
@@ -38,7 +46,7 @@ class queryPrepareError(Exception):
         
         
 def defaultDb():
-    return QSqlDatabase.database('image_loader')        
+    return QSqlDatabase.database(NAME)        
         
 
 #from PyQt5.QtSql import QSqlDriver
@@ -128,14 +136,20 @@ def vacuum():
 
 
 #want to call this at least once to avoid driver not loaded error.
-def createDb(file = dbFile,name = 'image_loader') -> QSqlDatabase:
-    db = QSqlDatabase.addDatabase("QSPATIALITE",name)
+def setFile(file:str = dbFile):
+    db = QSqlDatabase.addDatabase("QSPATIALITE",NAME)
     db.close()
     db.setDatabaseName(file)
     if not db.open():
         raise ValueError('could not open database')
-#    initDb(db)
-    return db
+    vacuum()
+
+
+setFile()
+
+
+
+
 
 
 #def sqliteVersion():

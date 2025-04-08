@@ -81,9 +81,14 @@ class processRunner(QObject):
 
     #emit signals and update completedCount
     def processFinished(self , process):
+        #op = str(process.readAllStandardOutput())
+        #print(op)
+
+        
         if process.exitStatus() == QProcess.CrashExit:
             err = str(process.readAllStandardError())
             self.errorOccured.emit(err)
+            print(err)
             
         self.completedCount += 1
         self.progressChanged.emit(self.completedCount)
@@ -104,6 +109,7 @@ class processRunner(QObject):
                 self.errorOccured.emit('Subprocess not started')
                 print('Subprocess not started')
             
+
 
     def cancel(self):
         self.canceled = True

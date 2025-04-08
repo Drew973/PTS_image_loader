@@ -1,0 +1,224 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "GDAL/1.9.1": {
+        "type": "package",
+        "compile": {
+          "lib/net40/gdal_csharp.dll": {},
+          "lib/net40/gdalconst_csharp.dll": {},
+          "lib/net40/ogr_csharp.dll": {},
+          "lib/net40/osr_csharp.dll": {}
+        },
+        "runtime": {
+          "lib/net40/gdal_csharp.dll": {},
+          "lib/net40/gdalconst_csharp.dll": {},
+          "lib/net40/ogr_csharp.dll": {},
+          "lib/net40/osr_csharp.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "GDAL/1.9.1": {
+      "sha512": "Eg9L4Fei78e8H0SWOBOM9DLBnwychEXrzXrRzJXcMpC+r28xbDrV7+0LkuRJK737f74AyeGbTLygYgKomIVAPw==",
+      "type": "package",
+      "path": "gdal/1.9.1",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "content/GdalConfiguration.cs.pp",
+        "content/GdalConfiguration.vb.pp",
+        "gdal.1.9.1.nupkg.sha512",
+        "gdal.nuspec",
+        "gdal/data/GDALLogoBW.svg",
+        "gdal/data/GDALLogoColor.svg",
+        "gdal/data/GDALLogoGS.svg",
+        "gdal/data/compdcs.csv",
+        "gdal/data/coordinate_axis.csv",
+        "gdal/data/cubewerx_extra.wkt",
+        "gdal/data/datum_shift.csv",
+        "gdal/data/ecw_cs.wkt",
+        "gdal/data/ellipsoid.csv",
+        "gdal/data/epsg.wkt",
+        "gdal/data/esri_StatePlane_extra.wkt",
+        "gdal/data/esri_Wisconsin_extra.wkt",
+        "gdal/data/esri_extra.wkt",
+        "gdal/data/gcs.csv",
+        "gdal/data/gcs.override.csv",
+        "gdal/data/gdal_datum.csv",
+        "gdal/data/gdalicon.png",
+        "gdal/data/geoccs.csv",
+        "gdal/data/gt_datum.csv",
+        "gdal/data/gt_ellips.csv",
+        "gdal/data/header.dxf",
+        "gdal/data/nitf_spec.xml",
+        "gdal/data/nitf_spec.xsd",
+        "gdal/data/pci_datum.txt",
+        "gdal/data/pci_ellips.txt",
+        "gdal/data/pcs.csv",
+        "gdal/data/pcs.override.csv",
+        "gdal/data/prime_meridian.csv",
+        "gdal/data/projop_wparm.csv",
+        "gdal/data/s57agencies.csv",
+        "gdal/data/s57attributes.csv",
+        "gdal/data/s57attributes_aml.csv",
+        "gdal/data/s57attributes_iw.csv",
+        "gdal/data/s57expectedinput.csv",
+        "gdal/data/s57objectclasses.csv",
+        "gdal/data/s57objectclasses_aml.csv",
+        "gdal/data/s57objectclasses_iw.csv",
+        "gdal/data/seed_2d.dgn",
+        "gdal/data/seed_3d.dgn",
+        "gdal/data/stateplane.csv",
+        "gdal/data/trailer.dxf",
+        "gdal/data/unit_of_measure.csv",
+        "gdal/data/vertcs.csv",
+        "gdal/data/vertcs.override.csv",
+        "gdal/share/esri.extra",
+        "gdal/share/nad.lst",
+        "gdal/share/ntf_r93.gsb",
+        "gdal/share/ntv1_can.dat",
+        "gdal/share/nzgd2kgrid0005.gsb",
+        "gdal/share/other.extra",
+        "gdal/share/proj_def.dat",
+        "gdal/x64/freexl.dll",
+        "gdal/x64/gdal19.dll",
+        "gdal/x64/gdal_wrap.dll",
+        "gdal/x64/gdalconst_wrap.dll",
+        "gdal/x64/geos_c.dll",
+        "gdal/x64/iconv.dll",
+        "gdal/x64/libcurl.dll",
+        "gdal/x64/libeay32.dll",
+        "gdal/x64/libexpat.dll",
+        "gdal/x64/libmysql.dll",
+        "gdal/x64/libpq.dll",
+        "gdal/x64/msvcp100.dll",
+        "gdal/x64/msvcr100.dll",
+        "gdal/x64/ogr_wrap.dll",
+        "gdal/x64/openjpeg.dll",
+        "gdal/x64/osr_wrap.dll",
+        "gdal/x64/proj.dll",
+        "gdal/x64/spatialite.dll",
+        "gdal/x64/ssleay32.dll",
+        "gdal/x64/xerces-c_2_8.dll",
+        "gdal/x64/zlib1.dll",
+        "gdal/x86/freexl.dll",
+        "gdal/x86/gdal19.dll",
+        "gdal/x86/gdal_wrap.dll",
+        "gdal/x86/gdalconst_wrap.dll",
+        "gdal/x86/geos_c.dll",
+        "gdal/x86/iconv.dll",
+        "gdal/x86/libcurl.dll",
+        "gdal/x86/libeay32.dll",
+        "gdal/x86/libexpat.dll",
+        "gdal/x86/libmysql.dll",
+        "gdal/x86/libpq.dll",
+        "gdal/x86/msvcp100.dll",
+        "gdal/x86/msvcr100.dll",
+        "gdal/x86/ogr_wrap.dll",
+        "gdal/x86/openjpeg.dll",
+        "gdal/x86/osr_wrap.dll",
+        "gdal/x86/proj.dll",
+        "gdal/x86/spatialite.dll",
+        "gdal/x86/ssleay32.dll",
+        "gdal/x86/xerces-c_2_8.dll",
+        "gdal/x86/zlib1.dll",
+        "lib/net40/gdal_csharp.dll",
+        "lib/net40/gdalconst_csharp.dll",
+        "lib/net40/ogr_csharp.dll",
+        "lib/net40/osr_csharp.dll",
+        "tools/Install.ps1",
+        "tools/Uninstall.ps1",
+        "tools/Utility.psd1",
+        "tools/Utility.psm1"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "GDAL >= 1.9.1"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\drew.bennett\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\drew.bennett\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\image_loader\\backend\\experimental\\ConsoleApp1\\ConsoleApp1.csproj",
+      "projectName": "ConsoleApp1",
+      "projectPath": "C:\\Users\\drew.bennett\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\image_loader\\backend\\experimental\\ConsoleApp1\\ConsoleApp1.csproj",
+      "packagesPath": "C:\\Users\\drew.bennett\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\drew.bennett\\AppData\\Roaming\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\image_loader\\backend\\experimental\\ConsoleApp1\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\drew.bennett\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "dependencies": {
+          "GDAL": {
+            "target": "Package",
+            "version": "[1.9.1, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.202/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  },
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'GDAL 1.9.1' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net9.0'. This package may not be fully compatible with your project.",
+      "libraryId": "GDAL",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
+}

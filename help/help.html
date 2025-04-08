@@ -11,17 +11,42 @@
     <h3 id="home">Image loader</h3>
 
 
-<p>Plugin for cataloging,georeferencing and loading images from MFV into QGIS. To use:</p>
+Plugin for processing and loading data/images from the MFV into QGIS.
+The vehicle collects data at fixed distance intervals. A 'frame' is one of these. numbered. and images representing intensity,range...
 
 
-<h3 id="loading details">Add to images table</h3>
-    <p>Tell the plugin where the images to process are stored by adding them to the images table.</p>
+<h3 id="images">Images table</h3>
+    <p>The images table tells the plugin where the images to process are stored.</p>	
     <p>"Images","Find images from folder..." will add a row for every .jpg file in folder and subfolders.</p>
 	<p>The plugin can also find image details from a "raster image load" file produced by the distress plotter macro. This is through "File","Open","Open raster image load file..."
 	If doing this project_folder("Tools","Settings")/data is searched for original jpg filenames.</p>
 	<img src="images_table.png" alt="Images table">
 
 
+
+
+<h3 id="runs">Runs:</h3>
+	A 'run' is a group of frames from start_frame to end_frame.
+	A run should be made for each part of the survey within an area of interest.
+	Only frames within runs are processed.
+	Grouping into runs helps to break the processing into more managable pieces and filter out unnecessary data.
+	
+	<p>Create runs through the  <a href="runs_from_layer.html">"runs from polygons layer" dialog</a>.</p>
+	<p>Or by right clicking the runs table then "Add new run...".</p>
+	<img src="runs.png" alt="creating runs">
+
+
+
+<h3 id="corrections">Find Corrections</h3>
+	The gps data can be inaccurate. Corrections may be needed to align images with background maps and adjacent runs.
+	Each run can have a set of corrections.
+	these move frames within a run to put pixel/line at the correct position.
+	The plugin uses a <a href="https://en.wikipedia.org/wiki/Linear_referencing">linear referencing system</a> with the GPS data to find image positions.
+	Position of an image is defined by a start chainage and end chainage.n.
+	<img src="corrections.png" alt="finding corrections">
+	
+	
+	
 
 <h3 id="loading gps">Load GPS data</h3>
 	<p>Choose a projection for spatial calculations through "Tools , settings...". EPSG:27700 for surveys in Britain.</p>
@@ -30,13 +55,6 @@
 	<p>Use "Tools" , "View", "View GPS data" to view this as a QGIS layer named "original_GPS"</p>
 
 
-<h3 id="runs">Create runs</h3>
-	<p>Runs mark which images should be georeferenced.</p>
-	<p>There should be 1 run per time the vehicle surveyed an area of interest in a direction.</p>
-	<p>Where the vehicle changed direction should be a seperate run.</p>
-	<p>Create runs through the  <a href="runs_from_layer.html">"runs from polygons layer" dialog</a>.</p>
-	<p>Or by right clicking the runs table then "Add new run...".</p>
-	<img src="runs.png" alt="creating runs">
 
 
 <h3 id="georeferencing">Georeference</h3>
@@ -52,14 +70,6 @@
 	Viewing a VRT file is much faster and less likely to crash QGIS than viewing its images as seperate layers.</p>
 
 
-<h3 id="corrections">Find Corrections</h3>
-	The gps data can be inaccurate. Corrections may be needed to align images with background maps and adjacent runs.
-	The plugin uses a <a href="https://en.wikipedia.org/wiki/Linear_referencing">linear referencing system</a> with the GPS data to find image positions.
-	Position of an image is defined by a start chainage and end chainage.Each run can have a chainage and offset correction.
-	<p>A positive chainage correction moves images forward. A positive offset correction moves images to the left side of the vehicle path.
-	Right clicking the runs table then "Edit correction..." will display a dialog for finding corrections.</p>
-	<img src="corrections.png" alt="finding corrections">
-	
 	
 
 <h3 id="loading distress">Load distress data</h3>
