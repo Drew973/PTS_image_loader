@@ -7,9 +7,8 @@ Created on Wed Jan 29 10:06:38 2025
 import numpy as np
 from qgis.core import QgsGeometry
 from image_loader import settings , db_functions , dims
-from image_loader.backend import gps_functions , runs_functions
+from image_loader.backend import gps_functions , runs_functions , splinestring
 from qgis.core import QgsPointXY
-from image_loader import splinestring
 
 
 
@@ -28,6 +27,12 @@ def dropCorrections(pks:list[int]):
             raise db_functions.queryError(q)
 
 
+
+
+def clearCorrections():
+    db_functions.runQuery('delete from corrections')
+    
+    
 
 def loadCsv(filePath : str):
     pass
@@ -103,6 +108,8 @@ def calcGcps(frame : int , geom : splinestring.splineString) -> str:
 
 #uses corrected_points 
 def XYToFramePixelLine(x:float , y:float , runPk:int):
+    
+    #print('runPk',runPk,'x',x,'y',y)
     s = _getCorrectedSpline(runPk)
     
     #use original_points where no corrections yet
@@ -111,7 +118,8 @@ def XYToFramePixelLine(x:float , y:float , runPk:int):
         
     if s is not None:        
         m,offset = s.locate(x = x , y = y)
-        #print('m:',m,'offset:',offset)
+    
+   # print('s',s,'m:',m,'offset:',offset)
         
     frame = dims.mToFrame(m)
     line = dims.mToLine(m = m , frame = frame)
@@ -119,6 +127,22 @@ def XYToFramePixelLine(x:float , y:float , runPk:int):
     return (frame , pixel , line)
 
     return (-1,-1,-1)
+
+
+
+#uses corrected_points 
+def framePixelLineToXY(frame:int , pixel:int , line:int , runPk:int) -> QgsPointXY:
+    s = _getCorrectedSpline(runPk)
+    m = dims.lineToM(line = line,frame = frame)
+    offset = dims.pixelToOffset(pixel)
+    #use original_points where no corrections yet
+    if s is None:
+        return gps_functions.point(m = m , offset = offset)        
+    else:        
+        p = s.point(m = m , offset = offset)
+        return QgsPointXY(p[0],p[1])        
+    #return QgsPointXY()
+
 
 
 
@@ -256,7 +280,7 @@ def testCorrect():
 
 
 if __name__ == '__console__':
-    testCorrect()
-    #downloadCorrectedPoints()
+    #testCorrect()
+    downloadCorrectedPoints()
     
 

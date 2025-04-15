@@ -49,7 +49,7 @@ class runsModel(QSqlQueryModel):
     
     #[{start_frame,end_frame}]
     def addRuns(self,runs:typing.Iterable[int]):
-        runs_functions.insertRuns(runs)
+        runs_functions.addRuns(runs)
         self.select()
         
         

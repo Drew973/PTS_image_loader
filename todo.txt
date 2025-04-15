@@ -42,13 +42,11 @@ save as json? {run:startFrame,endFrame,corrections:[[]],'images':[[]]}
 easier to just save sqlite database. could have version problems loading files made by old versions of plugin.
 
 
-createRunVrt(runPk:int)
-
 
 
 x,y corrections vs m,offset:
 
-	simpler		
+	simpler to display and explain to users		
 	don't need to change start/end frames
 	chainages seem to be leading/lagging correct position. 
 
@@ -59,3 +57,32 @@ x,y corrections vs m,offset:
 	single chainage shift (minimize distances) and x,y shift?
 
 	correctedPoint(m,offset) = point(m + chainageShift(run),offset) + XYShift(m)
+	
+	
+
+actions:
+	process:
+	{
+	georeference
+	remake VRT
+	load VRT
+	}
+	
+	load GPS
+	load Cracking
+	load rutting
+	load joint faulting
+	
+	
+	
+	
+	
+
+concurrency in batch file:
+	use start run smallish number of commands concurrently and await completion.
+	do this in sequence.
+	
+	too small results in CPU idling whilst waiting for other commands to complete. too large in crash.
+	
+	much simpler than process pool. inefficient if some processes take much longer than others
+	

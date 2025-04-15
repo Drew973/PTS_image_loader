@@ -60,7 +60,7 @@ class runsFromAreasDialog(QDialog):
                                                             bearingField = bearingField,
                                                             maxAngle = self.angle.value())
      #    print('runData',runData)
-         backend.runs_functions.insertRuns(runData)
+         backend.runs_functions.addRuns(runData)
          return super().accept()
 
 

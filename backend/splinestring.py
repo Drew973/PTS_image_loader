@@ -7,7 +7,7 @@ quadratic spine has this.
 """
 K = 2
 #K = 3
-S = None
+S = 0
 N = 2
 MAX = 99999999999999999999.9
 
@@ -112,10 +112,16 @@ class splineString:
         return r
 
 
-    def nearestM(self , x : float , y : float , minM:float = 0.0 , maxM:float = np.inf , tol:float = 0.01) -> float:
+    def nearestM(self , x : float , y : float , minM:float = None , maxM:float = None , tol:float = 0.01) -> float:
         def _sqdist(m):
             p = self.centerLinePoint(m)# like p [[ 495866.03275013 4198850.1469678 ]]
             return (p[0,0] - x) * (p[0,0] - x) + (p[0,1] - y) * (p[0,1] - y)
+        
+        if maxM is None:
+            maxM = self.maxM
+            
+        if minM is None:
+                minM = self.minM
         
         res = minimize_scalar(_sqdist , bounds = (minM , maxM) , method='bounded' , tol = tol)
         if res.success:
@@ -129,15 +135,16 @@ class splineString:
     #nearest m,offset to point xy
     #could find m more efficiently by solving d distance/dm = 0?
     #numpy uses numeric methods to solve higher order polynomials. might not be faster.
-    def locate(self, x : float , y : float , minM:float = 0.0 , maxM:float = None , tol:float = 0.01): #-> Tuple(float,float)
-        if maxM is None:
-            maxM = self.maxM
+    def locate(self, x : float , y : float , minM:float = None , maxM:float = None , tol:float = 0.01): #-> Tuple(float,float)
+
         m = self.nearestM(x = x, y = y ,minM = minM , maxM = maxM , tol = tol)
         nearest = self.centerLinePoint(m)#like [[ 494899.23345296 4197063.37078011]]
         shortestLine = nearest[0] - np.array([x,y])
         perp = self.leftPerp([m])[0]
+        #print('perp',perp,'shortestLine',shortestLine)
+        
         offset = -np.dot(perp,shortestLine)
-        return (m,offset)
+        return (float(m),float(offset))
       
 
         

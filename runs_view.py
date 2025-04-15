@@ -6,7 +6,7 @@ Created on Tue Oct 17 13:41:52 2023
 """
 
 from PyQt5.QtWidgets import QMenu,QTreeView,QApplication,QShortcut
-from image_loader.chainages_dialog import chainagesDialog
+from image_loader.edit_run_dialog import chainagesDialog
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtCore import Qt , QItemSelectionModel
 

@@ -10,16 +10,7 @@ import unittest
 import os
 from image_loader.backend import gps_functions
 from image_loader import db_functions , test
-
-import numpy as np
-from image_loader.test import profileFolder,testFolder
-import cProfile
-
-
-
-
-
-    
+from image_loader.test import testFolder
 
 
 
@@ -45,6 +36,12 @@ class testGpsFunctions(unittest.TestCase):
         inFile = r'C:\Users\drew.bennett\Documents\athens_airport\data\2024-10-17\20241017_03\2024-10-17 01h41m32s Gipsi2 Module 1 20241017_03 001.anpp'
         gps_functions.uploadAnpp(inFile)
         #s = gps_functions.getSplineString()
+        
+        
+        
+    def testUploadCsv(self):
+        f = r'E:\Manchester_Airport\Hawkeye Exported Data\20250219_08-rutacd-1.csv'
+        test.profileFunction(gps_functions.uploadCsv,{'filePath' : f})
 
 
 

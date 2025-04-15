@@ -14,14 +14,15 @@ make as procedural as possible for easier testing. database state for testing?
 import numpy as np
 import csv
 import math
-from PyQt5.QtSql import QSqlQuery
-from image_loader.splinestring import splineString , mxyType
 from image_loader import settings,dims
-from image_loader.db_functions import runQuery, defaultDb, queryError, queryPrepareError , prepareQuery
+from image_loader.db_functions import runQuery, defaultDb, queryError , prepareQuery
 from image_loader.type_conversions import asBool,asInt,asFloat
+
 
 import os
 from image_loader.backend import anpp,runs_functions
+from image_loader.backend.splinestring import splineString , mxyType
+
 
 from qgis.core import QgsPointXY , QgsCoordinateTransform , QgsCoordinateReferenceSystem , QgsProject
 
@@ -36,7 +37,6 @@ class MO:
         
 
 
-'''
 def uploadAnpp(fileName):
     srid = asInt(settings.value('destSrid'),27700)
     transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem(4326) , QgsCoordinateReferenceSystem(srid) , QgsProject.instance())
@@ -72,7 +72,7 @@ def _uploadSplineString(spline:splineString , interval:float = 5.0):
     mVals = np.arange(start = spline.minM , stop = spline.maxM , step = interval)
     
     points = spline.centerLinePoint(mVals)
-    print('points',points)
+   # print('points',points)
     
     q = prepareQuery('insert into original_points (m,x,y) values (:m , :x , :y)' , db = db)
 
@@ -83,13 +83,24 @@ def _uploadSplineString(spline:splineString , interval:float = 5.0):
         if not q.exec():
             raise queryError(q)
 
+
+    #apply start at 0 setting
+    if asBool(settings.value('startAtZero'),True):
+        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
+        
+    #update original_points next_id,last_id
+    runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
+    runQuery('update original_points set last_id = (select id from original_points as np where np.m<original_points.m order by np.m desc limit 1)', db=db)
+    runQuery('update original_points set bearing = (select next_point.bearing from next_point where next_point.id = original_points.id)')
+    
+    runQuery('update original_points set lon = st_x(ST_Transform(MakePoint(x,y,:srid),4326)) , lat = st_y(ST_Transform(MakePoint(x,y,:srid),4326))',values = {':srid':settings.destSrid()})
+
     db.commit()
 
-'''
 
 
 
-def uploadAnpp(fileName):
+def depreciatedUploadAnpp(fileName):
     srid = asInt(settings.value('destSrid'),27700)
 
     db = defaultDb()
@@ -147,35 +158,29 @@ def parseCsv(file : str , interval = 5):
 
 
 def uploadCsv(filePath):
-    
-    db = defaultDb()
-    db.transaction()
-    runQuery(query='delete from original_points', db=db)
-    q = QSqlQuery(db)
-    if not q.prepare('insert or ignore into original_points(m,lon,lat,alt) values (:m,:lon,:lat,:alt)'):
-        raise queryPrepareError(q)
-        
+    srid = asInt(settings.value('destSrid'),27700)
+
+    transform = QgsCoordinateTransform(QgsCoordinateReferenceSystem(4326) , QgsCoordinateReferenceSystem(srid) , QgsProject.instance())
+
+    mxy = []
+       
     for i,r in enumerate(parseCsv(filePath)):
+        #print(r)
+     
         try:
-            q.bindValue(':m', int(r[0]))
-            q.bindValue(':lon', float(r[1]))
-            q.bindValue(':lat', float(r[2]))
-            q.bindValue(':alt', float(r[3]))
-            if not q.exec():
-                raise queryError(q)
-        except Exception as e:
-            message = 'error loading row {r} : {err}'.format(r=i, err=e)
-            print(message)
-        
-    #apply start at 0 setting
-    if asBool(settings.value('startAtZero'),True):
-        runQuery('update original_points set m = m - (select min(m) from original_points)', db=db)
-        
-    #update original_points next_id,last_id
-    runQuery('update original_points set next_id = (select id from original_points as np where np.m>original_points.m order by np.m limit 1)', db=db)
-    runQuery('update original_points set last_id = (select id from original_points as np where np.m<original_points.m order by np.m desc limit 1)', db=db)
-    db.commit()
-    reproject()
+            p = transform.transform(QgsPointXY(float(r[1]),float(r[2])))
+            mxy.append((float(r[0]),p.x(),p.y()))
+        except:
+            pass
+
+
+    mxy = np.array(mxy)
+    mxy.dtype = mxyType
+    
+    print('mxy',mxy)
+
+    s = splineString(mxy)
+    _uploadSplineString(s)
 
 
 
@@ -215,8 +220,8 @@ def updateFrames():
 def reproject():
     srid = asInt(settings.value('destSrid'),27700)
     #print('reprojecting to :'+str(srid))
-    runQuery('update original_points set x = st_x(ST_Transform(MakePoint(lon,lat,4326),:srid)) , y = st_y(ST_Transform(MakePoint(lon,lat,4326),:srid))',values = {':srid':srid})
-    runQuery('update original_points set bearing = (select next_point.bearing from next_point where next_point.id = original_points.id)')
+   # runQuery('update original_points set x = st_x(ST_Transform(MakePoint(lon,lat,4326),:srid)) , y = st_y(ST_Transform(MakePoint(lon,lat,4326),:srid))',values = {':srid':srid})
+   # runQuery('update original_points set bearing = (select next_point.bearing from next_point where next_point.id = original_points.id)')
     
     
 
@@ -253,7 +258,7 @@ def clear():
 
 #-> splineString or None
 def getSplineString():
-    q = runQuery('select m , x , y from original_points order by m',
+    q = runQuery('select m , x , y from original_points where m is not null and x is not null and y is not null order by m',
                  forwardOnly = True)
     mxy = []
     while q.next():

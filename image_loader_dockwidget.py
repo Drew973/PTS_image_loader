@@ -195,7 +195,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         cm = self.correctionsView.model()
         if hasattr(cm,'setRun'):
             cm.setRun(pk)
-
+            self.correctionsView.correctionDialog.close()
 
     def runsFromLayer(self):
         d = runs_from_layer_dialog.runsFromAreasDialog(parent = self , runsModel = self.runsModel)
@@ -361,6 +361,8 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         self.imagesModel.clear()
         self.gpsModel.clear()
         self.runsModel.clear()
+        backend.corrections_functions.clearCorrections()
+        self.correctionsView.model().select()
         db_functions.clear()
 
 
@@ -381,6 +383,8 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
             downloads.downloadGps()
         except Exception as e:
             iface.messageBar().pushMessage("Image_loader", "Error displaying GPS:"+str(e), level=Qgis.Warning)
+
+
 
     #handle open settings... action
     def openSettings(self):
@@ -409,7 +413,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         if f:
             if f[0]:
                 backend.gps_functions.uploadFile(f[0])
-                self.gpsModel.setSrid(self.gpsModel.srid)#reprojects
+                #self.gpsModel.setSrid(self.gpsModel.srid)#reprojects
 
 
     def downloadCracks(self):
