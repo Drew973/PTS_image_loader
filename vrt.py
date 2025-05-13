@@ -98,9 +98,76 @@ def tse(layerName : str):
         return (tp,start,end)
     return ('' , -1 , -1)
     
+
+
+from qgis.utils import iface
+from qgis.core import Qgis
+
+def message(message : str , level : int = Qgis.Info ):
+    iface.messageBar().pushMessage("Image_loader", message, level=level)
     
+    
+    
+from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtCore import Qt
+from image_loader import process_runner
+
+#brgin running run list of processes and increnent progress dialog
+def beginProcesses(progress:QProgressDialog , processes:list):
+    runner = process_runner.processRunner(parent = progress)#garbage collected without parent.
+    progress.canceled.connect(runner.cancel)
+    runner.errorOccured.connect(message)
+    runner.progressChanged.connect(lambda : progress.setValue(progress.value()+1))
+    #print('running',processes)
+    runner.beginProcesses(processes)
+    return runner
+
 
                 
+def makeRunsVrt(runPks , parent = None):
+    if len(runPks) == 0:
+        message("No runs selected")
+        return
+    vrtData = backend.runs_functions.vrtDataFromRuns(runPks = runPks)
+    
+    n = len(vrtData)
+
+    d = QProgressDialog(parent = parent)
+    d.setWindowModality(Qt.WindowModal)
+    d.setRange(0,n*2)
+    
+    d.setLabelText('Removing layers')
+    d.show()
+
+    for row in vrtData:
+        row.removeSources()
+    
+    d.setLabelText('Writing txt files')#io bound. 
+    for i,row in enumerate(vrtData):
+        if d.wasCanceled():
+            return
+        row.writeTextFile()
+        d.setValue(i)
+    
+    d.setLabelText('Remaking vrt files')
+    processes = [row.asQProcess() for row in vrtData]
+    runner = beginProcesses(processes = processes , progress = d)
+    runner.waitForFinished()
+
+    d.setValue(d.maximum())
+    d.hide()
+    d.deleteLater()
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -125,6 +192,7 @@ def test():
   #  print(err)
     
     v.load()
+    
     
     
     

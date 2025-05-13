@@ -2,28 +2,11 @@
 
 
 
-
-multiple corrections per run.
-	load old runs csv:
-
-	save/load corrections as csv.
-	
-	do per run. don't want corrections to last run affecting things unexpectedly.
-	
-	
-	need to store current position of image.
-	
-	
-
-runs deselected after setting correction through dialog.
-
-runProcesses sometimes freezing around 97%
-
-
-
 resample at ~5m intervals when uploading gps. faster to upload.
 	known spacing for finding chainages?
 
+
+georeferencing with .exe instead of .bat. probabaly faster. closer to stand alone app.
 
 
 web app like:
@@ -79,10 +62,36 @@ actions:
 	
 
 concurrency in batch file:
-	use start run smallish number of commands concurrently and await completion.
+	use start to run smallish number of commands concurrently and await completion.
 	do this in sequence.
 	
-	too small results in CPU idling whilst waiting for other commands to complete. too large in crash.
+	too small results in CPU idling whilst waiting for other commands to complete. too large in crash?.
 	
 	much simpler than process pool. inefficient if some processes take much longer than others
 	
+	
+	
+stand alone:
+
+	c++ and QT for static typing and no version/depency problems.
+	
+	QGraphics scene and QPixmap to show images?	avoids file locks. efficiency? avoids need for qgis at all?
+	could load warped image.
+	or do in memory? gdal c++ bindings? or QPixmap.setRotation() and setScale()
+		
+	
+	QgsMapCanvas is QGraphicsView subclass
+	
+	
+	
+	
+gps/odometer errors;
+	wheel diameter ~2%
+	
+	speedometer:~5%
+	
+	corners make gps distance smaller than it should be.
+	
+	typical gps = 2-5m
+	
+	does it use moving average of position?

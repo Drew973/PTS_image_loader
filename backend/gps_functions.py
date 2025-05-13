@@ -243,9 +243,16 @@ def minM() -> int:
 
 
 
-def clear():
+def clearGps():
     runQuery(query='delete from original_points')
-   # runQuery(query='delete from frames')
+
+
+
+def pointCount() -> int:
+    q = runQuery('select count(m) from original_points')
+    while q.next():
+        return q.value(0)
+    return 0
 
 
 
@@ -315,7 +322,17 @@ def locate(x:float , y:float , runPk:int):
             return spline.locate(x , y , minM , maxM)
 
 
+#only used by chainages dialog. speed unimportant.
+#start of frame. point in wgs84 / EPSG:4326
+#point in destCrs
+def pointToFrame(point , maxDist : float = 10.0) -> int:
+    if spline is not None:
+        mVals = np.arange(0 , maxM() , dims.HEIGHT/4)
+        xy = spline.centerLinePoint(mVals)
+        sqdif = (xy[:,0] - point.x())*(xy[:,0] - point.x()) + (xy[:,1] - point.y())*(xy[:,1] - point.y())
+        return dims.mToFrame(mVals[np.argmin(sqdif)])
 
+    
 
 
 

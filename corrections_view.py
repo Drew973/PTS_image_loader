@@ -6,11 +6,20 @@ Created on Tue Mar 11 10:18:17 2025
 """
 
 
-from PyQt5.QtWidgets import QTableView , QMenu , QShortcut , QApplication
+from PyQt5.QtWidgets import QTableView , QMenu , QShortcut 
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt , QUrl
+
 
 from image_loader import correction_dialog
+
+
+from PyQt5.QtQuickWidgets import QQuickWidget
+from PyQt5.QtQuick import QQuickView
+from PyQt5.QtQml import QQmlEngine , QQmlComponent
+from PyQt5.QtGui import QWindow
+
+
 
 class correctionsView(QTableView):
     
@@ -21,6 +30,10 @@ class correctionsView(QTableView):
         self.menu = QMenu(self)
         self.addCorrectionAct = self.menu.addAction('Add new correction...')
         self.addCorrectionAct.triggered.connect(self.showAddDialog)
+        
+        self.addCorrectionActQml = self.menu.addAction('Add new correction(qml)')
+        self.addCorrectionActQml.triggered.connect(self.showAddQmlDialog)
+        
         self.editCorrectionAct = self.menu.addAction('Edit correction...')
         self.editCorrectionAct.triggered.connect(self.showEditDialog)
         self.deleteCorrectionAct = self.menu.addAction('Delete selected corrections')
@@ -54,6 +67,9 @@ class correctionsView(QTableView):
         if hasattr(model,'fieldIndex'):
             self.setColumnHidden(model.fieldIndex('pk'),True)
             self.setColumnHidden(model.fieldIndex('run'),True)
+            self.setColumnHidden(model.fieldIndex('new_chainage'),True)
+            self.setColumnHidden(model.fieldIndex('new_offset'),True)
+
         self.resizeColumnsToContents()
         
         
@@ -74,6 +90,36 @@ class correctionsView(QTableView):
         self.correctionDialog.setRow(model = self.model() , row = -1)
         self.correctionDialog.show()
         
+        
+        
+    def showAddQmlDialog(self):
+        source = QUrl.fromLocalFile(r'C:\Users\drew.bennett\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\image_loader\add_correction.qml')
+        #engine = QQmlEngine()
+        #component = QQmlComponent(engine, source)
+        #self.view = component.create()
+        
+        #window = QWindow()
+        #view = QQuickView(parent = window , source = source)
+        
+       # print(view.source().toDisplayString())
+      #  view.setResizeMode(QQuickView.SizeRootObjectToView)
+       # view.setGeometry(100, 100, 400, 240)
+       
+       # Create a QML engine.
+        engine = QQmlEngine()
+        
+        # Create a component factory and load the QML script.
+        component = QQmlComponent(engine)
+        component.loadUrl(source)
+        
+        # Create an instance of the component.
+        c = component.create()
+       
+        #view.show()
+      #  self.view = view
+        for e in component.errors():
+            print(e.toString())
+                
          
     def showEditDialog(self):
         self.correctionDialog.setRow(model = self.model() , row = self.row)

@@ -237,8 +237,6 @@ create table spline
 create index if not exists spline_min_m on spline(min_m);
 
 
-drop table if exists corrections;
-
 create table corrections
 (
 pk INTEGER primary key
@@ -247,8 +245,8 @@ pk INTEGER primary key
 ,pixel INT
 ,new_chainage DECIMAL(9,2)--up to 9999999.99 meters
 ,new_offset DECIMAL(4,2)--up to 99.99 meters
-,x float
-,y float
+,lon float
+,lat float
 ,run int
 ,foreign key (run) references runs(pk) on delete cascade on update cascade
 );

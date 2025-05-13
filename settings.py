@@ -8,10 +8,25 @@ Created on Thu Dec  5 14:05:54 2024
 from PyQt5.QtCore import QSettings
 from image_loader.type_conversions import asInt
 
-from qgis.core import QgsCoordinateReferenceSystem
+from qgis.core import QgsCoordinateReferenceSystem , QgsCoordinateTransform , QgsProject
 
 
 settings = QSettings("pts" , "image_loader")
+
+
+
+def makeTransform(fromSrid:int , toSrid:int) -> QgsCoordinateTransform:
+    return QgsCoordinateTransform(QgsCoordinateReferenceSystem(fromSrid) ,
+                                  QgsCoordinateReferenceSystem(toSrid),
+                                  QgsProject.instance())
+
+
+def transformToDestCrs(fromSrid:int):
+        return makeTransform(fromSrid , destSrid())
+
+
+def transformFromDestCrs(toSrid:int):
+        return makeTransform(destSrid() , toSrid)
 
 
 def destSrid() -> int:

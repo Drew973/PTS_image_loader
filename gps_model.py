@@ -133,13 +133,6 @@ class gpsModel:
                     return QgsGeometry.fromPolylineXY([QgsPointXY(row[0],row[1]) for row in xy[::-1]])
         return QgsGeometry()
    
-    
-    # ground control points for frame. depends on correction.     
-    #-> [(x,y,pixel,line)]
-    def gcps(self , frame : int) -> str:
-         return calcGcps(frame,self.splineString)
- 
-
 
 
 if __name__ in ('__console__'):

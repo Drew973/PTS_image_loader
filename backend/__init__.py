@@ -7,7 +7,7 @@ Created on Tue Jan 28 08:57:51 2025
 
 from image_loader.db_functions import runQuery
 
-
+from image_loader import dims
 
 #only used for testing
 def allImagePks():
@@ -31,3 +31,17 @@ def allRunPks():
 
 def clearImages():
     q = runQuery('delete from images')
+
+
+
+#start_frame,end_frame
+def frameRange(runPk:int):
+    q = runQuery('select start_frame,end_frame from runs where pk = :pk',values = {':pk':runPk})
+    while q.next():
+        return (q.value(0),q.value(1))
+    return (0,int(dims.MAX))
+    
+    
+
+
+

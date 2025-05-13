@@ -12,8 +12,8 @@ from image_loader import db_functions
 from PyQt5.QtWidgets import QApplication
 from io import StringIO
 import csv
-from image_loader.backend import corrections_functions
-
+from image_loader.backend import corrections_functions , gps_functions
+from image_loader import settings
 
 copyCols = ['frame','line','pixel','new_chainage','new_offset']
 
@@ -49,12 +49,21 @@ class correctionsModel(QSqlTableModel):
     def setCorrection(self , row , frame : int , line : int , pixel : int , m : float, offset : float):
                 
         
+        t = settings.transformFromDestCrs(4326)
+
+        p = t.transform(gps_functions.point(m = m , offset = offset))
+        
         if row >= 0:
             self.setData(self.index(row,self.fieldIndex('frame')),frame)
             self.setData(self.index(row,self.fieldIndex('line')),line)
             self.setData(self.index(row,self.fieldIndex('pixel')),pixel)
             self.setData(self.index(row,self.fieldIndex('new_chainage')),m)
             self.setData(self.index(row,self.fieldIndex('new_offset')),offset)
+            self.setData(self.index(row,self.fieldIndex('lon')),p.x())
+            self.setData(self.index(row,self.fieldIndex('lat')),p.y())
+
+            
+            
             self.sort(self.fieldIndex('frame') , Qt.AscendingOrder)
         else:
             corrections_functions.insertCorrection(frame = frame ,
@@ -62,6 +71,8 @@ class correctionsModel(QSqlTableModel):
                                                    pixel = pixel,
                                                    m = m ,
                                                    offset = offset,
+                                                   lon = p.x(),
+                                                   lat = p.y(),
                                                    run = self.runPk)
             self.select()
 

@@ -20,7 +20,7 @@ from image_loader import dims
 from image_loader.combobox_dialog import comboBoxDialog
 from image_loader.type_conversions import asFloat,asInt
 from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint , QgsVertexMarker
-from image_loader import settings
+from image_loader import settings , backend
 from image_loader.backend import corrections_functions, gps_functions , runs_functions
 
 
@@ -53,7 +53,6 @@ class correctionDialog(QDialog):
         self.row= None
         
     #    self.lastButton = 0
-        self.gpsModel = None
         self.model = None
         self.optionsDialog = comboBoxDialog(parent = self)
         self.mapTool = None
@@ -228,6 +227,10 @@ class correctionDialog(QDialog):
         self.pixel.setValue(asInt(m.index(row,m.fieldIndex('pixel')).data(),0))        
         self.endM.setValue(asFloat(m.index(row,m.fieldIndex('new_chainage')).data(),0.0))        
         self.endOffset.setValue(asFloat(m.index(row,m.fieldIndex('new_offset')).data(),0.0))        
+
+        runPk = asInt(m.index(row,m.fieldIndex('run')).data() , -1)
+        startFrame , endFrame = backend.frameRange(runPk)
+        self.frame.setRange(startFrame , endFrame)
 
 
 

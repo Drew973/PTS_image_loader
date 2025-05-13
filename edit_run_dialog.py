@@ -16,7 +16,7 @@ from qgis.core import QgsCoordinateReferenceSystem,QgsGeometry,QgsWkbTypes,QgsPr
 from qgis.utils import iface
 from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint
 from PyQt5.QtGui import QColor
-from image_loader import dims
+from image_loader import dims , backend , settings
 from image_loader.type_conversions import asInt
 
 
@@ -26,12 +26,11 @@ def getCanvasCrs() -> QgsCoordinateReferenceSystem:
 
 class chainagesDialog(QDialog):
     
-    def __init__(self,runsModel=None,gpsModel=None,parent=None):
+    def __init__(self,runsModel=None,parent=None):
         super().__init__(parent=parent)
       #  self.setWindowModality(Qt.WindowModal)
 
         self.runsModel = runsModel
-        self.setGpsModel(gpsModel)
         self.row = -1
         self.lastButton = None 
         
@@ -75,19 +74,14 @@ class chainagesDialog(QDialog):
         self.endChainage.setRange(0,dims.MAX)
         
         
-    def setGpsModel(self,model):
-        self.gpsModel = model
-
 
     def toolClicked(self,point):
-        if self.gpsModel is not None:
-            t = QgsCoordinateTransform(getCanvasCrs() , self.gpsModel.crs , QgsProject.instance())
-            pt = t.transform(point)
-            f = self.gpsModel.pointToFrame(pt)
-            if self.lastButton == 'start':
-                self.startChainage.setValue(f)
-            if self.lastButton == 'end':
-                self.endChainage.setValue(f)
+        t = settings.transformToDestCrs(getCanvasCrs())
+        f = backend.gps_functions.pointToFrame(t.transform(point))
+        if self.lastButton == 'start':
+            self.startChainage.setValue(f)
+        if self.lastButton == 'end':
+            self.endChainage.setValue(f)
                 
                 
     def endButtonClicked(self):
@@ -128,10 +122,10 @@ class chainagesDialog(QDialog):
     def updateLine(self):
         s = dims.frameToM(self.startChainage.value())
         e = dims.frameToM(self.endChainage.value()+1)
-        if self.gpsModel is not None and s<e :
-            line = self.gpsModel.centerLine(startM = s , endM = e)
+        if s<e :
+            line = QgsGeometry.fromPolylineXY(backend.gps_functions.centerLine(startM = s , endM = e))
 #            print('line',line)
-            self.markerLine.setToGeometry(line,crs = self.gpsModel.crs)
+            self.markerLine.setToGeometry(line,crs = settings.destCrs())
         else:
             self.markerLine.setToGeometry(QgsGeometry())
     

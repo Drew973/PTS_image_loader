@@ -50,7 +50,6 @@ def parseCsv(f:typing.TextIO , quiet : bool = False):
       
     
 
-#only used for testing
 def allRunPks():
     q = runQuery('select pk from runs')
     pks = []

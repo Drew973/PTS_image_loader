@@ -12,10 +12,82 @@ from qgis.core import QgsPointXY
 
 
 
+import csv
 
-def insertCorrection(frame:int , line:int , pixel:int , m:float , offset:float , run:int):
-    db_functions.runQuery('insert into corrections(frame,line,pixel,new_chainage,new_offset,run) values (:frame,:line,:pixel,:m,:offset,:run)',
-                          values = {':frame':frame , ':line':line , ':pixel':pixel , ':m':m,':offset':offset,':run':run})
+
+def saveCorrectionsCsv(filePath:str):
+    with open(filePath , 'w' , newline='') as f:
+        writer = csv.writer(f)
+        fields = ['frame','line','pixel','new_chainage','new_offset','lon','lat']
+        writer.writerow(fields)
+        q = db_functions.runQuery('select frame,line,pixel,new_chainage,new_offset,lon,lat from corrections')
+        while q.next():
+            writer.writerow([q.value(i) for i,f in enumerate(fields)])
+
+    
+
+
+def loadCorrectionsCsv(filePath:str):
+    db = db_functions.defaultDb()
+    db.transaction()
+    
+    try:
+        fields = [':frame',':line',':pixel',':new_chainage',':new_offset',':lon',':lat']
+        qs = 'insert into corrections(frame,line,pixel,new_chainage,new_offset,lon,lat) values(:frame,:line,:pixel,:new_chainage,:new_offset,:lon,:lat)'
+        insertQuery = db_functions.prepareQuery(qs , db = db)
+        with open(filePath , 'r' , newline='') as f:
+            reader = csv.reader(f , dialect='excel' , delimiter = ',')
+            for r in reader:
+                for i,f in enumerate(fields):
+                    insertQuery.bindValue(f,r[i])
+                if not insertQuery.exec():
+                    raise db_functions.queryError(insertQuery)
+                    
+        db_functions.runQuery('update corrections set run = (select pk from runs where start_frame<= frame and end_frame >= frame limit 1)' , db = db)
+
+        db.commit()
+        
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
+
+
+
+
+#only using to update rows added with versions before corrections_model set x and x.
+def updateXY():
+    try:
+        db = db_functions.defaultDb()
+        db.transaction()
+        updateQuery = db_functions.prepareQuery('update corrections set lat = :lat , lon = :lon where pk = :pk')
+        
+        
+        t = settings.transformFromDestCrs(4326)
+        
+        q = db_functions.runQuery('select pk,new_chainage,new_offset from corrections where lat is null or lon is null' , db = db)
+        while q.next():
+            p = gps_functions.point(m = q.value(1) , offset = q.value(2))
+            
+            pt = t.transform(p)
+            updateQuery.bindValue(':lon',pt.x())
+            updateQuery.bindValue(':lat',pt.y())
+            updateQuery.bindValue(':pk',q.value(0))
+            if not updateQuery.exec():
+                raise db_functions.queryError(updateQuery)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+    
+    
+
+def insertCorrection(frame:int , line:int , pixel:int , m:float , offset:float ,lon:float , lat:float , run:int):
+    
+    
+    db_functions.runQuery('insert into corrections(frame,line,pixel,new_chainage,new_offset,lon,lat,run) values (:frame,:line,:pixel,:m,:offset,:lon,:lat,:run)',
+                          values = {':frame':frame , ':line':line , ':pixel':pixel , ':m':m,':offset':offset , ':lon':lon , ':lat':lat , ':run':run})
 
 
 
@@ -103,7 +175,6 @@ def calcGcps(frame : int , geom : splinestring.splineString) -> str:
      #-gcp <pixel> <line> <easting> <northing> [<elevation>]
      return ' '.join(['-gcp {pixel} {line} {easting} {northing}'.format(pixel = int(a[2] ), line = int(a[3]) , easting = a[0] , northing = a[1]) for a in r])
      
-
 
 
 #uses corrected_points 
@@ -225,46 +296,6 @@ def correctMO(values:list[gps_functions.MO] , runPk:int) -> list[gps_functions.M
 
 
 
-
-#move this?
-#currently for debugging only
-from qgis.core import QgsGeometry,QgsPointXY, QgsFeature,edit,QgsVectorLayer,QgsProject
-from image_loader import group_functions
-
-def downloadCorrectedPoints() -> None:
-    uri = "Point?crs=epsg:{p}&field=m:int&index=yes".format(p = settings.destSrid())    
-    layer = QgsVectorLayer(uri,'corrected_centerline',"memory")
-    print(layer)
-    fields = layer.fields()
-               
-    def features():
-        q = db_functions.runQuery('select m , x, y from corrected_points')
-        while q.next():
-            f = QgsFeature(fields)
-            f['m'] = q.value(0)
-            geom = QgsGeometry.fromPointXY(QgsPointXY(q.value(1),q.value(2)))
-            f.setGeometry(geom)
-            if f.isValid():
-                yield f
-                
-    with edit(layer):
-         layer.addFeatures(features())
-  
-    group = group_functions.getGroup(['image_loader'])#QgsLayerTreeGroup
-    group.addLayer(layer)
-
-    node = group.findLayer(layer)
-    node.setItemVisibilityChecked(True)
-    node.setExpanded(False)        
-    QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
-
-
-
-
-
-
-
-
 def profileCorrectRun():
     runPk = 1
     correctRun(runPk)
@@ -281,6 +312,5 @@ def testCorrect():
 
 if __name__ == '__console__':
     #testCorrect()
-    downloadCorrectedPoints()
-    
-
+    updateXY()
+    print('ok')

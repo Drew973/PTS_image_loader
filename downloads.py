@@ -280,3 +280,37 @@ def downloadFaulting(parent = None):
     d.setValue(d.maximum())
     return layer
     
+
+
+
+#move this?
+#currently for debugging only
+
+def downloadCorrectedPoints() -> None:
+    uri = "Point?crs=epsg:{p}&field=m:int&index=yes".format(p = settings.destSrid())    
+    layer = QgsVectorLayer(uri,'corrected_centerline',"memory")
+    print(layer)
+    fields = layer.fields()
+               
+    def features():
+        q = runQuery('select m , x, y from corrected_points')
+        while q.next():
+            f = QgsFeature(fields)
+            f['m'] = q.value(0)
+            geom = QgsGeometry.fromPointXY(QgsPointXY(q.value(1),q.value(2)))
+            f.setGeometry(geom)
+            if f.isValid():
+                yield f
+                
+    with edit(layer):
+         layer.addFeatures(features())
+  
+    group = group_functions.getGroup(['image_loader'])#QgsLayerTreeGroup
+    group.addLayer(layer)
+
+    node = group.findLayer(layer)
+    node.setItemVisibilityChecked(True)
+    node.setExpanded(False)        
+    QgsProject.instance().addMapLayer(layer,False)#don't immediatly add to legend
+
+

@@ -18,7 +18,6 @@ class runsView(QTreeView):
         super().__init__(parent)
         self.menu = QMenu(self)
         self.chainagesDialog = chainagesDialog(parent=self)
-        self.setGpsModel(None)
         addRunAct = self.menu.addAction('Add new run...')
         addRunAct.triggered.connect(self.addRun)
         self.findChainageAct = self.menu.addAction('Edit chainage range...')
@@ -93,12 +92,7 @@ class runsView(QTreeView):
         flags = QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect
         self.selectionModel().select(self.model().index(row,0) , flags)
 
-        
-        
-        
-    def setGpsModel(self,model):
-        self.chainagesDialog.setGpsModel(model)
-        
+    
         
     def contextMenuEvent(self, event):
         self.row = self.indexAt(event.pos()).row() #-1 for no index

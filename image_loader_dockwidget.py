@@ -16,9 +16,9 @@ from PyQt5.QtSql import QSqlDatabase
 from image_loader import check_imports
 check_imports.checkImports()#need to check imports before using them
 
-from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog , gps_model ,
+from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog ,
                           downloads , settings , process_runner , layer_functions , georeference_data,
-                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions)
+                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions , vrt)
 
 
 from image_loader.backend import corrections_model
@@ -65,13 +65,10 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         self.imagesModel = image_model.imageModel(parent=self)
         self.imagesModel.fields = self.settingsDialog
         self.imagesView.setModel(self.imagesModel)
-        self.gpsModel = gps_model.gpsModel()
         
         self.runsModel = runs_model.runsModel()
-        self.runsModel.gpsModel = self.gpsModel
         
         self.runsWidget.setModel(self.runsModel)
-        self.runsWidget.setGpsModel(self.gpsModel)
         self.runsWidget.doubleClicked.connect(self.setChainages)
         
         self.runBox.setModel(self.runsModel)
@@ -152,6 +149,16 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         RunsFromAreasAct = runsMenu.addAction('Add runs from polygon layer...')
         RunsFromAreasAct.triggered.connect(self.runsFromLayer)
 
+
+        correctionsMenu = topMenu.addMenu("Corrections")
+        correctionsMenu.setToolTipsVisible(True)
+        saveCorrectionsAct = correctionsMenu.addAction('Save corrections...')
+        saveCorrectionsAct.triggered.connect(self.saveCorrections)
+        loadCorrectionsAct = correctionsMenu.addAction('Load corrections...')
+        loadCorrectionsAct.triggered.connect(self.loadCorrections)
+
+
+
         imagesMenu = topMenu.addMenu("Images")
         
         fromFolderAct = imagesMenu.addAction('Find details from folder...')
@@ -206,9 +213,13 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
 
     #tests if has gps and display message if not. -> bool
     def checkGps(self):
-        if self.gpsModel.error != '':
-            iface.messageBar().pushMessage("Image_loader",'bad GPS:'+self.gpsModel.error, level=Qgis.Info)
-        return self.gpsModel.error == ''
+        pc = backend.gps_functions.pointCount()
+        if pc > 0:
+            return True
+        else:
+            message('Check GPS was loaded (file,open,open GPS...)')
+            return False
+
 
 
     #tests if has runs and display message if not. -> bool
@@ -225,12 +236,6 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
             iface.messageBar().pushMessage("Image_loader", "No Image details.", level=Qgis.Info)
         return r        
 
-
-    #connected to action
- #   def georeferenceImages(self):
-    #    if self.checkGps():
-       #     image_model.beginGeoreference(self.gpsModel , pks = self.imagesView.selectedPks())
-        
         
     def processRuns(self):
         self.georeferenceRuns()
@@ -276,35 +281,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         if len(runPks) == 0:
             message("No runs selected")
             return
-        vrtData = backend.runs_functions.vrtDataFromRuns(runPks = runPks)
-        
-        n = len(vrtData)
-    
-        d = QProgressDialog(parent = self)
-        d.setWindowModality(Qt.WindowModal)
-        d.setRange(0,n*2)
-        
-        d.setLabelText('Removing layers')
-        d.show()
-
-        for row in vrtData:
-            row.removeSources()
-        
-        d.setLabelText('Writing txt files')#io bound. 
-        for i,row in enumerate(vrtData):
-            if d.wasCanceled():
-                return
-            row.writeTextFile()
-            d.setValue(i)
-        
-        d.setLabelText('Remaking vrt files')
-        processes = [row.asQProcess() for row in vrtData]
-        runner = beginProcesses(processes = processes , progress = d)
-        runner.waitForFinished()
-
-        d.setValue(d.maximum())
-        d.hide()
-        d.deleteLater()
+        vrt.makeRunsVrt(runPks)
 
 
     def loadRunsVrt(self):
@@ -359,7 +336,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
     #file...new handler
     def new(self):
         self.imagesModel.clear()
-        self.gpsModel.clear()
+        backend.gps_functions.clearGps()
         self.runsModel.clear()
         backend.corrections_functions.clearCorrections()
         self.correctionsView.model().select()
@@ -382,7 +359,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         try:
             downloads.downloadGps()
         except Exception as e:
-            iface.messageBar().pushMessage("Image_loader", "Error displaying GPS:"+str(e), level=Qgis.Warning)
+            message("Error displaying GPS:"+str(e), level=Qgis.Warning)
 
 
 
@@ -392,7 +369,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         self.settingsDialog.exec_()
         newSrid = settings.destSrid()
         if oldSrid != newSrid:
-            self.gpsModel.setSrid(newSrid)#redownload model GPS in selected CRS. takes ~0.2s
+            backend.gps_functions.reproject()
         
 
 #opens help/index.html in default browser
@@ -413,17 +390,16 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         if f:
             if f[0]:
                 backend.gps_functions.uploadFile(f[0])
-                #self.gpsModel.setSrid(self.gpsModel.srid)#reprojects
+                for run in backend.runs_functions.allRunPks():
+                    backend.corrections_functions.correctRun(run)
 
 
     def downloadCracks(self):
         cc = db_functions.crackCount()
         if cc == 0:
-            iface.messageBar().pushMessage("Image_loader", "No crack data. Are XML files loaded?", level=Qgis.Info)
-            return
+            return message("No crack data. Are distress files loaded?")
         if self.runsModel.rowCount() == 0:
-            iface.messageBar().pushMessage("Image_loader", "No runs. This only shows cracks within runs.", level=Qgis.Info)
-            return
+            return message("No runs. This only shows cracks within runs.")
         if not self.checkGps():
             return
         progress = QProgressDialog(parent = self)
@@ -485,6 +461,23 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         if f:
             self.imagesModel.save(f)
             iface.messageBar().pushMessage("Image_loader" , "Saved to {file}".format(file=f), level=Qgis.Info)
+
+
+    #save all tables to sqlite database.
+    def saveCorrections(self):
+        f = QFileDialog.getSaveFileName(caption = 'Save corrections' , filter = 'csv (*.csv)')[0]
+        if f:
+            backend.corrections_functions.saveCorrectionsCsv(f)
+            iface.messageBar().pushMessage("Image_loader" , "Saved corrections to {file}".format(file=f), level=Qgis.Info)
+
+
+
+    def loadCorrections(self):
+        f = QFileDialog.getOpenFileName(caption = 'Load corrections' , filter = '*.csv')[0]
+        if f:
+            backend.corrections_functions.loadCorrectionsCsv(f)
+            self.correctionsView.model().select()
+
 
 
     #add all jpg files in folder to images

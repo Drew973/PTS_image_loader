@@ -44,32 +44,6 @@ class _image():
         
     
 
-#return True if images georeferenced. False if user canceled.
-def beginGeoreference(gpsModel , pks : list = [] , progress = None , log : str = '') -> bool:
-    if pks:
-        georeferenceCommands = []
-        sources = []#names for georeferenced files
-        pkStr = ','.join([str(pk) for pk in pks])
-        t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
-        q = db_functions.runQuery(t)
-        while q.next():
-            frame = q.value(0)
-            gcp = gpsModel.gcps(frame)
-            if gcp is not None:
-                #each file in group
-                for f in q.value(1).split(','):
-                    newFile = georeference.warpedFileName(f)
-                    sources.append(newFile)
-                    georeferenceCommands.append(georeferenceCommand(inputFile = f , gcps = gcp , srid = gpsModel.srid))
-        if log:
-            with open(log,'w') as f:
-                f.write('\n'.join(georeferenceCommands))
-        layer_functions.removeSources(sources)#remove layers to allow file to be edited.
-        if georeferenceCommands:
-            #print(georeferenceCommands[0])
-            prog = commandsDialog(title = 'georeferencing')
-            return run_commands.runCommands(commands = georeferenceCommands , progress = prog)
-
 
 
 #load images with primary key in pks into qgis
