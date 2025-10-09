@@ -12,8 +12,7 @@ from image_loader import db_functions
 from PyQt5.QtWidgets import QApplication
 from io import StringIO
 import csv
-from image_loader.backend import corrections_functions , gps_functions
-from image_loader import settings
+from image_loader import settings , backend
 
 copyCols = ['frame','line','pixel','new_chainage','new_offset']
 
@@ -51,7 +50,7 @@ class correctionsModel(QSqlTableModel):
         
         t = settings.transformFromDestCrs(4326)
 
-        p = t.transform(gps_functions.point(m = m , offset = offset))
+        p = t.transform(backend.getGpsPoint(m = m , offset = offset))
         
         if row >= 0:
             self.setData(self.index(row,self.fieldIndex('frame')),frame)
@@ -66,7 +65,7 @@ class correctionsModel(QSqlTableModel):
             
             self.sort(self.fieldIndex('frame') , Qt.AscendingOrder)
         else:
-            corrections_functions.insertCorrection(frame = frame ,
+            backend.insertCorrection(frame = frame ,
                                                    line = line,
                                                    pixel = pixel,
                                                    m = m ,
@@ -93,7 +92,7 @@ class correctionsModel(QSqlTableModel):
         t = StringIO(QApplication.clipboard().text())
         reader = csv.DictReader(t , dialect = csv.excel_tab , fieldnames = copyCols)
         for d in reader:        
-            corrections_functions.insertCorrection(frame = int(d['frame']) ,
+            backend.insertCorrection(frame = int(d['frame']) ,
                                                    line = int(d['line']) , 
                                                    pixel = int(d['pixel']) ,
                                                    m = float(d['new_chainage']) , 
@@ -104,8 +103,8 @@ class correctionsModel(QSqlTableModel):
 
 
 
-    def drop(self,pks):
-        corrections_functions.dropCorrections(pks)
+    def drop(self , pks: list):
+        backend.dropCorrections(pks)
         self.select()
 
 

@@ -91,7 +91,7 @@ class runsModel(QSqlQueryModel):
         outsideRunDistance = asFloat(settings.value('outsideRunDistance') , 50.0)
         minM = dims.frameToM(int(self.index(row , self.fieldIndex('start_frame')).data())) - outsideRunDistance
         maxM = dims.frameToM(int(self.index(row , self.fieldIndex('end_frame')).data())) + outsideRunDistance
-        return backend.gps_functions.mo(x = x , y = y , minM = minM , maxM = maxM )#nearest within range.
+        return backend.mo(x = x , y = y , minM = minM , maxM = maxM )#nearest within range.
 
 
 

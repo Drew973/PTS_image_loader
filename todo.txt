@@ -1,5 +1,8 @@
 
 
+type check like:
+	cd backend
+	mypy __init__.py --follow-imports=silent
 
 
 resample at ~5m intervals when uploading gps. faster to upload.
@@ -95,3 +98,31 @@ gps/odometer errors;
 	typical gps = 2-5m
 	
 	does it use moving average of position?
+	
+	
+	
+
+	
+
+
+stand alone:
+
+	split into runs.	
+		display centerline
+	
+	
+	georeference
+	
+	corrections
+	
+		need to display current image location and background map.
+
+	
+	could edit distress layers in QGIS. need way to import and correct acdx
+	
+	
+	
+	
+ravelling
+	
+	

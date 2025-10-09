@@ -77,7 +77,7 @@ class chainagesDialog(QDialog):
 
     def toolClicked(self,point):
         t = settings.transformToDestCrs(getCanvasCrs())
-        f = backend.gps_functions.pointToFrame(t.transform(point))
+        f = backend.pointToFrame(t.transform(point))
         if self.lastButton == 'start':
             self.startChainage.setValue(f)
         if self.lastButton == 'end':
@@ -123,7 +123,7 @@ class chainagesDialog(QDialog):
         s = dims.frameToM(self.startChainage.value())
         e = dims.frameToM(self.endChainage.value()+1)
         if s<e :
-            line = QgsGeometry.fromPolylineXY(backend.gps_functions.centerLine(startM = s , endM = e))
+            line = QgsGeometry.fromPolylineXY(backend.centerLine(startM = s , endM = e))
 #            print('line',line)
             self.markerLine.setToGeometry(line,crs = settings.destCrs())
         else:

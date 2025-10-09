@@ -5,9 +5,6 @@ Created on Thu Dec  5 11:59:35 2024
 @author: Drew.Bennett
 
 
-start moving everything database specific to here.
-
-make as procedural as possible for easier testing. database state for testing?
 
 """
 

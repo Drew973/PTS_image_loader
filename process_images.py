@@ -61,7 +61,7 @@ def georeferenceRuns(runPks , parentWidget):
     errorMessages = []
     
     for run in runPks:
-        backend.corrections_functions.correctRun(run)
+        backend.correctRun(run)
         for gd in georeference_data.getGeoreferenceData(run):
             georeferenceProcesses.append(gd.asQProcess())    
         

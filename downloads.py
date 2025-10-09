@@ -10,16 +10,13 @@ Created on Thu Feb 29 15:39:58 2024
 @author: Drew.Bennett
 """
 
-from image_loader.db_functions import runQuery,prepareQuery,defaultDb,queryError
-from image_loader.backend import corrections_functions
-from image_loader import file_locations,settings , dims
-from qgis import processing
+from image_loader.db_functions import defaultDb, runQuery
+from image_loader import file_locations,settings , dims , backend
 from qgis.utils import iface
 from PyQt5.QtCore import QByteArray,Qt
 from PyQt5.QtWidgets import QProgressDialog,QApplication
 from qgis.core import QgsFeature,QgsGeometry,edit,QgsPointXY,QgsVectorLayer,QgsProject,QgsWkbTypes
 from image_loader import group_functions
-from image_loader.backend import gps_functions
 
 
 
@@ -59,7 +56,7 @@ def chunk(gen, k):
 # different results if reproject in QGIS vs in spatialite.experiment with this.
 def downloadGps() -> QgsVectorLayer:
     
-    s = gps_functions.getSplineString()
+    s = backend.getSplineString()
     if s is not None:
         
         uri = "LineString?crs=epsg:{p}&field=frame:int&field=start_chain:int&field=end_chain:int&index=yes".format(p = settings.destSrid())    
@@ -67,7 +64,7 @@ def downloadGps() -> QgsVectorLayer:
         
         fields = layer.fields()
         
-        maxFrame = dims.mToFrame(gps_functions.maxM())
+        maxFrame = dims.mToFrame(backend.maxM())
                                  
                                  
         def features():
@@ -125,7 +122,7 @@ def downloadCracks(progress) -> QgsVectorLayer:
                 QApplication.processEvents()
                 
             if lastRun != q.value(0):
-                    spline = corrections_functions._getCorrectedSpline(q.value(0))
+                    spline = backend._getCorrectedSpline(q.value(0))
                     lastRun = q.value(0)
                 
             if spline is not None:
@@ -190,7 +187,7 @@ def downloadRuts(saveTo = None , parentWidget = None , progressInterval = 100):
             runPk = q.value(0)
             if runPk != lastRun:
                 lastRun = runPk
-                spline = corrections_functions._getCorrectedSpline(runPk)
+                spline = backend._getCorrectedSpline(runPk)
             
             if spline is not None:
                 g = QgsGeometry()
@@ -252,7 +249,7 @@ def downloadFaulting(parent = None):
             run = q.value(0)
             if run != lastRun:
                 lastRun = run
-                spline = corrections_functions._getCorrectedSpline(run)
+                spline = backend._getCorrectedSpline(run)
             
             if spline:
                 wkb = q.value(1)

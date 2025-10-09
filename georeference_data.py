@@ -42,7 +42,7 @@ class georeferenceData:
     
     #-> generator of georeferenceData
 def getGeoreferenceData(runPk:int):
-    s = backend.corrections_functions._getCorrectedSpline(runPk)
+    s = backend._getCorrectedSpline(runPk)
     if s is None:
         print('missing GPS?')
     else:
@@ -56,7 +56,7 @@ def getGeoreferenceData(runPk:int):
         while q.next():
             #raise db_functions.queryError(q)
             frame = q.value(0)
-            gcpStr = backend.corrections_functions.calcGcps(frame = frame , geom = s)
+            gcpStr = backend.calcGcps(frame = frame , geom = s)
             for f in q.value(1).split(','):
                 yield georeferenceData(inputFile = f , gcps = gcpStr , srid = srid )
            

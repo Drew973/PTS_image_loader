@@ -21,7 +21,7 @@ from image_loader.combobox_dialog import comboBoxDialog
 from image_loader.type_conversions import asFloat,asInt
 from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint , QgsVertexMarker
 from image_loader import settings , backend
-from image_loader.backend import corrections_functions, gps_functions , runs_functions
+from image_loader.backend import runs_functions
 
 
 
@@ -149,7 +149,7 @@ class correctionDialog(QDialog):
         t = transform(settings.destSrid() , getCanvasCrs())
 
 
-        geom = corrections_functions.getCorrectionGeom(frame = self.frame.value(),
+        geom = backend.getCorrectionGeom(frame = self.frame.value(),
                                              line = self.line.value(),
                                              pixel = self.pixel.value(),
                                              chainage = self.endM.value(),
@@ -157,14 +157,14 @@ class correctionDialog(QDialog):
    
         self.markerLine.setToGeometry(geom,crs = QgsCoordinateReferenceSystem(settings.destSrid()))
    
-        p = corrections_functions.framePixelLineToXY(frame =  self.frame.value(),
+        p = backend.framePixelLineToXY(frame =  self.frame.value(),
                                                  line = self.line.value(),
                                                  pixel = self.pixel.value(),
                                                  runPk = self.getRunPk())
         
         self.startMarker.setCenter(t.transform(p))
         
-        ep = gps_functions.point(m = self.endM.value() , offset = self.endOffset.value())        
+        ep = backend.getGpsPoint(m = self.endM.value() , offset = self.endOffset.value())        
         self.endMarker.setCenter(t.transform(ep))
 
         
@@ -180,7 +180,7 @@ class correctionDialog(QDialog):
     
     
     def startFromPoint(self , pt : QgsPointXY):
-        frame , pixel , line = corrections_functions.XYToFramePixelLine(x = pt.x() ,
+        frame , pixel , line = backend.XYToFramePixelLine(x = pt.x() ,
                                                                         y = pt.y(),
                                                                         runPk = self.model.runPk)
         
@@ -203,7 +203,7 @@ class correctionDialog(QDialog):
         r = runs_functions.mRange(self.model.runPk)
         outsideRunDistance = asFloat(settings.value('outsideRunDistance') , 50.0)
         
-        m , offset = gps_functions.mo( x = pt.x() ,
+        m , offset = backend.mo( x = pt.x() ,
                                           y = pt.y() ,
             minM = r[0] - outsideRunDistance ,
             maxM = r[1] + outsideRunDistance)
@@ -265,7 +265,7 @@ class correctionDialog(QDialog):
         
         
     def zoomToStart(self):
-        p = corrections_functions.framePixelLineToXY(frame = self.frame.value(),
+        p = backend.framePixelLineToXY(frame = self.frame.value(),
                                              line = self.line.value(),
                                              pixel = self.pixel.value(),
                                              runPk = self.model.runPk)
@@ -281,7 +281,7 @@ class correctionDialog(QDialog):
 
 
     def zoomToEnd(self):
-        p = gps_functions.point(m = self.endM.value(),
+        p = backend.getGpsPoint(m = self.endM.value(),
                                              offset = self.endOffset.value())
         #QgsMapCanvas.setCenter documentation incorrect. Uses canvas CRS  but says it uses geographic .
         b = getCanvasCrs()

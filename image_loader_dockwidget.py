@@ -10,6 +10,7 @@ from qgis.core import Qgis
 
 from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QDialog , QDockWidget
 
+
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
 
@@ -18,7 +19,7 @@ check_imports.checkImports()#need to check imports before using them
 
 from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog ,
                           downloads , settings , process_runner , layer_functions , georeference_data,
-                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions , vrt)
+                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions , vrt )
 
 
 from image_loader.backend import corrections_model
@@ -50,7 +51,11 @@ def runProcesses(parent , processes , labelText):
     prog.deleteLater()
 
 
+
+
+
 class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageLoaderDockWidgetBase):
+#class imageLoaderMainWidget(QWidget , main_window.Ui_MainWindow):
 
     closingPlugin = pyqtSignal()
 
@@ -60,6 +65,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         
         title = 'PTS image loader v{ver}'.format(ver = version)
         self.setWindowTitle(title)
+        self.setupMenu()
         
         self.settingsDialog = settings_dialog.settingsDialog(parent=self)
         self.imagesModel = image_model.imageModel(parent=self)
@@ -75,9 +81,19 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         self.runBox.setModelColumn(self.runsModel.fieldIndex('run_name'))
         self.runBox.currentIndexChanged.connect(self.runChanged)
         
+        self.setFile(file_locations.dbFile)
+        self.runChanged(self.runBox.currentIndex())
+        self.selectRunButton.clicked.connect(self.selectRun)
+
+
+
+    def setupMenu(self):
         #top menu
-        topMenu = QMenuBar(self.mainWidget)
+        topMenu = QMenuBar()
+        self.dockWidgetContents.layout().setMenuBar(topMenu)
         
+        #topMenu = QMenuBar(self.mainWidget)
+
         fileMenu = topMenu.addMenu("File")
         newAct = fileMenu.addAction('New')
         newAct.triggered.connect(self.new)
@@ -90,8 +106,6 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         
         openMenu = fileMenu.addMenu('Open')
 
-
-        
         loadGpsAct = openMenu.addAction('Open GPS...')
         loadGpsAct.triggered.connect(self.loadGps)
 
@@ -173,11 +187,9 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         helpMenu = topMenu.addMenu('Help')
         openHelpAct = helpMenu.addAction('Open help')
         openHelpAct.triggered.connect(self.openHelp)
-        self.mainWidget.layout().setMenuBar(topMenu)
-    
-        self.setFile(file_locations.dbFile)
-        self.runChanged(self.runBox.currentIndex())
-        self.selectRunButton.clicked.connect(self.selectRun)
+       # self.mainWidget.layout().setMenuBar(topMenu)
+
+
 
 
     def setFile(self , file:str):
@@ -213,7 +225,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
 
     #tests if has gps and display message if not. -> bool
     def checkGps(self):
-        pc = backend.gps_functions.pointCount()
+        pc = backend.pointCount()
         if pc > 0:
             return True
         else:
@@ -258,7 +270,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
             errorMessages = []
             
             for run in runPks:
-                backend.corrections_functions.correctRun(run)
+                backend.correctRun(run)
                 for gd in georeference_data.getGeoreferenceData(run):
                     georeferenceProcesses.append(gd.asQProcess(parent = self))
                     toRemove.append(gd.warpedFile)
@@ -336,9 +348,9 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
     #file...new handler
     def new(self):
         self.imagesModel.clear()
-        backend.gps_functions.clearGps()
+        backend.clearGps()
         self.runsModel.clear()
-        backend.corrections_functions.clearCorrections()
+        backend.clearCorrections()
         self.correctionsView.model().select()
         db_functions.clear()
 
@@ -369,7 +381,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         self.settingsDialog.exec_()
         newSrid = settings.destSrid()
         if oldSrid != newSrid:
-            backend.gps_functions.reproject()
+            backend.reproject()
         
 
 #opens help/index.html in default browser
@@ -389,9 +401,9 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
 
         if f:
             if f[0]:
-                backend.gps_functions.uploadFile(f[0])
+                backend.uploadFile(f[0])
                 for run in backend.runs_functions.allRunPks():
-                    backend.corrections_functions.correctRun(run)
+                    backend.correctRun(run)
 
 
     def downloadCracks(self):
@@ -467,7 +479,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
     def saveCorrections(self):
         f = QFileDialog.getSaveFileName(caption = 'Save corrections' , filter = 'csv (*.csv)')[0]
         if f:
-            backend.corrections_functions.saveCorrectionsCsv(f)
+            backend.saveCorrectionsCsv(f)
             iface.messageBar().pushMessage("Image_loader" , "Saved corrections to {file}".format(file=f), level=Qgis.Info)
 
 
@@ -475,7 +487,7 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
     def loadCorrections(self):
         f = QFileDialog.getOpenFileName(caption = 'Load corrections' , filter = '*.csv')[0]
         if f:
-            backend.corrections_functions.loadCorrectionsCsv(f)
+            backend.loadCorrectionsCsv(f)
             self.correctionsView.model().select()
 
 
