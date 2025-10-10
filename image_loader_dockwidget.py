@@ -4,7 +4,7 @@
 
 import os
 from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel,Qt
-
+import csv
 from qgis.utils import iface
 from qgis.core import Qgis
 
@@ -19,7 +19,8 @@ check_imports.checkImports()#need to check imports before using them
 
 from image_loader import (db_functions , file_locations , upload_xml , runs_model , image_model , settings_dialog ,
                           downloads , settings , process_runner , layer_functions , georeference_data,
-                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions , vrt )
+                          backend , runs_from_layer_dialog , image_loader_dockwidget_base , type_conversions , vrt, dims,
+                                                      )
 
 
 from image_loader.backend import corrections_model
@@ -112,6 +113,9 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
 
         loadXMLAct = openMenu.addAction('Open Distress files...')
         loadXMLAct.triggered.connect(self.loadXML)
+        
+        loadCorrectionPerRun = openMenu.addAction('Open File with 1 correction per run...')
+        loadCorrectionPerRun.triggered.connect(self.loadCorrectionPerRun)
         
         
         ######################load
@@ -353,6 +357,45 @@ class imageLoaderDockWidget(QDockWidget , image_loader_dockwidget_base.Ui_imageL
         backend.clearCorrections()
         self.correctionsView.model().select()
         db_functions.clear()
+
+
+
+    def loadCorrectionPerRun(self):
+        file = QFileDialog.getOpenFileName(caption = 'Load file with correction per run',filter = ';csv (*.csv)')
+        if file:
+            print(file)
+            runPks = []
+            t = settings.transformFromDestCrs(4326)
+
+            with open(file[0],'r') as f:
+                reader = csv.DictReader(f,delimiter='\t')
+                data = [r for r in reader]
+                runPks = backend.runs_functions.addRuns(data)
+                self.runsModel.select()
+                
+
+                for i,r in enumerate(data):
+                    
+                    print(r)
+                    sf = int(r['start_frame'])
+                    ef = int(r['end_frame'])
+
+                    m = dims.frameToM(sf) + float(r["chainage_shift"])
+                    offset = float(r["offset"])
+                    
+                    p = t.transform(backend.getGpsPoint(m = m , offset = offset))
+                    print(runPks[i])
+                    backend.insertCorrection(frame = sf ,
+                                            line = dims.LINES/2,
+                                            pixel = dims.PIXELS/2,
+                                            m = m,
+                                            offset = offset,
+                                            lon = p.x(),
+                                            lat = p.y(),
+                                            run = runPks[i])
+
+
+            self.correctionsView.model().select()
 
 
     #open... handler

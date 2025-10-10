@@ -47,8 +47,8 @@ class runsModel(QSqlQueryModel):
         self.select()
         
     
-    #[{start_frame,end_frame}]
-    def addRuns(self,runs:typing.Iterable[int]):
+    #[{start_frame:int,end_frame:int}]
+    def addRuns(self,runs:typing.Iterable[dict]):
         runs_functions.addRuns(runs)
         self.select()
         
@@ -95,3 +95,4 @@ class runsModel(QSqlQueryModel):
 
 
 
+    

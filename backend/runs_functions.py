@@ -81,16 +81,21 @@ def clearRuns():
     runQuery(query = 'delete from runs')
 
 
-
+#iterable of dict
+#returns list of run pk
 def addRuns(runs):
     db = db_functions.defaultDb()
     db.transaction()
-    q = db_functions.prepareQuery('insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e)')
+    q = db_functions.prepareQuery('insert OR IGNORE into runs(start_frame,end_frame) values (:s,:e) returning pk')
+    pks = []
     for r in runs:
         q.bindValue(':s',r['start_frame'])
         q.bindValue(':e',r['end_frame'])
         q.exec()
+        q.next()
+        pks.append(q.value(0))
     db.commit()
+    return pks
     
     
     

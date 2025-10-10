@@ -45,6 +45,7 @@ class correctionsModel(QSqlTableModel):
 
 
     #updates or inserts correction.
+    #row <0 inserts
     def setCorrection(self , row , frame : int , line : int , pixel : int , m : float, offset : float):
                 
         
