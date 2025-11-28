@@ -1,0 +1,230 @@
+
+
+type check like:
+	cd backend
+	mypy __init__.py --follow-imports=silent
+
+
+resample at ~5m intervals when uploading gps. faster to upload.
+	known spacing for finding chainages?
+
+
+georeferencing with .exe instead of .bat. probabaly faster. closer to stand alone app.
+
+
+georeferenceRun(runPk:int)
+should show cancellable progress dialog and block ui.
+could use subprocess and .exe in any language
+	rust + rayon seem promising.
+	
+ 
+
+
+save as json? {run:startFrame,endFrame,corrections:[[]],'images':[[]]}
+easier to just save sqlite database. could have version problems loading files made by old versions of plugin.
+
+
+x,y corrections vs m,offset:
+
+	simpler to display and explain to users		
+	don't need to change start/end frames
+	chainages seem to be leading/lagging correct position. 
+
+	cant go past start/end of gps
+
+
+	use frame,pixel,line -> xy with
+	single chainage shift (minimize distances) and x,y shift?
+
+	correctedPoint(m,offset) = point(m + chainageShift(run),offset) + XYShift(m)
+	
+	
+
+actions:
+	process:
+	{
+	georeference
+	remake VRT
+	load VRT
+	}
+	
+	load GPS
+	load Cracking
+	load rutting
+	load joint faulting
+	
+	
+	
+	
+	
+
+concurrency in batch file:
+	use start to run smallish number of commands concurrently and await completion.
+	do this in sequence.
+	
+	too small results in CPU idling whilst waiting for other commands to complete. too large in crash?.
+	
+	much simpler than process pool. inefficient if some processes take much longer than others
+	
+	
+	
+stand alone:
+
+	c++ and QT for static typing and no version/depency problems.
+	
+	QGraphics scene and QPixmap to show images?	avoids file locks. efficiency? avoids need for qgis at all?
+	could load warped image.
+	or do in memory? gdal c++ bindings? or QPixmap.setRotation() and setScale()
+		
+	
+	QgsMapCanvas is QGraphicsView subclass
+	
+	
+	
+	
+gps/odometer errors;
+	wheel diameter ~2%
+	
+	speedometer:~5%
+	
+	corners make gps distance smaller than it should be.
+	
+	typical gps = 2-5m
+	
+	does it use moving average of position?
+	
+	
+	
+
+	
+
+
+stand alone:
+
+	split into runs.	
+		display centerline
+	
+	
+	georeference
+	
+	corrections
+	
+		need to display current image location and background map.
+
+	
+	could edit distress layers in QGIS. need way to import and correct acdx
+	
+
+
+
+
+
+georeference through rust gdal bindings?
+	translate and warp in memory.
+	read database and use rayon for simpler paralell processing?
+	could just open shell 
+	print progress with rayon_progress 
+	
+	need to pass spline in.
+	open database in read only?
+
+
+
+
+
+GPS as 1 layer. MFV number(int) , frame(int)
+
+multiple MFV numbers instead of 1 at a time?
+
+heirarchal data. tree view?
+
+mfv:{
+	number :int
+	spline: Splinestring
+	images: [Image]
+	GPS
+	
+	runs: [Run]
+
+	Run:{
+		start_frame: int
+		end_frame: int
+	
+		public fn process()
+
+		public fn remake_vrt()
+		
+		public fn load_vrt()
+		}
+		
+		
+		corrections : [Correction]
+
+		correction:{
+			frame:int
+			pixel:int
+			line:int
+			x:float
+			y:float
+		}
+		
+	Image:
+		frame: int
+		original_file: path
+		image_type: enum
+		
+		public fn load() 
+		
+		public fn georeference():
+			use corrections and spline to calculate GCPs
+}
+	
+	
+Correction:
+	want to find GCPs per frame that move frame,line,pixel -> x,y
+	m_shift per run,
+	x_shift and y_shift interpolated from m.
+
+
+
+
+
+finding GCP depends on corrections and GPS. gcp.py that imports corrections and gps.
+
+
+frame,line,pixel: from click. show marker on map. zoom map. 
+x,y: from click. show marker on map. zoom map. 
+
+
+
+GPS. corrections. corrected Geom
+
+look into non QGIS option?
+
+use game engine like bevy to display and transform images?
+       
+or tauri? 
+
+
+
+add comfirm dialog when using file,new.
+
+speed up load GPS. 
+
+
+
+
+
+single model for mfv,run,corrections.
+
+could use inheritance through composition.
+	runs, corrections as attributes.
+
+
+
+
+
+qtableview for runs. use setRootIndex when MFV number in qcombobox changed.
+
+qtableview for corrections. setRootIndex when run in run qcombobox changed. changing MFV combobox should set model for run combobox.
+

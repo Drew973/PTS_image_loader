@@ -8,6 +8,7 @@ Created on Thu Dec  5 14:05:54 2024
 from PyQt5.QtCore import QSettings
 from image_loader.type_conversions import asInt
 
+from qgis.core import QgsCoordinateReferenceSystem , QgsCoordinateTransform , QgsProject
 
 settings = QSettings("pts" , "image_loader")
 
@@ -20,7 +21,23 @@ def value(k):
     return settings.value(k)
 
 
+def makeTransform(fromSrid:int , toSrid:int) -> QgsCoordinateTransform :
+    return QgsCoordinateTransform(QgsCoordinateReferenceSystem(fromSrid) ,
+                                  QgsCoordinateReferenceSystem(toSrid),
+                                  QgsProject.instance())
 
 
-def setValue(k , v):
+def transformToDestCrs(fromSrid:int) -> QgsCoordinateTransform:
+        return makeTransform(fromSrid , destSrid())
+
+
+def transformFromDestCrs(toSrid:int) -> QgsCoordinateTransform :
+        return makeTransform(destSrid() , toSrid)
+
+
+def destCrs() -> QgsCoordinateReferenceSystem :
+    return QgsCoordinateReferenceSystem(destSrid())
+
+
+def setValue(k , v) -> bool:
     return settings.setValue(k,v)

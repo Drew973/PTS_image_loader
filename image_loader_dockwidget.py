@@ -10,7 +10,8 @@ from PyQt5.QtCore import pyqtSignal,QUrl,QItemSelectionModel,Qt
 from qgis.utils import iface
 from qgis.core import Qgis
 
-from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QDialog
+from PyQt5.QtWidgets import QMenuBar,QFileDialog,QAbstractItemView,QProgressDialog,QDialog,QMessageBox
+
 
 from PyQt5 import QtGui,QtCore
 from PyQt5.QtSql import QSqlDatabase
@@ -26,7 +27,7 @@ from image_loader import (db_functions , file_locations , upload_xml , runs_mode
 
 
 FORM_CLASS, _ = uic.loadUiType(file_locations.uiFile)
-version = 3.49
+version = 3.491
 
 
 def message(message : str , level : int = Qgis.Info ):
@@ -84,7 +85,7 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         topMenu = QMenuBar(self.mainWidget)
         
         fileMenu = topMenu.addMenu("File")
-        newAct = fileMenu.addAction('New')
+        newAct = fileMenu.addAction('New...')
         newAct.triggered.connect(self.new)
                 
         saveAsAct = fileMenu.addAction('Save as...')
@@ -331,10 +332,12 @@ class imageLoaderDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     
     #file...new handler
     def new(self):
-        self.imagesModel.clear()
-        self.gpsModel.clear()
-        self.runsModel.clear()
-        db_functions.clear()
+        reply = QMessageBox.question(None , 'Image loader:' , 'Clear all data?' , QMessageBox.Yes|QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.imagesModel.clear()
+            self.gpsModel.clear()
+            self.runsModel.clear()
+            db_functions.clear()
 
 
     #open... handler

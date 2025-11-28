@@ -160,7 +160,7 @@ class gpsModel:
 
 
     def clear(self) -> None:
-        gps_functions.clear()
+        gps_functions.clearGps()
         self.setSrid(self.srid)
 
 

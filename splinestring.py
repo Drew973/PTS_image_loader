@@ -34,17 +34,32 @@ def to2DArray(x,y):
 
 
 
+
+mxyType = np.dtype([('m',float),('x',float),('y',float)])
+
+
+
+
 class splineString:
     
     #3 column numpy array. m,x,y
 
     def __init__(self,values):
-        self.xSpline = interpolate.UnivariateSpline(values[:,0], values[:,1] , s = S, ext='const', k = K)
-        self.ySpline = interpolate.UnivariateSpline(values[:,0],  values[:,2] , s = S, ext='const', k = K)
+        m = [v['m'] for v in values]
+        x = [v['x'] for v in values]
+        y = [v['y'] for v in values]
+        
+      #  print('splineString.m',m.shape)#(21332, 1)
+        
+        
+        self.xSpline = interpolate.UnivariateSpline(m, x , s = S, ext='const', k = K)
+        self.ySpline = interpolate.UnivariateSpline(m,  y , s = S, ext='const', k = K)
         self.xDerivitive = self.xSpline.derivative(1)
         self.yDerivitive = self.ySpline.derivative(1)    
-
-    
+        self.maxM = np.max(m)
+        self.minM = np.min(m)
+        
+        
     # array[[x,y]] or []
     # m in any units.
     #offset in same units as x and y.

@@ -133,22 +133,26 @@ def loadCsv(file:str):
 #returns frames within area of polygon and direction within maxAngle of bearing or opposite.
 #maxAngle in degrees
 def runsFromAreas(features , crs : QgsCoordinateReferenceSystem , bearingField , maxAngle = 25) -> list:
+    featureSrid = crs.postgisSrid()
     db = db_functions.defaultDb()
     db.transaction()
     
     #upload areas layer
     q = db_functions.runQuery('delete from areas', db = db)
-    q = db_functions.prepareQuery('insert into areas(area , bearing) values (ST_PolyFromText(:a,4326),:b)', db = db)    
-    targetCrs = QgsCoordinateReferenceSystem('ESPG:4326')
-    transform = QgsCoordinateTransform(crs,targetCrs,QgsProject.instance())
-    for f in features:
-        g = f.geometry()
-        g.transform(transform)
-        q.bindValue(':a',g.asWkt())
+    q = db_functions.prepareQuery('insert into areas(area , bearing) values (ST_Transform(ST_PolyFromText(:a,:featureSrid),:srid),:b)', db = db)    
+    targetCrs = settings.destCrs()
+    
+    for f in features:       
+        q.bindValue(':a',f.geometry().asWkt())
+        q.bindValue(':srid',targetCrs)
+        q.bindValue(':featureSrid',featureSrid)
+
+
         if bearingField:
             q.bindValue(':b',f[bearingField])
         else:
             q.bindValue(':b',None)
+            
         q.exec()
     db.commit()
     
@@ -176,7 +180,9 @@ order by m
             ranges.append({'start_frame':frame,'end_frame':frame})
         if q.value(1) == False:
             ranges[-1]['end_frame'] = frame
-    return ranges
+    
+    return [r for r in ranges if r['end_frame'] - r['start_frame'] > 5] # minimum of 5 frames in run. make this into setting?
+
 
 
 #data for making vrt from selected runs.
