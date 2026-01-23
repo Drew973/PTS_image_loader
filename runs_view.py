@@ -12,6 +12,7 @@ from PyQt5.QtGui import QKeySequence
 from PyQt5.QtCore import Qt
 
 
+
 class runsView(QTreeView):
   
     def __init__(self,parent=None):
@@ -92,7 +93,7 @@ class runsView(QTreeView):
     def setModel(self,model):
         super().setModel(model)
         self.chainagesDialog.runsModel = model
-        show = ['number','start_frame','end_frame','chainage_shift','offset']
+        show = ['start_frame','end_frame','chainage_shift','offset']
         if hasattr(model,'fieldName'):
             for c in range(model.columnCount()):
                 name = model.fieldName(c)

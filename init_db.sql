@@ -1,18 +1,35 @@
+
+--STRICT added in sqlite 3.37.0 
+--foreign key constraints are not enforced?
 SELECT InitSpatialMetaDataFull();
     
+	
+create table if not exists mfv(
+	mfv_ref text primary key
+	,gps_file text
+	);
+
+
+	
 create table if not exists runs
 (
-	pk INTEGER PRIMARY KEY
+	mfv_number text
+	,pk INTEGER PRIMARY KEY
 	,start_frame int default 0
 	,end_frame int default 0
-	,correction_start_m float default 0.0
-	,correction_end_m float default 0.0
-	,correction_start_offset float default 0.0
-	,correction_end_offset float default 0.0
-);
+	,correction_start_m REAL default 0.0
+	,correction_end_m REAL default 0.0
+	,correction_start_offset REAL default 0.0
+	,correction_end_offset REAL default 0.0
+	,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
 
+)
+STRICT 
+;
 
-create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number,pk
+create view if not exists runs_view as select ROW_NUMBER() over (order by start_frame,end_frame) as number
+	,mfv_number
+	,pk
     ,start_frame,end_frame,correction_start_m,correction_end_m,correction_start_offset,correction_end_offset
     ,correction_end_m - correction_start_m as chainage_shift,correction_end_offset - correction_start_offset as offset
     from runs;
@@ -21,9 +38,12 @@ create view if not exists runs_view as select ROW_NUMBER() over (order by start_
 create table if not exists images
 ( 
 	pk INTEGER PRIMARY KEY
+	,mfv_number text
 	,frame_id INTEGER
 	,original_file text unique
 	,image_type text
+	,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
+
 );
 
 
@@ -37,18 +57,20 @@ drop table if exists original_points;
 create table if not exists original_points
 (
 	id INTEGER PRIMARY KEY
-	,m float
+	,mfv_number text
+	,m REAL
 	,next_id int
 	,last_id int
-	,lon float
-	,lat float
-	,alt float
-	,x float -- projected. CRS depends on settings.
-	,y float -- projected
+	,lon REAL
+	,lat REAL
+	,alt REAL
+	,x REAL -- projected. CRS depends on settings.
+	,y REAL -- projected
 	,bearing int -- to last projected point.
 	,seconds int --unix epoch
 	,milliseconds int --unix epoch
 	,unique(seconds,milliseconds)
+	,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
 );
 
 
@@ -93,7 +115,7 @@ create table if not exists frames
 create view load_gps_view as select id,GROUP_CONCAT(number) as runs from frames left join runs_view on start_frame <= id and id <= end_frame group by id;
 
 drop table if exists pos;
-create table if not exists pos (pixel float,line float);
+create table if not exists pos (pixel REAL,line REAL);
 insert into pos (pixel,line) values (519,0),(519,625),(519,1250),(516,200),(525,400);
 
 
@@ -104,9 +126,9 @@ create table if not exists cracks
 (
 	section_id int
 	,crack_id int
-	,len float
-	,depth float
-	,width float
+	,len REAL
+	,depth REAL
+	,width REAL
 	,wkt text
 	,unique(section_id,crack_id)
 );
@@ -125,13 +147,13 @@ drop table if exists rut;
 create table if not exists rut(
 pk INTEGER primary key
 ,frame int
-,chainage float
+,chainage REAL
 ,wheelpath text
-,depth float
-,width float
-,x_section float
+,depth REAL
+,width REAL
+,x_section REAL
 ,type INT
-,deform float
+,deform REAL
 ,mo_wkb blob
 ,xy_wkb blob
 ,unique(frame,chainage,wheelpath)
@@ -148,9 +170,9 @@ from rut inner join runs_view on start_frame <= frame and end_frame >= frame;
 create table if not exists joints(
 frame int
 ,joint_id int
-,off float
+,off REAL
 ,faulting int
-,width float
+,width REAL
 ,mo_wkb blob
 ,unique(frame,joint_id)
 );
@@ -165,11 +187,11 @@ SELECT AddGeometryColumn('joints' , 'geom', 0, 'POLYGON', 'XY');
 create table if not exists transverse_joints(
 frame int
 ,joint_id int
-,length float
-,average_depth_bad_seal float
-,average_depth_good_seal float
-,min_depth_seal float
-,max_depth_seal float
+,length REAL
+,average_depth_bad_seal REAL
+,average_depth_good_seal REAL
+,min_depth_seal REAL
+,max_depth_seal REAL
 ,mo_wkb blob
 ,unique(frame,joint_id)
 );
@@ -183,8 +205,8 @@ create table if not exists transverse_joint_faulting(
 frame int
 ,joint_id int
 ,joint_offset int
-,faulting float
-,width float
+,faulting REAL
+,width REAL
 ,mo_wkb blob
 ,PRIMARY KEY (frame,joint_id,joint_offset)
 );
@@ -218,32 +240,63 @@ select op.id,next_id,last_id
 ;
 
 
---unused WIP
---where min_m <= m <= max_m
---x = x0 + x1 * m + x2 * m * m 
---y = y0 + y1 * m + y2 * m * m 
-create table spline
-(
-	min_m float
-	,max_m float
-	,x0 float
-	,x1 float
-	,x2 float
-	,y0 float
-	,y1 float
-	,y2 float
-);
-create index if not exists spline_min_m on spline(min_m);
 
+
+/*
+	need seperate tables for x and y because spacing of m values can be different due to smoothing.
+
+*/
+--for start_m <= m <= end_m:
+--x = x0 + x1 * (m-start_m) + x2*(m-start_m)^2 + x3*(m-start_m)^3
+create table if not exists x_spline
+(
+	mfv_number text
+	,start_m REAL
+	,end_m REAL
+	,x0 REAL
+	,x1 REAL
+	,x2 REAL
+	,x3 REAL
+	,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
+
+)STRICT;
+create index if not exists x_spline_start_m on x_spline(start_m);
+
+
+--y = y0 + y1 * (m-start_m) + y2*(m-start_m)^2 + y3*(m-start_m)^3
+create table if not exists y_spline
+(
+	mfv_number text
+	,start_m REAL
+	,end_m REAL
+	,y0 REAL
+	,y1 REAL
+	,y2 REAL
+	,y3 REAL
+	,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
+)STRICT;
+create index if not exists y_spline_start_m on y_spline(start_m);
 
 
 
 
 create table anpp
 (
-	lon float
-	,lat float
-	,alt float
+	lon REAL
+	,lat REAL
+	,alt REAL
 	,seconds int
 	,microseconds int
-)
+);
+
+
+-- start and end corners of consecutive frames should overlap.
+create table gcp(
+mfv_number text
+,frame int 
+,pixel int
+,line int
+,x REAL
+,y REAL
+,foreign key(mfv_number) references mfv(mfv_ref) on delete cascade on update cascade
+);

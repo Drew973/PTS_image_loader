@@ -4,6 +4,10 @@ Created on Tue Apr 18 14:28:37 2023
 
 @author: Drew.Bennett
 
+
+
+keep typechecked with mypy db_functions.py --follow-imports=silent
+
 geopackage for easier debugging?
 filelocks?
 
@@ -23,7 +27,11 @@ column syntax as an error and will report that the database schema is corrupt"
     
 """
 from PyQt5.QtSql import QSqlDatabase,QSqlQuery
-from image_loader.file_locations import dbFile
+from image_loader.file_locations import dbFile,dbSetupFile
+
+
+
+
 
 
 class queryError(Exception):
@@ -41,6 +49,19 @@ def defaultDb():
     return QSqlDatabase.database('image_loader')        
         
 
+#list of tuple for values.
+def bulkInsert(db, query:str, values:list , columnCount:int):
+    insertQuery = prepareQuery(query,db)
+    insertQuery.setForwardOnly(True)
+    
+    for row in values:
+        for i in range(0,columnCount):
+            insertQuery.bindValue(i,row[i])
+        if not insertQuery.exec():
+            raise queryError(insertQuery)
+
+
+
 #from PyQt5.QtSql import QSqlDriver
    #print('has named placeholders',db.driver().hasFeature(QSqlDriver.NamedPlaceholders))#False
    #named placeholders buggy because not properly supported for QSPATIALITE driver.
@@ -48,7 +69,7 @@ def defaultDb():
    #fuck sql injection risk. just use replace.
 
 
-def prepareQuery(query , db=None):
+def prepareQuery(query:str , db=None):
     if db is None:
         db = defaultDb()
     query = query.replace("\n",' ')    
@@ -113,6 +134,7 @@ def loadFile(dbFile : str):
     runQuery("delete from original_points",db=db)
     runQuery('insert into original_points(m,pt) select m,pt from db2.original_points',db=db)
     db.commit()
+    return
    # runQuery("DETACH DATABASE 'db2'",db=db)
 
 
@@ -120,6 +142,7 @@ def hasGps(db=None) -> bool:
     q = runQuery('select count(m) from original_points',db)
     while q.next():
         return q.value(0) > 0
+    raise queryError(q)
 
 
 def vacuum():
@@ -129,13 +152,32 @@ def vacuum():
 
 #want to call this at least once to avoid driver not loaded error.
 def createDb(file = dbFile,name = 'image_loader') -> QSqlDatabase:
-    db = QSqlDatabase.addDatabase("QSPATIALITE",name)
+    db = QSqlDatabase.addDatabase("QSPATIALITE",name)    
     db.close()
     db.setDatabaseName(file)
     if not db.open():
         raise ValueError('could not open database')
 #    initDb(db)
+    runQuery(db=db,query = "PRAGMA foreign_keys = ON")
     return db
+
+
+
+def newDb():
+    
+    db = QSqlDatabase.addDatabase("QSPATIALITE",'test')    
+    db.close()
+    db.setDatabaseName(':memory:')
+    if not db.open():
+        raise ValueError('could not open database')
+#    initDb(db)
+    runQuery(db=db,query = "PRAGMA foreign_keys = ON")
+    return db
+
+
+
+
+
 
 
 #def sqliteVersion():
@@ -148,19 +190,22 @@ def crackCount() -> int:
     q = runQuery('select count(crack_id) from cracks')
     while q.next():
         return q.value(0)
+    raise queryError(q)
+
 
 #->int
 def rutCount() -> int:
     q = runQuery('select count(frame) from rut')
     while q.next():
         return q.value(0)
+    raise queryError(q)
     
 #->int
 def faultingCount() -> int:
     q = runQuery('select count(frame) from transverse_joint_faulting')
     while q.next():
-        return q.value(0)
-
+            return q.value(0)
+    raise queryError(q)
 
 def clear():
     clearDistresses()
@@ -177,4 +222,33 @@ def clearDistresses():
         runQuery('VACUUM')#reclaim space
     except:
         pass
+  
+    
+  
+def setupDb(db:QSqlDatabase):
+    with open(dbSetupFile,'r') as f:
+        text = f.read()
+    for command in text.split(';'):
+        runQuery(db=db,query = command)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+    
     

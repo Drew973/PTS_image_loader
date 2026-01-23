@@ -1,9 +1,80 @@
 
 
+view depressions
+
+
+database vs in memory?
+
+	potential for shared database/collaboration
+	subprocess can read database. multiple languages.
+	database size ~20-50mb. should be fine in memory.	
+	
+	
+
+single model for mfv,run,corrections,images?
+
+
+save and load sqlite database?
+	
+seperate file per mfv number.
+sqlite?
+need to save and load this within few seconds.
+
+
+
+don't have easy way to seperate concerns, eg georeferencing depends on gps and corrections and images.
+
+better to use functions that take database as input? store all states here.
+
+	
+	
+correction maps frame,pixel,line to x,y.
+single chainage shift/run that minimises distance then interpolated x,y shift.
+
+good enough corrections could avoid need to split?
+	
+	
+single chainage,offset shift per run to frame,pixel,line:
+	first frame,line 0, pixel:PIXELS/2 to x,y of m(first_frame)+chainage_shift,offset
+
+	
+	
+	
+try to avoid spatial in database at all. less spatialite wierdness.
+	
+
+clear GPS when srid changed. warning message.
+
+functions for database CRUD with model or in database_functions.py?
+	all database specific functions in single file would make changing to something other than sqlite easier.
+
+
+
+
+may want treeview. 
+add type hints whilst redoing.
+
+qcombobox for mfv number
+qtableview for runs. use setRootIndex when MFV number in qcombobox changed.
+qtableview for corrections. setRootIndex when run in run qcombobox changed. changing MFV combobox should set model for run combobox.
+
+
+store spline coefficients in database?
+can have many km of gps with many mfv numbers. saves needing to load+recalculate.
+
+
+
+
+georeference with rust?
+performance gains? easier multiprocessing.
+could just write .exe, run subprocess(modal?) and show terminal.
+
+
+
 type check like:
 	cd backend
 	mypy __init__.py --follow-imports=silent
-
+	mypy db_functions.py --follow-imports=silent
 
 resample at ~5m intervals when uploading gps. faster to upload.
 	known spacing for finding chainages?
@@ -139,10 +210,10 @@ multiple MFV numbers instead of 1 at a time?
 heirarchal data. tree view?
 
 mfv:{
-	number :int
+	number : string
 	spline: Splinestring
 	images: [Image]
-	GPS
+	GPS:
 	
 	runs: [Run]
 
@@ -187,6 +258,8 @@ Correction:
 
 
 
+#Python 3.7 for dataclass
+
 
 
 finding GCP depends on corrections and GPS. gcp.py that imports corrections and gps.
@@ -194,37 +267,31 @@ finding GCP depends on corrections and GPS. gcp.py that imports corrections and 
 
 frame,line,pixel: from click. show marker on map. zoom map. 
 x,y: from click. show marker on map. zoom map. 
-
-
-
 GPS. corrections. corrected Geom
-
 look into non QGIS option?
-
 use game engine like bevy to display and transform images?
-       
 or tauri? 
 
 
 
-add comfirm dialog when using file,new.
 
-speed up load GPS. 
+seperate app for plotting distresses in frame,pixel,line
+shows intensity,range, photo(from video) for frame.
+
+save time by removing duplicated areas first.
 
 
 
-
-
-single model for mfv,run,corrections.
-
-could use inheritance through composition.
-	runs, corrections as attributes.
+plot distresses on this. y = m. x = offset.
+convert MO -> x,y and output GIS files with x,y distresses.
 
 
 
 
 
-qtableview for runs. use setRootIndex when MFV number in qcombobox changed.
 
-qtableview for corrections. setRootIndex when run in run qcombobox changed. changing MFV combobox should set model for run combobox.
+
+
+
+
 

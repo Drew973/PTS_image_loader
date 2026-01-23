@@ -20,7 +20,16 @@ emits errorOccured signal on error
 #can use QProgressDialog for ui. iface.messageBar for errors. 
 from PyQt5.QtCore import pyqtSignal , QProcess , QObject , QTimer
 import os
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication,QWidget
+
+from qgis.utils import iface
+from qgis.core import Qgis
+
+from PyQt5.QtWidgets import QProgressDialog
+from PyQt5.QtCore import Qt
+
+
+
 
 coreCount = os.cpu_count()#number of CPU cores
 
@@ -32,7 +41,7 @@ class processRunner(QObject):
     completed = pyqtSignal()
 
 
-    def __init__(self , parent = None):
+    def __init__(self , parent:QWidget = None):
         super().__init__(parent)
         self.toDo = []
         self.active = {}
@@ -44,7 +53,7 @@ class processRunner(QObject):
 
 
     #cancel any ongoing processes then start processes
-    def beginProcesses(self , processes):
+    def beginProcesses(self , processes:list[QProcess]):
         self.toDo = []
         for p in self.active.values():
             p.close()
@@ -80,7 +89,7 @@ class processRunner(QObject):
 
 
     #emit signals and update completedCount
-    def processFinished(self , process):
+    def processFinished(self , process:QProcess):
         if process.exitStatus() == QProcess.CrashExit:
             err = str(process.readAllStandardError())
             self.errorOccured.emit(err)
@@ -121,6 +130,31 @@ class processRunner(QObject):
 
 
     
+
+def message(message : str , level : int = Qgis.Info ):
+    iface.messageBar().pushMessage("Image_loader", message, level=level)
+
+
+
+#brgin running run list of processes and increnent progress dialog
+def beginProcesses(progress:QProgressDialog , processes:list):
+    runner = processRunner(parent = progress)#garbage collected without parent.
+    progress.canceled.connect(runner.cancel)
+    runner.errorOccured.connect(message)
+    runner.progressChanged.connect(lambda : progress.setValue(progress.value()+1))
+    #print('running',processes)
+    runner.beginProcesses(processes)
+    return runner
+
+
+def runProcesses(parent:QObject , processes:QProcess , labelText:str):
+    prog = QProgressDialog(labelText = labelText , parent = parent , maximum = len(processes))
+    prog.setWindowModality(Qt.WindowModal)
+    prog.show()
+    runner = beginProcesses(processes = processes , progress = prog)
+    runner.waitForFinished()
+    prog.hide()
+    prog.deleteLater()
 
 
 

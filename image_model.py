@@ -20,6 +20,8 @@ from image_loader import run_commands_3 as run_commands
 from pathlib import Path
 from image_loader.commands_dialog import commandsDialog
 from PyQt5.QtWidgets import QProgressDialog
+from image_loader.db_functions import runQuery
+
 
 
 class _image():
@@ -111,6 +113,7 @@ class imageModel(QSqlQueryModel):
     
     def __init__(self,parent=None):
         super().__init__(parent)
+        self.mfv = ''
       #  self.setRange(0,99999999999999)
         self.select()
 
@@ -127,6 +130,8 @@ class imageModel(QSqlQueryModel):
         return self.record().indexOf(name)
     
     
+    
+    #Also shows tooltip
     def data(self,index,role):
         if role == Qt.ToolTipRole:
             return str(super().data(index))
@@ -148,11 +153,11 @@ class imageModel(QSqlQueryModel):
 
 
     def select(self):
-        queryString = '''select pk,frame_id,original_file,image_type from images
-            order by frame_id,image_type'''
-        q = QSqlQuery(self.database())
-        q.prepare(queryString)
-        q.exec()
+        q = runQuery('select pk,frame_id,original_file,image_type from images where mfv_number = :mfv order by frame_id,image_type',
+                     values = {':mfv':self.mfv},
+                     db = self.database())
+        
+       
         self.setQuery(q)
 
 
@@ -163,25 +168,25 @@ class imageModel(QSqlQueryModel):
         self.select()
 
 
-    def setRange(self,start,end):
-        #s = startChainage/HEIGHT
-        #e = endChainage/HEIGHT
+  #  def setRange(self,start,end):
+   #     #s = startChainage/HEIGHT
+    #    #e = endChainage/HEIGHT
     #    print('setRange',s,e)        
-        queryString = '''select pk,frame_id,original_file,image_type from images
-            where :s <= frame_id and frame_id <= :e
-            order by frame_id,image_type'''
-        q = QSqlQuery(self.database())
-        q.prepare(queryString)
-        q.bindValue(':s',start)
-        q.bindValue(':e',end)
-        q.exec()
-        self.setQuery(q)
+     #   queryString = '''select pk,frame_id,original_file,image_type from images
+     #       where :s <= frame_id and frame_id <= :e
+    #        order by frame_id,image_type'''
+    #    q = QSqlQuery(self.database())
+  #      q.prepare(queryString)
+    #    q.bindValue(':s',start)
+   #     q.bindValue(':e',end)
+   #     q.exec()
+   #     self.setQuery(q)
 
         
 
-    def addFolder(self,folder):
+    def addFolder(self,folder:str,mfv:str):
         files = [str(f) for f in Path(folder).glob("**/*.jpg")]
-        self._add([_image(origonalFile = str(f)) for f in files])
+        self._add([_image(origonalFile = str(f)) for f in files],mfv)
     
     
     def dropRows(self,indexes):
@@ -194,7 +199,7 @@ class imageModel(QSqlQueryModel):
         
     
     
-    def loadRIL(self,file):
+    def loadRIL(self,file,mfv:str):
         def _find(d,k):
             if k in d:
                 return d[k]
@@ -225,16 +230,18 @@ class imageModel(QSqlQueryModel):
                     origonalFiles = findOrigonals(files,projectFolder = projectFolder)
                     for i,f in enumerate(origonalFiles):
                         data[i].origonalFile = f
-            self._add(data)
+            self._add(data,mfv)
 
 
-    def _add(self,data):
+    def _add(self, data:list, mfv:str=''):
+        print('_add',data)
         db = self.database()
         db.transaction()
         q = QSqlQuery(db)
-        if not q.prepare('insert or ignore into images(frame_id,original_file,image_type) values(:i,:origonal,:type)'):
+        if not q.prepare('insert or ignore into images(mfv_number,frame_id,original_file,image_type) values(:mfv,:i,:origonal,:type)'):
             raise db_functions.queryError(q)
         for d in data:
+            q.bindValue(':mfv',mfv)
             q.bindValue(':i',d.imageId)
             q.bindValue(':origonal',d.origonalFile)
             q.bindValue(':type',d.imageType.name)
@@ -245,5 +252,4 @@ class imageModel(QSqlQueryModel):
         self.select()
         
 
-    def saveAs(self,file):
-        pass
+

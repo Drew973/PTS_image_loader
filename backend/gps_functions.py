@@ -4,9 +4,6 @@ Created on Thu Dec  5 11:59:35 2024
 
 @author: Drew.Bennett
 
-
-start moving everything database specific to here.
-
 make as procedural as possible for easier testing. database state for testing?
 
 """
@@ -185,7 +182,7 @@ def uploadCsv(filePath):
 
 
 
-def uploadFile(filePath) -> None:
+def uploadFile(filePath:str,mfv:str) -> None:
     ext = os.path.splitext(filePath)[1]
     
     if ext == '.csv':
@@ -245,11 +242,6 @@ def minM() -> int:
     while q.next():
         return q.value(0)
     return 0
-
-
-
-def clearGps():
-    runQuery(query='delete from original_points')
 
 
 

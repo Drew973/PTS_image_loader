@@ -3,6 +3,16 @@ from scipy.interpolate import CubicSpline
 
 from collections import namedtuple
 
+
+#    ppoly = PPoly.from_spline(splrep(m, x, s = 0.5, k=K))
+#    print(ppoly.c)# [...quadratic term,linear,constant]
+#    print(ppoly.x)# start m
+
+
+
+
+
+
 # Declaring namedtuple()
 coefficient = namedtuple('coefficient', ['start', 'end', 'x_0','x_1','x_2','x_3'])
 K = 3

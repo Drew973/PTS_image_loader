@@ -146,17 +146,18 @@ class moDifferenceDialog(QDialog):
         t = QgsCoordinateTransform(getCanvasCrs() , self.gpsModel.crs , QgsProject.instance())
         p = t.transform(pt)  
         try:
-           opts = self.model.locate(row = self.row , x = p.x(), y = p.y())
+           opts = self.model.locate(row = self.row , point = p)
         except Exception as e:
+            raise e
             message = 'Image loader:Error finding (chainage,offset):'+str(e)
             iface.messageBar().pushMessage(message , duration = 5)
             return
         #print('opts',opts)
         if len(opts) == 1:
-            m = opts[0,0]
-            off = opts[0,1]
-        if len(opts) > 1:
-            m,off = self.chooseOpt(opts)
+            m = opts[0].m
+            off = opts[0].offset
+       # if len(opts) > 1:
+       #     m,off = self.chooseOpt(opts)
         if self.lastButton == 0:
                 self.startM.setValue(m)
                 self.startOffset.setValue(off)

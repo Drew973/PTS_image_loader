@@ -18,10 +18,7 @@ from qgis.gui import QgsRubberBand , QgsMapToolEmitPoint
 from PyQt5.QtGui import QColor
 from image_loader import dims
 from image_loader.type_conversions import asInt
-
-
-def getCanvasCrs() -> QgsCoordinateReferenceSystem:
-    return iface.mapCanvas().mapSettings().destinationCrs()
+from image_loader.settings import canvasToDestTransform
 
 
 class chainagesDialog(QDialog):
@@ -81,13 +78,13 @@ class chainagesDialog(QDialog):
 
     def toolClicked(self,point):
         if self.gpsModel is not None:
-            t = QgsCoordinateTransform(getCanvasCrs() , self.gpsModel.crs , QgsProject.instance())
+            t = canvasToDestTransform()
             pt = t.transform(point)
-            f = self.gpsModel.pointToFrame(pt)
+            frame = self.gpsModel.findFrame(pt)
             if self.lastButton == 'start':
-                self.startChainage.setValue(f)
+                self.startChainage.setValue(frame)
             if self.lastButton == 'end':
-                self.endChainage.setValue(f)
+                self.endChainage.setValue(frame)
                 
                 
     def endButtonClicked(self):
@@ -118,20 +115,20 @@ class chainagesDialog(QDialog):
     def accept(self):
         if self.runsModel is not None:
             if self.row is None:
-                self.runsModel.addRuns([{'start_frame':self.startChainage.value(),'end_frame':self.endChainage.value()}])
+                self.runsModel.addRun(mfv = self.runsModel.mfv,startFrame=self.startChainage.value(),endFrame=self.endChainage.value())
             else:
-                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('start_frame')),self.startChainage.value())                
+                self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('start_frame')),self.startChainage.value())
                 self.runsModel.setData(self.runsModel.index(self.row,self.runsModel.fieldIndex('end_frame')),self.endChainage.value())
         return super().accept()
 
 
     def updateLine(self):
-        s = dims.frameToM(self.startChainage.value())
-        e = dims.frameToM(self.endChainage.value()+1)
+        s = self.startChainage.value()
+        e = self.endChainage.value()
         if self.gpsModel is not None and s<e :
-            line = self.gpsModel.centerLine(startM = s , endM = e)
+            line = self.gpsModel.centerLine(startFrame = s , endFrame = e)
 #            print('line',line)
-            self.markerLine.setToGeometry(line,crs = self.gpsModel.crs)
+            self.markerLine.setToGeometry(line,crs = self.gpsModel.crs())
         else:
             self.markerLine.setToGeometry(QgsGeometry())
     

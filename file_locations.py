@@ -22,6 +22,9 @@ iconPath = join(folder,'icon.png')
       
 dbFile = join(folder,'backend','images.db')
 
+dbSetupFile = join(folder,'init_db.sql')
+
+
 
 crackStyle = join(folder,'layer_styles','cracking.qml')
 

@@ -5,7 +5,7 @@ Created on Fri Jan 17 13:41:33 2025
 @author: Drew.Bennett
 """
 import os
-from image_loader import db_functions , gps_model , file_locations
+from image_loader import db_functions , gps_model , file_locations , settings
 from PyQt5.QtCore import QProcess
 
 
@@ -20,7 +20,7 @@ def allImagePks():
     
 
 #'[(x,y,pixel,line)]'
-def georeferenceProcess(inputFile , outputFile , gcp , srid):
+def georeferenceProcess(inputFile:str , outputFile:str , gcp:str , srid:int):
     p = QProcess()
     p.setProgram(file_locations.georeference)
     p.setArguments([inputFile,intermediateFileName(inputFile),outputFile,gcp,'EPSG:'+str(srid)])   
@@ -29,35 +29,43 @@ def georeferenceProcess(inputFile , outputFile , gcp , srid):
 
 
 
-#->generator of QProcess
-def georeferenceProcesses(gpsModel , imagePks : list):
+def georeferenceProcesses(imagePks : list[int]):
     pkStr = ','.join([str(pk) for pk in imagePks])
-    t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
-    q = db_functions.runQuery(t)
+    
+    qs = '''
+select original_file
+,group_concat('-gcp '||pixel||' '||line||' '||x||' '||y,' ')
+from images inner join gcp on images.frame_id = gcp.frame and images.mfv_number = gcp.mfv_number and pk in ({p})
+group by original_file    
+    '''.format(p=pkStr)
+    
+    
+  #  t = 'select frame_id,group_concat(original_file) from images where pk in ({p}) group by frame_id order by frame_id'.format(p=pkStr)
+    q = db_functions.runQuery(qs)
     processes = []
     layerSources = []
     errors = []
     while q.next():
-        frame = q.value(0)
-        gcp = gpsModel.gcps(frame)
-       # print(gcp)
-        for f in q.value(1).split(','):
-            if os.path.exists(f):
-                newFile = warpedFileName(f)
-                processes.append(georeferenceProcess(f,newFile,gcp,gpsModel.srid))
-                layerSources.append(newFile)
-            else:
-                errors.append('no file named "{f}"'.format(f=f))     
+        originalFile = q.value(0)
+        gcp = q.value(1)#like -gcp 0 0 462304.614797396 190867.14791712712 -gcp 1038 1250 462298.4124963682 190865.46511464956
+        #pixel line x y
+        #print(gcp)
+        if os.path.exists(originalFile):
+            newFile = warpedFileName(originalFile)
+            processes.append(georeferenceProcess(inputFile = originalFile , outputFile = newFile , gcp = gcp , srid = settings.destSrid()))
+            layerSources.append(newFile)
+        else:
+            errors.append('no file named "{f}"'.format(f=originalFile))     
                 
     return (processes,layerSources,errors)
       
 
 
-def warpedFileName(origonalFile):
+def warpedFileName(origonalFile:str):
     return os.path.splitext(origonalFile)[0] + '_warped.tif'
 
 
-def intermediateFileName(origonalFile):
+def intermediateFileName(origonalFile:str):
     return os.path.splitext(origonalFile)[0] + '.vrt'
 
 if __name__ == '__console__':

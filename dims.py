@@ -14,6 +14,7 @@ LINES = 1250
 HEIGHT = 5.0
 
 MAX = 999999 # 999 km maximum chainage
+MAX_M = 999999 
 #max size of QDoubleSpinbox is 2147483647
 
 #use np.clip for arrays
@@ -35,12 +36,23 @@ def frameToM(frame : int) -> float:
 
 
 def lineToM(frame:int , line:int) -> float:
-    return HEIGHT * (frame-line/LINES)
+    if line>LINES:
+        raise ValueError('line {l} > LINES'.format(l=line))
+    if line<0:
+        raise ValueError('line {p} < 0'.format(p=line))
+    return HEIGHT * (frame - float(line)/LINES)
 
 
 def pixelToOffset(pixel:int) -> float:
+    if pixel>PIXELS:
+        raise ValueError('pixel {p} > PIXELS'.format(p=pixel))
+    if pixel<0:
+        raise ValueError('pixel {p} < 0'.format(p=pixel))
     return WIDTH*0.5-pixel*WIDTH/PIXELS
+        
+    
 
+    
 
 #need frame arg to distinguish end from start of next frame
 def mToLine(m,frame):

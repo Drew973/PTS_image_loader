@@ -60,13 +60,7 @@ def saveRunsCsv(file:str):
             row += 1
 
 
-def allRunPks():
-    q = runQuery('select pk from runs')
-    pks = []
-    while q.next():
-        pks.append(q.value(0))        
-    return pks
-    
+
 
 
 
@@ -75,7 +69,7 @@ def imagePksFromRun(runPks):
     qs = '''
 select distinct(images.pk) from runs
 inner join images on frame_id >= start_frame and frame_id <= end_frame
-and runs.pk in ({pks})
+and runs.pk in ({pks} and runs.mfv_number = images.mfv_number)
     '''.format(pks = ','.join([str(pk) for pk in runPks]))
  #   print(qs)
 
@@ -98,7 +92,8 @@ def insertRuns(runs):
     
     
     
-def addRows(data,clear = False):
+def addRows(data,mfv:str='',clear:bool = False):
+    print('mfv:',mfv)
     db = db_functions.defaultDb()
     db.transaction()
     if clear:
@@ -106,8 +101,9 @@ def addRows(data,clear = False):
     for r in data:
         sm = dims.frameToM(r['end_frame'])
         em = sm + r['chainage_shift']
-        runQuery(query = 'insert OR IGNORE into runs(start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:s,:e,:sm,:em,:eo)',
-                    db=db,values = {':s':r['start_frame'],
+        runQuery(query = 'insert OR IGNORE into runs(mfv_number,start_frame,end_frame,correction_start_m,correction_end_m,correction_end_offset) values (:mfv,:s,:e,:sm,:em,:eo)',
+                    db=db,values = {':mfv':mfv,
+                                    ':s':r['start_frame'],
                                      ':e':r['end_frame'],
                                      ':sm':sm,
                                      ':em':em,
@@ -117,9 +113,9 @@ def addRows(data,clear = False):
     
 #rename to loadStr
 #load text from excel via clipboard etc
-def loadText(text:str):
+def loadText(text:str,mfv:str):
     f = io.StringIO('start_frame\tend_frame\tchainage_shift\toffset\n'+text)
-    addRows(parseCsv(f))
+    addRows(parseCsv(f),mfv=mfv)
 
 
 def loadCsv(file:str):
@@ -185,26 +181,6 @@ order by m
 
 
 
-#data for making vrt from selected runs.
-#->[vrt.vrtData]
-def vrtDataFromRuns(runPks:list):
-    qs = '''select image_type,start_frame,end_frame,group_concat(original_file,'[,]') from runs inner join images on frame_id >= start_frame and frame_id <= end_frame 
-    and runs.pk in ({runPks})
-    group by image_type,start_frame,end_frame
-'''.format(runPks =  ','.join([str(pk) for pk in runPks]))
-
-    query = db_functions.runQuery(qs)
-    d = [] 
-    while query.next():        
-        originalFiles = query.value(3).split('[,]')
-        # existing warped files
-        warpedFiles = [os.path.normpath(georeference.warpedFileName(f)) for f in originalFiles if os.path.isfile(georeference.warpedFileName(f))]
-        if warpedFiles:
-            d.append(vrt.vrtData(imageType = query.value(0) ,
-                             startFrame = query.value(1) ,
-                             endFrame = query.value(2) ,
-                             warpedFiles = warpedFiles))
-    return d
 
 
 

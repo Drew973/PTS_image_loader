@@ -49,16 +49,18 @@ def removeChild(child,parent=QgsProject.instance().layerTreeRoot()):
 
 
 import re
-for layer in QgsProject.instance().layerTreeRoot().findLayers():
-    print(layer.name())
-    #{type}_{startFrame}_to_{endFrame}.vrt
-    pattern = '(\D+)_(\d+)_to_(\d+)\.vrt'
-    match = re.match(pattern,layer.name())
-    if match:
-        tp = match.group(1)
-        start = match.group(2)
-        end = match.group(3)
-        print(tp,start,end)
+
+def test():
+    for layer in QgsProject.instance().layerTreeRoot().findLayers():
+        print(layer.name())
+        #{type}_{startFrame}_to_{endFrame}.vrt
+        pattern = '(\D+)_(\d+)_to_(\d+)\.vrt'
+        match = re.match(pattern,layer.name())
+        if match:
+            tp = match.group(1)
+            start = match.group(2)
+            end = match.group(3)
+            print(tp,start,end)
 
 def test1():
     print(findOrMake('image_loader3'))
